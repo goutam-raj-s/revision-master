@@ -186,6 +186,7 @@ export async function updateDocumentAction(
   );
 
   revalidatePath("/documents");
+  revalidatePath(`/documents/${docId}`);
   revalidatePath("/dashboard");
   return { success: true };
 }
