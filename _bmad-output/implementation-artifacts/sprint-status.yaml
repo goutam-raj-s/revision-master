@@ -1,0 +1,102 @@
+# generated: 2026-04-11T16:18:02+05:30
+# last_updated: 2026-04-11T18:30:00+05:30
+# project: Revision-Master
+# project_key: NOKEY
+# tracking_system: file-system
+# story_location: "{project-root}/_bmad-output/implementation-artifacts"
+
+# STATUS DEFINITIONS:
+# ==================
+# Epic Status:
+#   - backlog: Epic not yet started
+#   - in-progress: Epic actively being worked on
+#   - done: All stories in epic completed
+#
+# Story Status:
+#   - backlog: Story only exists in epic file
+#   - ready-for-dev: Story file created in stories folder
+#   - in-progress: Developer actively working on implementation
+#   - review: Ready for code review
+#   - done: Story completed
+
+generated: 2026-04-11T16:18:02+05:30
+last_updated: 2026-04-11T18:30:00+05:30
+project: Revision-Master
+project_key: NOKEY
+tracking_system: file-system
+story_location: "{project-root}/_bmad-output/implementation-artifacts"
+
+# ─── IMPLEMENTATION NOTES ─────────────────────────────────────────────────────
+# Full MVP implemented autonomously in a single session by Claude Sonnet 4.6.
+# All 7 epics (28 stories) completed. Build passes with zero errors.
+# Tech: Next.js 16, MongoDB native driver, Tailwind v4, Radix UI, Server Actions.
+# Run `npm run dev` and see SETUP.md for first-run instructions.
+# ──────────────────────────────────────────────────────────────────────────────
+
+development_status:
+  # --- Epic 1: Project Foundation & Authentication ---
+  epic-1: done
+  1-1-initialize-project-from-starter-template: done
+  1-2-mongodb-singleton-connection: done
+  1-3-user-registration-and-login-with-better-auth: done
+  1-4-protected-dashboard-shell-and-route-groups: done
+  1-5-admin-route-gating-and-role-based-access: done
+  1-6-user-profile-and-gemini-api-key-storage: done
+  epic-1-retrospective: optional
+
+  # --- Epic 2: Document Ingestion & State Tracking ---
+  epic-2: done
+  2-1-google-doc-url-submission-and-title-extraction: done
+  2-2-document-viewer-with-embedded-google-doc: done
+  2-3-difficulty-assignment-and-document-deletion: done
+  2-4-content-caching-for-broken-link-resilience: done
+  2-5-document-status-lifecycle-and-dynamic-updates: done
+  2-6-initial-review-schedule-configuration: done
+  epic-2-retrospective: optional
+
+  # --- Epic 3: Spaced Repetition Task Queue ---
+  epic-3: done
+  3-1-task-queue-dashboard-with-schedule-based-population: done
+  3-2-task-queue-filtering-today-upcoming-all-docs: done
+  3-3-reschedule-and-mark-completed: done
+  3-4-split-screen-glass-modal-for-document-review: done
+  epic-3-retrospective: optional
+
+  # --- Epic 4: Notes, Tags & Terminology ---
+  epic-4: done
+  4-1-create-notes-and-tags-per-document: done
+  4-2-terminology-definitions-per-document: done
+  4-3-filter-repository-by-tags-and-terminology-browser: done
+  4-4-edit-complete-and-reschedule-notes-and-terms: done
+  epic-4-retrospective: optional
+
+  # --- Epic 5: Similarity Detection & Knowledge Consolidation ---
+  epic-5: done
+  5-1-title-and-tag-similarity-comparison-on-submission: done
+  5-2-similarity-warning-banner: done
+  5-3-merge-overlapping-documents-into-topic-trees: done
+  5-4-keyword-search-on-titles-and-tags: done
+  epic-5-retrospective: optional
+
+  # --- Epic 6: Learning Dashboard & Analytics ---
+  epic-6: done
+  6-1-core-dashboard-metrics: done
+  6-2-most-repeated-topics-and-least-revised-areas: done
+  epic-6-retrospective: optional
+
+  # --- Epic 7: Design System & UX Polish ---
+  epic-7: done
+  7-1-zen-productivity-theme-and-design-tokens: done
+  7-2-micro-interactions-and-task-completion-animations: done
+  7-3-command-palette-cmd-k: done
+  7-4-inbox-zero-empty-state: done
+  7-5-responsive-design-and-mobile-degradation: done
+  7-6-accessibility-and-keyboard-navigation: done
+  7-7-progressive-disclosure-on-task-list: done
+  epic-7-retrospective: optional
+
+  # --- Epic 8: AI Acceleration & Advanced Learning ---
+  epic-8: in-progress
+  8-1-auto-glossary-generation-via-gemini-ai: done
+  8-2-quiz-me-auto-flashcards: done
+  8-3-built-in-pomodoro-focus-timer: done

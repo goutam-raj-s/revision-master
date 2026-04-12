@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Revision-Master: Zen Workspace</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        serif: ['Newsreader', 'serif'],
+                    },
+                    colors: {
+                        brand: {
+                            bg: '#f1f5f2',
+                            surface: '#ffffff',
+                            text: '#1e2d24',
+                            muted: '#6b7f73',
+                            accent: '#059669',
+                            highlight: '#dcfce7'
+                        },
+                        status: {
+                            active: '#059669',     /* Emerald for Today/Focus */
+                            upcoming: '#3b82f6',   /* Soft Blue for Scheduled */
+                            rescheduled: '#d97706',/* Muted Amber for Pushed dates */
+                            completed: '#64748b'   /* Slate for Done/Archived */
+                        }
+                    },
+                    boxShadow: {
+                        'soft': '0 4px 20px -2px rgba(5, 150, 105, 0.04)',
+                        'float': '0 8px 30px -4px rgba(5, 150, 105, 0.08)',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #f1f5f2;
+            color: #1e2d24;
+            overflow: hidden; /* App-like feel */
+        }
+        
+        .workspace-card {
+            background-color: #ffffff;
+            border: 1px solid rgba(5, 150, 105, 0.05);
+            border-radius: 1.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body class="antialiased h-screen flex flex-col font-sans">
+
+    <!-- Minimal App Header -->
+    <header class="h-14 flex items-center justify-between px-6 bg-transparent shrink-0">
+        <div class="flex items-center gap-3">
+            <div class="w-6 h-6 rounded-md bg-brand-accent flex items-center justify-center text-white font-serif text-xs px-1">RM</div>
+            <span class="text-sm font-semibold text-brand-text tracking-wide">Revision-Master Workspace</span>
+        </div>
+        <div class="flex items-center gap-4 text-sm text-brand-muted font-medium">
+            <span class="hover:text-brand-accent cursor-pointer transition-colors">Settings</span>
+            <div class="w-8 h-8 rounded-full bg-brand-highlight flex items-center justify-center text-brand-accent">G</div>
+        </div>
+    </header>
+
+    <!-- Main Workspace Container -->
+    <div class="flex-1 flex overflow-hidden px-4 pb-4 gap-4">
+        
+        <!-- Sidebar (The Queue) -->
+        <div class="w-80 flex flex-col shrink-0 gap-4">
+            
+            <!-- Global Search -->
+            <button class="w-full bg-white h-12 rounded-xl shadow-soft flex items-center justify-between px-4 text-brand-muted hover:shadow-float transition-all group border border-transparent hover:border-brand-highlight">
+                <div class="flex items-center gap-3 text-sm">
+                    <svg class="w-4 h-4 opacity-50 group-hover:opacity-100 group-hover:text-brand-accent transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                    Search your knowledge...
+                </div>
+                <kbd class="text-[10px] bg-brand-bg px-1.5 py-0.5 rounded text-brand-muted font-mono">⌘K</kbd>
+            </button>
+
+            <!-- Focus Queue -->
+            <div class="flex-1 workspace-card shadow-soft p-5 flex flex-col overflow-hidden">
+                <div class="flex items-center justify-between mb-4">
+                    <h4 class="font-medium text-sm text-brand-text tracking-wide">Review Queue</h4>
+                    <span class="text-xs bg-brand-highlight text-brand-accent px-2 py-0.5 rounded-full font-medium">3 Pending</span>
+                </div>
+                
+                <div class="space-y-4 flex-1 overflow-y-auto pr-1 custom-scrollbar pb-6">
+                    
+                    <!-- Status Category: Active (Today) -->
+                    <div>
+                        <h6 class="text-[10px] font-bold uppercase tracking-widest text-[#059669] mb-2 px-1">Active / Today</h6>
+                        <div class="bg-emerald-50 border border-emerald-200 p-3.5 rounded-xl cursor-pointer transition-colors w-full group relative">
+                            <div class="absolute left-0 top-0 bottom-0 w-1 bg-[#059669] rounded-l-xl"></div>
+                            <h5 class="font-semibold text-sm mb-1 text-brand-text pr-4">Redis Cache Patterns</h5>
+                            <p class="text-[11px] text-[#059669] font-medium flex items-center gap-1">
+                                <span class="w-1.5 h-1.5 rounded-full bg-[#059669]"></span> Pending Review
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Status Category: Upcoming -->
+                    <div>
+                        <h6 class="text-[10px] font-bold uppercase tracking-widest text-[#3b82f6] mb-2 px-1">Upcoming</h6>
+                        <div class="p-3.5 rounded-xl cursor-pointer hover:bg-brand-bg transition-colors border border-blue-100 bg-white">
+                            <h5 class="font-medium text-sm text-brand-text mb-1">React Server Components</h5>
+                            <p class="text-[11px] text-[#3b82f6] font-medium flex items-center gap-1">
+                                <span class="w-1.5 h-1.5 rounded-full bg-[#3b82f6]"></span> In 2 days
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Status Category: Rescheduled -->
+                    <div>
+                        <h6 class="text-[10px] font-bold uppercase tracking-widest text-[#d97706] mb-2 px-1">Rescheduled</h6>
+                        <div class="p-3.5 rounded-xl cursor-pointer hover:bg-brand-bg transition-colors border border-amber-100 bg-white">
+                            <h5 class="font-medium text-sm text-brand-text mb-1">MongoDB Singleton Scaling</h5>
+                            <p class="text-[11px] text-[#d97706] font-medium flex items-center gap-1">
+                                <span class="w-1.5 h-1.5 rounded-full bg-[#d97706]"></span> Pushed to Next Week
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <!-- Status Category: Completed -->
+                    <div>
+                        <h6 class="text-[10px] font-bold uppercase tracking-widest text-[#64748b] mb-2 px-1">Mastered</h6>
+                        <div class="p-3.5 rounded-xl transition-colors border border-transparent opacity-50 bg-gray-50">
+                            <h5 class="font-medium text-sm text-brand-text line-through decoration-slate-400 mb-1">Next.js App Router Specs</h5>
+                            <p class="text-[11px] text-[#64748b] font-medium flex items-center gap-1">
+                                <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg> Completed
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content Area (Focus Mode) -->
+        <div class="flex-1 workspace-card shadow-soft flex flex-col overflow-hidden relative">
+            
+            <!-- Context Header -->
+            <div class="h-16 border-b border-gray-100 flex items-center justify-between px-8 bg-white/50 backdrop-blur-sm z-10">
+                <div class="flex items-center gap-3">
+                    <span class="text-xs font-semibold text-brand-muted uppercase tracking-wider">Concept / Backend</span>
+                    <svg class="w-3 h-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                    <span class="text-sm font-medium text-brand-text">Redis Cache Patterns</span>
+                </div>
+                
+                <div class="flex items-center gap-3">
+                    <!-- Subtle actions -->
+                    <button class="text-xs font-medium text-brand-muted hover:text-brand-text px-3 py-1.5 rounded-lg hover:bg-gray-50 transition-colors">
+                        Reschedule
+                    </button>
+                    <!-- Peaceful Primary Action -->
+                    <button class="bg-brand-accent hover:bg-emerald-700 text-white text-xs font-semibold px-4 py-2 rounded-lg transition-all shadow-[0_2px_10px_rgba(5,150,105,0.2)] flex items-center gap-2">
+                        Mark Mastered
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Deep Reading Area -->
+            <div class="flex-1 flex overflow-hidden">
+                <!-- Google Doc Representation -->
+                <div class="flex-1 bg-[#f9fbf9] m-6 mr-3 rounded-2xl border border-gray-100 flex flex-col items-center justify-center relative overflow-hidden">
+                    <!-- Very subtle background pattern -->
+                    <div class="absolute inset-0 opacity-[0.03]" style="background-image: radial-gradient(#059669 1px, transparent 1px); background-size: 24px 24px;"></div>
+                    
+                    <!-- Calm placeholder for iframe -->
+                    <div class="bg-white px-8 py-10 rounded-xl shadow-sm border border-gray-50 flex flex-col items-center max-w-sm text-center relative z-10">
+                        <svg class="w-8 h-8 text-brand-muted/30 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                        <h3 class="font-serif text-xl text-brand-text mb-2">redis_whitepaper_v3.pdf</h3>
+                        <p class="text-sm text-brand-muted font-sans leading-relaxed">
+                            Google Doc dynamically renders here.<br>No distractions. Just pure reading.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Notes / Meta Sidebar -->
+                <div class="w-72 m-6 ml-3 flex flex-col gap-4">
+                    <!-- Note box -->
+                    <div class="bg-white border text-sm border-gray-100 rounded-xl p-4 shadow-sm flex-1">
+                        <textarea class="w-full h-full resize-none outline-none text-brand-text placeholder-brand-muted/50 font-sans" placeholder="Add independent notes or reflections here... Use markdown."></textarea>
+                    </div>
+                    <!-- Tags -->
+                    <div class="bg-white border border-gray-100 rounded-xl p-4 shadow-sm">
+                        <h6 class="text-xs font-semibold text-brand-muted uppercase tracking-wider mb-3">Linked Tags</h6>
+                        <div class="flex flex-wrap gap-2">
+                            <span class="text-[10px] bg-gray-100 text-brand-muted px-2 py-1 rounded-md">#architecture</span>
+                            <span class="text-[10px] bg-gray-100 text-brand-muted px-2 py-1 rounded-md">#caching</span>
+                            <button class="text-[10px] border border-dashed border-gray-300 text-gray-400 px-2 py-1 rounded-md hover:border-brand-accent hover:text-brand-accent transition-colors">+ Add Tag</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+        </div>
+    </div>
+</body>
+</html>
