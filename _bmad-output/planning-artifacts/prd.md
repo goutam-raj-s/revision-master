@@ -1,5 +1,5 @@
 ---
-stepsCompleted: ['step-01-init.md', 'step-02-discovery.md', 'step-02b-vision.md', 'step-02c-executive-summary.md', 'step-03-success.md', 'step-04-journeys.md', 'step-05-domain.md', 'step-06-innovation.md', 'step-07-project-type.md', 'step-08-scoping.md', 'step-09-functional.md', 'step-10-nonfunctional.md', 'step-11-polish.md']
+stepsCompleted: ['step-01-init.md', 'step-02-discovery.md', 'step-02b-vision.md', 'step-02c-executive-summary.md', 'step-03-success.md', 'step-04-journeys.md', 'step-05-domain.md', 'step-06-innovation.md', 'step-07-project-type.md', 'step-08-scoping.md', 'step-09-functional.md', 'step-10-nonfunctional.md', 'step-11-polish.md', 'step-12-complete.md']
 inputDocuments: [
   '/Users/gautam/Desktop/Projects/Revision-Master/_bmad-output/brainstorming/brainstorming-session-2026-04-11-11-52.md',
   '/Users/gautam/Desktop/Projects/Revision-Master/_bmad-output/planning-artifacts/product-brief-Revision-Master.md'
@@ -212,3 +212,174 @@ Success for the platform is measured by engagement and consolidation:
 
 ### Market Validation
 - By shipping the ingestion + manual scheduling core natively, user retention inside the single-player daily loop proves the initial value proposition ahead of the hefty vector embedding engineering required for automated Phase 2 consolidation.
+
+---
+
+## Feature Addendum — Phase 1.5 Enhancements
+
+*Added: 2026-04-18. These features extend the shipped MVP to broaden content ingestion, improve authentication UX, and introduce YouTube-native study workflows.*
+
+---
+
+### Feature A: Authentication Overhaul — Supabase Auth with OAuth & Password Recovery
+
+#### Background & Motivation
+The current MVP uses basic credential auth. Users need a polished, trustworthy authentication experience to commit to long-term daily use. Forgotten passwords and friction at login are among the highest-churn triggers in productivity tools.
+
+#### Solution
+Migrate authentication entirely to **Supabase Auth** — a free, zero-paid-API-key service that handles the full auth lifecycle with data stored in the project's own Postgres database.
+
+#### Key Requirements
+
+**FR-A1 — Forgot Password Flow:**
+- User can request a password reset from the login screen via their registered email.
+- Supabase sends a secure time-limited reset link using its built-in email delivery (no third-party email service or paid key required).
+- Reset link routes to an in-app `/auth/reset-password` page where the user sets a new password.
+- Expired or already-used links show a clear error with a prompt to re-request.
+
+**FR-A2 — OAuth Sign-In / Sign-Up:**
+- Users can authenticate using any of the following OAuth providers via Supabase's OAuth integration:
+  - Google
+  - GitHub
+  - Discord
+  - (Extensible: Apple, Twitter/X, Notion, Slack — configurable via Supabase dashboard without code changes)
+- OAuth flow is fully redirect-based; no tokens are exposed client-side.
+- On first OAuth sign-in, a user record is created in the application's own DB (users table), linked to the Supabase auth UID.
+- On subsequent OAuth sign-ins, the existing user record is fetched by UID — no duplicate accounts.
+
+**FR-A3 — Session & Storage:**
+- All user identity data (id, email, display name, avatar URL, provider) stored in the application's own Postgres DB, not solely in Supabase's internal auth schema.
+- Sessions managed via Supabase's server-side session helpers (`@supabase/ssr`) compatible with Next.js App Router.
+- JWT tokens refreshed transparently; users stay logged in across sessions without manual re-auth.
+
+**FR-A4 — Account Settings:**
+- Authenticated users can update their display name and avatar from a profile/settings page.
+- Users who signed up via email/password can change their password from settings (requires current password confirmation).
+- Users who signed up via OAuth are shown their linked provider and cannot set a password until they add one explicitly.
+
+#### Non-Functional Requirements
+- **NFR-A1:** Auth pages (login, register, forgot password, reset password) are fully accessible (WCAG 2.1 AA) with clear error states and loading indicators.
+- **NFR-A2:** All auth routes are protected server-side; unauthenticated requests to protected pages redirect to `/login` with the intended path preserved as a `next` query param.
+- **NFR-A3:** No user credentials or tokens logged anywhere in application logs or error reporting.
+
+---
+
+### Feature B: Universal File Ingestion — Audio, Video & Standard Files
+
+#### Background & Motivation
+The current system only queues Google Doc URLs for spaced revision. Users accumulate knowledge across diverse formats — recorded lectures, podcast episodes, PDFs, research papers, presentation slides. These assets should be first-class citizens in the revision queue, stored and managed identically to documents.
+
+#### Solution
+Extend the ingestion pipeline to accept any standard file type. Files are uploaded to the application's own storage (Supabase Storage, free tier), metadata stored in the DB, and the file entry participates in the spaced-repetition queue identically to a Google Doc entry.
+
+#### Supported File Types (MVP)
+
+| Category | Formats |
+|---|---|
+| Documents | PDF, DOCX, TXT, MD |
+| Presentations | PPTX, KEY |
+| Audio | MP3, M4A, WAV, OGG |
+| Video | MP4, MOV, WEBM, MKV |
+| Images | PNG, JPG, JPEG, GIF, WEBP |
+
+#### Key Requirements
+
+**FR-B1 — File Upload UI:**
+- Upload entry point available from the same "Add Item" flow used for Google Doc URLs.
+- User can drag-and-drop or click-to-browse to select a file.
+- Multi-file upload supported (up to 5 files per batch upload).
+- Upload progress indicator shown per file; errors (size exceeded, unsupported type) shown inline without disrupting other uploads.
+- Maximum file size: 100 MB per file (configurable).
+
+**FR-B2 — Storage & Metadata:**
+- Files stored in Supabase Storage under a per-user scoped bucket path (`/user-{id}/files/`).
+- DB record created per file with: original filename, storage URL, MIME type, file size, upload timestamp, user-assigned title (defaults to filename), tags, difficulty, and scheduled revision date.
+- Files are private by default; access URLs are signed and time-limited.
+
+**FR-B3 — Revision Queue Participation:**
+- Uploaded files appear in the task list dashboard identically to Google Doc entries.
+- All spaced-repetition scheduling logic (initial delay, reschedule, complete) applies equally.
+- File type is surfaced visually in the task list (icon per category: document, audio, video, image).
+
+**FR-B4 — In-App Viewing / Playback:**
+- **Documents (PDF, TXT, MD):** Rendered inline in the study/detail panel using a PDF viewer or plain text renderer.
+- **Audio:** HTML5 `<audio>` player embedded in the detail panel with playback controls (play/pause, scrub, speed control: 0.5×–2×).
+- **Video:** HTML5 `<video>` player embedded in the detail panel with the same controls as audio plus fullscreen toggle.
+- **Presentations (PPTX/KEY):** Displayed as a download link with thumbnail preview if possible; full in-browser rendering deferred to Phase 2.
+- **Images:** Displayed inline in the detail panel.
+
+**FR-B5 — Notes & Tags on Files:**
+- All existing Notes, Tags, Terminology, and Difficulty features work identically on file-type entries.
+
+**FR-B6 — File Management:**
+- User can rename, re-tag, reschedule, or delete a file entry.
+- Deleting a file entry removes both the DB record and the stored file from Supabase Storage.
+
+#### Non-Functional Requirements
+- **NFR-B1:** Upload requests are chunked for large files; UI remains responsive during background uploads.
+- **NFR-B2:** File access URLs are never exposed publicly; always routed through signed Supabase Storage URLs with short TTLs.
+- **NFR-B3:** Storage quota warnings surfaced to user when approaching free-tier limits.
+
+---
+
+### Feature C: YouTube Study Route — Watch & Annotate
+
+#### Background & Motivation
+YouTube is among the most-used learning platforms globally. Users regularly watch tutorials, lectures, and conference talks as part of their learning workflow. However, notes taken during YouTube sessions are scattered across external tools. Revision-Master should offer a native, distraction-reduced YouTube study environment where video and note-taking coexist, with notes stored in the DB and linked to the video for future retrieval and revision scheduling.
+
+#### Design Philosophy
+The video itself is **never stored** — only the YouTube URL and a reference ID are persisted. Notes, tags, timestamps, and revision schedules are stored entirely in the application DB and are the primary knowledge artifact.
+
+#### Route Design
+A dedicated route: `/study/youtube` (or `/youtube` at top-level nav).
+
+The page is a **split-pane workspace**:
+- **Left pane (60%):** Embedded YouTube player via the YouTube IFrame API.
+- **Right pane (40%):** Note-taking panel with timestamped note capture.
+
+The pane split should be resizable by the user (drag divider).
+
+#### Key Requirements
+
+**FR-C1 — Video Loading:**
+- User pastes a YouTube URL (standard, shortened `youtu.be`, or embed format) into an input at the top of the page.
+- System extracts the video ID, fetches the video title and thumbnail via YouTube oEmbed (no API key required — oEmbed is a free public endpoint).
+- Player loads the video in the embedded IFrame.
+- URL updates to `/study/youtube?v={videoId}` for shareable/bookmarkable state.
+
+**FR-C2 — Embedded Player:**
+- Full YouTube IFrame player with standard controls.
+- Player supports: play/pause (keyboard shortcut: Space), seek, volume, fullscreen toggle, playback speed (0.5×–2×).
+- The player does NOT autoplay on page load; user initiates playback.
+
+**FR-C3 — Note-Taking Panel:**
+- Notes panel is always visible alongside the player (not a modal, not a separate page).
+- User can type free-form notes in a text area at any time during playback.
+- **Timestamp capture:** A "📍 Add Timestamp" button (keyboard shortcut: `T`) captures the current video playback position and inserts a clickable timestamp marker into the note (e.g., `[12:34]`). Clicking the timestamp in the notes panel seeks the video to that position.
+- Notes are saved automatically (debounced auto-save, 2-second delay after last keystroke).
+- Notes panel shows the video title and thumbnail at the top for visual context.
+
+**FR-C4 — DB Storage:**
+- A `youtube_sessions` DB table stores: user ID, YouTube video ID, video title, video thumbnail URL, YouTube URL, notes content (text), tags, created at, updated at, scheduled revision date.
+- The video file itself is never stored — only metadata and user-generated notes.
+
+**FR-C5 — Revision Queue Integration:**
+- YouTube sessions appear in the task list dashboard as a distinct entry type (YouTube icon).
+- User can schedule a "re-watch reminder" via the same spaced-repetition scheduling system.
+- Opening a scheduled YouTube entry from the task list navigates to `/study/youtube?v={videoId}` and restores the previous notes.
+
+**FR-C6 — Session Management:**
+- User can view all their YouTube sessions in a dedicated list view (`/study/youtube/history` or within the main doc list filtered by type).
+- Sessions can be searched by video title or tags.
+- Sessions can be deleted (removes DB record; no storage cleanup needed since video was never stored).
+
+**FR-C7 — Add Without Watching:**
+- User can add a YouTube URL directly from the main dashboard "Add Item" flow (same as adding a Google Doc or file), without navigating to the YouTube study route first.
+- This creates the `youtube_sessions` record with no notes, allowing them to schedule a "watch later" reminder.
+
+#### Non-Functional Requirements
+- **NFR-C1:** YouTube IFrame API loaded asynchronously; page renders immediately, player hydrates after API is ready.
+- **NFR-C2:** oEmbed fetch for video metadata cached in DB on first load to avoid repeated external calls.
+- **NFR-C3:** The split-pane layout is fully responsive — on mobile, the player stacks above the notes panel (no side-by-side below 768px viewport width).
+- **NFR-C4:** Timestamp links in notes are rendered as tappable elements on mobile, seeking the player correctly.
+- **NFR-C5:** Auto-save indicator (subtle "Saving…" / "Saved ✓") visible in the notes panel to give users confidence their notes are persisted.

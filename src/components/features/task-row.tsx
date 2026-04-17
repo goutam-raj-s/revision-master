@@ -67,7 +67,9 @@ export function TaskRow({
       <div className="flex items-center gap-3 px-4 py-3">
         {/* Urgency indicator */}
         <div className="flex items-center gap-1.5 shrink-0">
-          <div className={cn("h-2 w-2 rounded-full shrink-0", urgency.dotClass)} />
+          <SimpleTooltip content={urgency.label}>
+            <div className={cn("h-2 w-2 rounded-full shrink-0 cursor-default", urgency.dotClass)} />
+          </SimpleTooltip>
         </div>
 
         {/* Title + meta */}
@@ -80,9 +82,11 @@ export function TaskRow({
             {task.doc.title}
           </div>
           {task.notes[0] && !isExpanded && (
-            <div className="text-xs text-mossy-gray mt-0.5 line-clamp-1">
-              {truncate(task.notes[0].content, 80)}
-            </div>
+            <SimpleTooltip content={task.notes[0].content} side="bottom">
+              <div className="text-xs text-mossy-gray mt-0.5 line-clamp-1 cursor-default">
+                {truncate(task.notes[0].content, 80)}
+              </div>
+            </SimpleTooltip>
           )}
         </Link>
 
@@ -95,7 +99,9 @@ export function TaskRow({
               </Badge>
             ))}
             {task.doc.tags.length > 2 && (
-              <span className="text-xs text-mossy-gray">+{task.doc.tags.length - 2}</span>
+              <SimpleTooltip content={task.doc.tags.slice(2).map(t => `#${t}`).join(", ")}>
+                <span className="text-xs text-mossy-gray cursor-default">+{task.doc.tags.length - 2}</span>
+              </SimpleTooltip>
             )}
           </div>
         )}
@@ -133,17 +139,19 @@ export function TaskRow({
         </div>
 
         {/* Expand toggle */}
-        <button
-          onClick={onToggleExpand}
-          className="shrink-0 p-1 rounded-lg hover:bg-canvas text-mossy-gray transition-colors"
-          aria-label={isExpanded ? "Collapse" : "Expand"}
-        >
-          {isExpanded ? (
-            <ChevronDown className="h-4 w-4" />
-          ) : (
-            <ChevronRight className="h-4 w-4" />
-          )}
-        </button>
+        <SimpleTooltip content={isExpanded ? "Collapse" : "Show details"}>
+          <button
+            onClick={onToggleExpand}
+            className="shrink-0 p-1 rounded-lg hover:bg-canvas text-mossy-gray transition-colors"
+            aria-label={isExpanded ? "Collapse" : "Expand"}
+          >
+            {isExpanded ? (
+              <ChevronDown className="h-4 w-4" />
+            ) : (
+              <ChevronRight className="h-4 w-4" />
+            )}
+          </button>
+        </SimpleTooltip>
       </div>
 
       {/* Expanded content */}

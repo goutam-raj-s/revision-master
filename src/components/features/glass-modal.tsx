@@ -14,7 +14,10 @@ import {
   Save,
   Trash2,
 } from "lucide-react";
+import { SimpleTooltip } from "@/components/ui/tooltip";
 import { cn, getGoogleDocEmbedUrl, formatRelativeDate } from "@/lib/utils";
+import { ResizablePanelGroup } from "@/components/ui/resizable-panel";
+import { useLayoutPref } from "@/hooks/use-layout-prefs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
@@ -39,6 +42,7 @@ interface GlassModalProps {
 }
 
 export function GlassModal({ task, onClose, onComplete }: GlassModalProps) {
+  const [modalSplit, setModalSplit] = useLayoutPref("modalSplitPercent", 70);
   const [iframeLoaded, setIframeLoaded] = React.useState(false);
   const [notes, setNotes] = React.useState<Note[]>([]);
   const [terms, setTerms] = React.useState<Term[]>([]);
@@ -160,9 +164,17 @@ export function GlassModal({ task, onClose, onComplete }: GlassModalProps) {
       />
 
       {/* Modal */}
-      <div className="relative w-full max-w-6xl h-[88vh] glass-surface rounded-3xl overflow-hidden shadow-glass animate-slide-up flex">
-        {/* Left pane — Google Doc (70%) */}
-        <div className="flex-1 relative bg-white/60 border-r border-border/50">
+      <div className="relative w-full max-w-6xl h-[88vh] glass-surface rounded-3xl overflow-hidden shadow-glass animate-slide-up">
+        <ResizablePanelGroup
+          split={modalSplit}
+          defaultSplit={70}
+          minSplit={30}
+          maxSplit={85}
+          onResizeEnd={setModalSplit}
+          className="h-full"
+        >
+        {/* Left pane — Google Doc */}
+        <div className="h-full relative bg-white/60 border-r border-border/50">
           {!iframeLoaded && (
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="shimmer-bg absolute inset-0" />
@@ -203,13 +215,15 @@ export function GlassModal({ task, onClose, onComplete }: GlassModalProps) {
               <h2 className="font-serif font-medium text-forest-slate text-sm leading-snug line-clamp-2">
                 {task.doc.title}
               </h2>
-              <button
-                onClick={onClose}
-                className="shrink-0 p-1.5 rounded-lg hover:bg-canvas text-mossy-gray transition-colors"
-                aria-label="Close modal"
-              >
-                <X className="h-4 w-4" />
-              </button>
+              <SimpleTooltip content="Close [Esc]" side="left">
+                <button
+                  onClick={onClose}
+                  className="shrink-0 p-1.5 rounded-lg hover:bg-canvas text-mossy-gray transition-colors"
+                  aria-label="Close modal"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </SimpleTooltip>
             </div>
 
             {/* Status badges */}
@@ -294,13 +308,15 @@ export function GlassModal({ task, onClose, onComplete }: GlassModalProps) {
                 {notes.filter((n) => !n.isDone).map((note) => (
                   <div key={note.id} className="group bg-surface rounded-xl border border-border p-3 relative">
                     <p className="text-xs text-forest-slate leading-relaxed pr-6">{note.content}</p>
-                    <button
-                      onClick={() => handleDeleteNote(note.id)}
-                      className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 p-1 rounded-lg hover:bg-destructive/10 hover:text-destructive text-mossy-gray transition-all"
-                      aria-label="Delete note"
-                    >
-                      <Trash2 className="h-3 w-3" />
-                    </button>
+                    <SimpleTooltip content="Delete note" side="left">
+                      <button
+                        onClick={() => handleDeleteNote(note.id)}
+                        className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 p-1 rounded-lg hover:bg-destructive/10 hover:text-destructive text-mossy-gray transition-all"
+                        aria-label="Delete note"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </button>
+                    </SimpleTooltip>
                   </div>
                 ))}
                 {notes.filter((n) => !n.isDone).length === 0 && (
@@ -367,9 +383,11 @@ export function GlassModal({ task, onClose, onComplete }: GlassModalProps) {
                   ))}
                 </SelectContent>
               </Select>
-              <Button variant="outline" size="sm" onClick={handleReschedule} className="shrink-0">
-                <RotateCcw className="h-3.5 w-3.5" />
-              </Button>
+              <SimpleTooltip content="Apply reschedule">
+                <Button variant="outline" size="sm" onClick={handleReschedule} className="shrink-0" aria-label="Reschedule">
+                  <RotateCcw className="h-3.5 w-3.5" />
+                </Button>
+              </SimpleTooltip>
             </div>
 
             {/* Complete */}
@@ -388,6 +406,7 @@ export function GlassModal({ task, onClose, onComplete }: GlassModalProps) {
             </Button>
           </div>
         </div>
+        </ResizablePanelGroup>
       </div>
     </div>
   );

@@ -3,6 +3,7 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Trash2, Check, Loader2, BookText, FileText, Tag, X, Save } from "lucide-react";
+import { SimpleTooltip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -176,20 +177,24 @@ export function DocumentDetailClient({ doc, rep, initialNotes, initialTerms }: D
               <div key={note.id} className="group relative bg-surface rounded-2xl border border-border p-4 shadow-card">
                 <p className="text-sm text-forest-slate leading-relaxed pr-16">{note.content}</p>
                 <div className="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button
-                    onClick={() => handleMarkNoteDone(note.id)}
-                    className="p-1.5 rounded-lg hover:bg-state-today/10 hover:text-state-today text-mossy-gray transition-colors"
-                    title="Mark done"
-                  >
-                    <Check className="h-3.5 w-3.5" />
-                  </button>
-                  <button
-                    onClick={() => handleDeleteNote(note.id)}
-                    className="p-1.5 rounded-lg hover:bg-destructive/10 hover:text-destructive text-mossy-gray transition-colors"
-                    title="Delete"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
+                  <SimpleTooltip content="Mark done" side="left">
+                    <button
+                      onClick={() => handleMarkNoteDone(note.id)}
+                      className="p-1.5 rounded-lg hover:bg-state-today/10 hover:text-state-today text-mossy-gray transition-colors"
+                      aria-label="Mark note done"
+                    >
+                      <Check className="h-3.5 w-3.5" />
+                    </button>
+                  </SimpleTooltip>
+                  <SimpleTooltip content="Delete note" side="left">
+                    <button
+                      onClick={() => handleDeleteNote(note.id)}
+                      className="p-1.5 rounded-lg hover:bg-destructive/10 hover:text-destructive text-mossy-gray transition-colors"
+                      aria-label="Delete note"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </SimpleTooltip>
                 </div>
               </div>
             ))}
@@ -254,12 +259,15 @@ export function DocumentDetailClient({ doc, rep, initialNotes, initialTerms }: D
               <div key={term.id} className="group relative bg-surface rounded-2xl border border-border p-4 shadow-card">
                 <div className="text-sm font-semibold text-forest-slate">{term.term}</div>
                 <div className="text-sm text-mossy-gray mt-1 leading-relaxed">{term.definition}</div>
-                <button
-                  onClick={() => handleDeleteTerm(term.id)}
-                  className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 p-1.5 rounded-lg hover:bg-destructive/10 hover:text-destructive text-mossy-gray transition-all"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </button>
+                <SimpleTooltip content="Delete term" side="left">
+                  <button
+                    onClick={() => handleDeleteTerm(term.id)}
+                    className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 p-1.5 rounded-lg hover:bg-destructive/10 hover:text-destructive text-mossy-gray transition-all"
+                    aria-label="Delete term"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </SimpleTooltip>
               </div>
             ))}
             {terms.length === 0 && (
@@ -299,9 +307,11 @@ export function DocumentDetailClient({ doc, rep, initialNotes, initialTerms }: D
               placeholder="Add tag…"
               className="flex-1 h-8 text-xs"
             />
-            <Button type="button" variant="outline" size="icon-sm" onClick={handleAddTag}>
-              <Plus className="h-3.5 w-3.5" />
-            </Button>
+            <SimpleTooltip content="Add tag">
+              <Button type="button" variant="outline" size="icon-sm" onClick={handleAddTag} aria-label="Add tag">
+                <Plus className="h-3.5 w-3.5" />
+              </Button>
+            </SimpleTooltip>
           </div>
           <div className="flex flex-wrap gap-1.5">
             {tags.map((tag) => (

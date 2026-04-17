@@ -150,31 +150,35 @@ export function DocumentListClient({
                 className="group flex items-center gap-3 bg-surface rounded-2xl border border-border px-4 py-3 shadow-card task-row-hover"
               >
                 {/* Status dot */}
-                <div className={cn(
-                  "h-2 w-2 rounded-full shrink-0",
-                  doc.status === "revision" && "bg-state-today",
-                  doc.status === "first_visit" && "bg-state-upcoming",
-                  doc.status === "updated" && "bg-state-stale",
-                  doc.status === "completed" && "bg-state-completed",
-                )} />
+                <SimpleTooltip content={status.label}>
+                  <div className={cn(
+                    "h-2 w-2 rounded-full shrink-0 cursor-default",
+                    doc.status === "revision" && "bg-state-today",
+                    doc.status === "first_visit" && "bg-state-upcoming",
+                    doc.status === "updated" && "bg-state-stale",
+                    doc.status === "completed" && "bg-state-completed",
+                  )} />
+                </SimpleTooltip>
 
                 {/* Title */}
-                <Link
-                  href={`/documents/${doc.id}`}
-                  className="flex-1 min-w-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-state-today/50 rounded"
-                >
-                  <div className="font-serif font-medium text-forest-slate text-sm line-clamp-1 group-hover:text-state-today transition-colors">
-                    {doc.title}
-                  </div>
-                  <div className="flex items-center gap-2 mt-0.5">
-                    <span className="text-xs text-mossy-gray font-mono">
-                      {formatDate(doc.createdAt)}
-                    </span>
-                    {doc.parentDocId && (
-                      <span className="text-xs text-mossy-gray">· merged</span>
-                    )}
-                  </div>
-                </Link>
+                <SimpleTooltip content={doc.title} side="bottom">
+                  <Link
+                    href={`/documents/${doc.id}`}
+                    className="flex-1 min-w-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-state-today/50 rounded"
+                  >
+                    <div className="font-serif font-medium text-forest-slate text-sm line-clamp-1 group-hover:text-state-today transition-colors">
+                      {doc.title}
+                    </div>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span className="text-xs text-mossy-gray font-mono">
+                        {formatDate(doc.createdAt)}
+                      </span>
+                      {doc.parentDocId && (
+                        <span className="text-xs text-mossy-gray">· merged</span>
+                      )}
+                    </div>
+                  </Link>
+                </SimpleTooltip>
 
                 {/* Tags */}
                 <div className="hidden sm:flex items-center gap-1 shrink-0">

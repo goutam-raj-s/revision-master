@@ -1,5 +1,5 @@
 # generated: 2026-04-11T16:18:02+05:30
-# last_updated: 2026-04-11T18:30:00+05:30
+# last_updated: 2026-04-12T00:00:00+05:30
 # project: Revision-Master
 # project_key: NOKEY
 # tracking_system: file-system
@@ -20,7 +20,7 @@
 #   - done: Story completed
 
 generated: 2026-04-11T16:18:02+05:30
-last_updated: 2026-04-11T18:30:00+05:30
+last_updated: 2026-04-12T00:00:00+05:30
 project: Revision-Master
 project_key: NOKEY
 tracking_system: file-system
@@ -96,7 +96,14 @@ development_status:
   epic-7-retrospective: optional
 
   # --- Epic 8: AI Acceleration & Advanced Learning ---
-  epic-8: in-progress
+  epic-8: done
   8-1-auto-glossary-generation-via-gemini-ai: done
   8-2-quiz-me-auto-flashcards: done
   8-3-built-in-pomodoro-focus-timer: done
+  epic-8-retrospective: optional
+
+  # --- Epic 9: UI Polish & Study Workflow Enhancements ---
+  epic-9: in-progress
+  9-1-tooltip-consistency-and-fix: review
+  9-2-doc-study-sidebar-panel: review
+  9-3-resizable-ui-panels: in-progress
