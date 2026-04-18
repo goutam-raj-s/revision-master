@@ -9,12 +9,14 @@ import type {
   DbTerm,
   DbPasswordResetToken,
   DbYoutubeSession,
+  DbPlaylist,
   Document,
   Note,
   Repetition,
   Term,
   User,
   YoutubeSession,
+  Playlist,
 } from "@/types";
 
 // ─── Collection accessors ──────────────────────────────────────────────────────
@@ -64,6 +66,11 @@ export async function getYoutubeRepetitionsCollection(): Promise<Collection<DbRe
   return db.collection<DbRepetition>("youtube_repetitions");
 }
 
+export async function getPlaylistsCollection(): Promise<Collection<DbPlaylist>> {
+  const db = await getDb();
+  return db.collection<DbPlaylist>("playlists");
+}
+
 // ─── Index setup ───────────────────────────────────────────────────────────────
 
 export async function ensureIndexes(): Promise<void> {
@@ -88,6 +95,11 @@ export async function ensureIndexes(): Promise<void> {
     { key: { userId: 1, createdAt: -1 } },
     { key: { userId: 1, tags: 1 } },
     { key: { userId: 1, title: "text", tags: "text" } },
+    { key: { userId: 1, mediaType: 1 } },
+  ]);
+
+  await db.collection("playlists").createIndexes([
+    { key: { userId: 1, createdAt: -1 } },
   ]);
 
   await db.collection("repetitions").createIndexes([
@@ -142,8 +154,21 @@ export function serializeDoc(d: DbDocument): Document {
     fileUrl: d.fileUrl,
     fileSize: d.fileSize,
     mimeType: d.mimeType,
+    isFavourite: d.isFavourite ?? false,
+    playCount: d.playCount ?? 0,
+    lastPlayedAt: d.lastPlayedAt?.toISOString(),
     createdAt: d.createdAt.toISOString(),
     updatedAt: d.updatedAt.toISOString(),
+  };
+}
+
+export function serializePlaylist(p: DbPlaylist): Playlist {
+  return {
+    id: p._id.toString(),
+    name: p.name,
+    trackIds: p.trackIds.map((id) => id.toString()),
+    createdAt: p.createdAt.toISOString(),
+    updatedAt: p.updatedAt.toISOString(),
   };
 }
 

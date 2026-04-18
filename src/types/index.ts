@@ -54,6 +54,18 @@ export interface DbDocument {
   fileUrl?: string;
   fileSize?: number;
   mimeType?: string;
+  isFavourite?: boolean;
+  playCount?: number;
+  lastPlayedAt?: Date;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface DbPlaylist {
+  _id: ObjectId;
+  userId: ObjectId;
+  name: string;
+  trackIds: ObjectId[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -117,6 +129,17 @@ export interface Document {
   fileUrl?: string;
   fileSize?: number;
   mimeType?: string;
+  isFavourite?: boolean;
+  playCount?: number;
+  lastPlayedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Playlist {
+  id: string;
+  name: string;
+  trackIds: string[];
   createdAt: string;
   updatedAt: string;
 }
