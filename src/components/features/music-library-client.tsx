@@ -9,6 +9,8 @@ import { createPlaylist, addToPlaylist } from "@/actions/audio";
 import { toast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import type { Document, Playlist } from "@/types";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { AddAudioForm } from "./add-audio-form";
 
 type Tab = "tracks" | "playlists" | "favourites" | "recent";
 type SortKey = "recent" | "title" | "plays" | "duration";
@@ -38,6 +40,7 @@ export function MusicLibraryClient({ initialDocs, initialPlaylists }: MusicLibra
   const [search, setSearch] = React.useState("");
   const [sort, setSort] = React.useState<SortKey>("recent");
   const [activePlaylistId, setActivePlaylistId] = React.useState<string | null>(null);
+  const [isAddOpen, setIsAddOpen] = React.useState(false);
   const store = useAudioPlayer.getState();
 
   const activePlaylist = playlists.find((p) => p.id === activePlaylistId) ?? null;
@@ -110,20 +113,31 @@ export function MusicLibraryClient({ initialDocs, initialPlaylists }: MusicLibra
     <div>
       {/* Tabs */}
       <div className="flex gap-1 mb-6 border-b border-border">
-        {tabs.map((t) => (
+        <div className="flex gap-1">
+          {tabs.map((t) => (
+            <button
+              key={t.key}
+              onClick={() => { setTab(t.key); setActivePlaylistId(null); }}
+              className={cn(
+                "px-4 py-2 text-sm font-medium border-b-2 transition-colors -mb-px",
+                tab === t.key
+                  ? "border-state-today text-state-today"
+                  : "border-transparent text-mossy-gray hover:text-forest-slate"
+              )}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+        <div className="ml-auto mb-2 pr-2">
           <button
-            key={t.key}
-            onClick={() => { setTab(t.key); setActivePlaylistId(null); }}
-            className={cn(
-              "px-4 py-2 text-sm font-medium border-b-2 transition-colors -mb-px",
-              tab === t.key
-                ? "border-state-today text-state-today"
-                : "border-transparent text-mossy-gray hover:text-forest-slate"
-            )}
+            onClick={() => setIsAddOpen(true)}
+            className="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-xl bg-forest-slate text-white hover:bg-forest-slate/90 transition-colors shadow-sm"
           >
-            {t.label}
+            <PlusCircle className="h-4 w-4" />
+            Add Track
           </button>
-        ))}
+        </div>
       </div>
 
       {/* Playlists tab */}
@@ -247,13 +261,21 @@ export function MusicLibraryClient({ initialDocs, initialPlaylists }: MusicLibra
           {visibleDocs.length === 0 ? (
             <div className="text-center py-16">
               <Music className="h-12 w-12 text-mossy-gray/30 mx-auto mb-3" />
-              <p className="text-mossy-gray">
+              <p className="text-mossy-gray mb-4">
                 {tab === "favourites"
                   ? "No favourites yet. Click the heart on any track."
                   : tab === "recent"
                   ? "No recently played tracks."
-                  : "No audio tracks found. Upload some audio files."}
+                  : "No audio tracks found. Upload some audio files or add a YouTube track."}
               </p>
+              {tab === "tracks" && (
+                <button
+                  onClick={() => setIsAddOpen(true)}
+                  className="inline-flex items-center gap-2 text-sm font-medium text-state-today hover:underline"
+                >
+                  <PlusCircle className="h-4 w-4" /> Add your first track
+                </button>
+              )}
             </div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
@@ -271,6 +293,24 @@ export function MusicLibraryClient({ initialDocs, initialPlaylists }: MusicLibra
           )}
         </div>
       )}
+
+      <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Audio Track</DialogTitle>
+            <DialogDescription>
+              Add a track from a YouTube URL or upload an audio file.
+            </DialogDescription>
+          </DialogHeader>
+          <AddAudioForm onSuccess={() => {
+            setIsAddOpen(false);
+            // Typically we'd revalidate path to fetch new tracks, but since we are in client,
+            // the form will be rehydrated or we can let the page reload to see it.
+            // A hard refresh is fine for now.
+            window.location.reload();
+          }} />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -52,11 +52,6 @@ const ACCEPTED_MIME_TYPES = [
   "text/plain",
   "text/markdown",
   "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-  "audio/mpeg",
-  "audio/mp4",
-  "audio/wav",
-  "audio/ogg",
-  "audio/x-m4a",
   "image/png",
   "image/jpeg",
   "image/gif",
@@ -64,7 +59,7 @@ const ACCEPTED_MIME_TYPES = [
 ].join(",");
 
 const ACCEPTED_EXTENSIONS =
-  ".pdf,.docx,.txt,.md,.pptx,.mp3,.m4a,.wav,.ogg,.png,.jpg,.jpeg,.gif,.webp";
+  ".pdf,.docx,.txt,.md,.pptx,.png,.jpg,.jpeg,.gif,.webp";
 
 const AUDIO_MIME_PREFIXES = ["audio/"];
 const AUDIO_MAX_BYTES = 5 * 1024 * 1024; // 5 MB
@@ -615,8 +610,8 @@ function FileUploadTab({ onSuccess }: { onSuccess: (docId: string) => void }) {
 
   function validateFile(file: File): string | null {
     const isAudio = AUDIO_MIME_PREFIXES.some((p) => file.type.startsWith(p));
-    if (isAudio && file.size > AUDIO_MAX_BYTES) {
-      return "Audio files must be under 5 MB";
+    if (isAudio) {
+      return "To add audio tracks, please use the Add Track feature in the Music page.";
     }
     if (file.size > FILE_MAX_BYTES) {
       return "File exceeds 50 MB limit";
@@ -632,7 +627,7 @@ function FileUploadTab({ onSuccess }: { onSuccess: (docId: string) => void }) {
     return null;
   }
 
-  function startUpload(file: File) {
+  async function startUpload(file: File) {
     const validationError = validateFile(file);
     if (validationError) {
       setFileError(validationError);
@@ -644,14 +639,56 @@ function FileUploadTab({ onSuccess }: { onSuccess: (docId: string) => void }) {
 
     const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
     const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
-
-    if (!cloudName || !uploadPreset) {
-      setUploadError("Cloudinary is not configured. Please set NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME and NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET.");
-      return;
-    }
+    const useMongoStorage =
+      process.env.NEXT_PUBLIC_AUDIO_STORAGE_BACKEND === "mongodb" ||
+      !cloudName ||
+      !uploadPreset;
 
     const formData = new FormData();
     formData.append("file", file);
+
+    // ── MongoDB storage path (no Cloudinary configured) ───────────────────────
+    if (useMongoStorage) {
+      const mediaType = getMediaTypeForFile(file);
+      if (mediaType !== "audio") {
+        setUploadError("Only audio files are supported without Cloudinary configured.");
+        return;
+      }
+
+      setUploadPhase("uploading");
+      setUploadProgress(0);
+
+      try {
+        // Simulate progress since fetch doesn't expose upload progress
+        const progressInterval = setInterval(() => {
+          setUploadProgress((p) => Math.min(p + 10, 90));
+        }, 150);
+
+        const res = await fetch("/api/upload/audio", { method: "POST", body: formData });
+        clearInterval(progressInterval);
+        setUploadProgress(100);
+
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          setUploadError((err as { error?: string }).error || "Upload failed. Try again.");
+          setUploadPhase("idle");
+          return;
+        }
+
+        const data: CloudinaryUploadResponse = await res.json();
+        setCloudinaryResult(data);
+        const nameParts = file.name.split(".");
+        nameParts.pop();
+        setTitle(nameParts.join(".") || file.name);
+        setUploadPhase("metadata");
+      } catch {
+        setUploadError("Upload failed. Try again.");
+        setUploadPhase("idle");
+      }
+      return;
+    }
+
+    // ── Cloudinary storage path ───────────────────────────────────────────────
     formData.append("upload_preset", uploadPreset);
     formData.append("folder", "revision-master");
 

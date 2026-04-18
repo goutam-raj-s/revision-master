@@ -41,11 +41,32 @@ export function AudioEngine() {
     if (currentTrack.id !== prevTrackId.current) {
       // Cancel any pending playback before switching src
       audio.pause();
-      audio.src = currentTrack.url;
-      audio.load();
       prevTrackId.current = currentTrack.id;
       // recordPlay is fire-and-forget — errors silently ignored
       recordPlay(currentTrack.id).catch(() => {});
+
+      const isYoutube = currentTrack.url.includes("youtube.com") || currentTrack.url.includes("youtu.be");
+      if (isYoutube) {
+        fetch("/api/audio/yt-stream?url=" + encodeURIComponent(currentTrack.url))
+          .then(res => {
+            if (!res.ok) throw new Error("Failed to extract youtube stream");
+            return res.json();
+          })
+          .then(data => {
+            if (data.streamUrl && prevTrackId.current === currentTrack.id) {
+              audio.src = data.streamUrl;
+              audio.load();
+            }
+          })
+          .catch(() => {
+            if (prevTrackId.current === currentTrack.id) {
+              handleAudioError();
+            }
+          });
+      } else {
+        audio.src = currentTrack.url;
+        audio.load();
+      }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentTrack?.id]);
