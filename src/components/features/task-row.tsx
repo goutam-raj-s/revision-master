@@ -2,12 +2,12 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { ChevronDown, ChevronRight, Calendar, RotateCcw, CheckCircle2, Trash2, BookOpen, StickyNote } from "lucide-react";
+import { ChevronDown, ChevronRight, Calendar, CheckCircle2, BookOpen, StickyNote, FileAudio, FileVideo, FileText, ImageIcon, Link as LinkIcon, CirclePlay as Youtube } from "lucide-react";
 import { cn, formatRelativeDate, truncate } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { SimpleTooltip } from "@/components/ui/tooltip";
-import type { TaskItem, Difficulty } from "@/types";
+import type { TaskItem, YoutubeTaskItem, Difficulty, MediaType } from "@/types";
 
 interface TaskRowProps {
   task: TaskItem;
@@ -29,6 +29,105 @@ const urgencyConfig = {
   today:   { label: "Today",   dotClass: "bg-state-today", badgeVariant: "today" as const },
   upcoming:{ label: "Upcoming",dotClass: "bg-state-upcoming", badgeVariant: "upcoming" as const },
 };
+
+interface YoutubeTaskRowProps {
+  task: YoutubeTaskItem;
+  isExpanded: boolean;
+  onToggleExpand: () => void;
+}
+
+export function YoutubeTaskRow({ task, isExpanded, onToggleExpand }: YoutubeTaskRowProps) {
+  const urgency = urgencyConfig[task.urgency];
+  return (
+    <div
+      className={cn(
+        "group rounded-2xl border border-border bg-surface shadow-card task-row-hover overflow-hidden",
+        "transition-all duration-300"
+      )}
+    >
+      <div className="flex items-center gap-3 px-4 py-3">
+        <div className="flex items-center gap-1.5 shrink-0">
+          <SimpleTooltip content={urgency.label}>
+            <div className={cn("h-2 w-2 rounded-full shrink-0 cursor-default", urgency.dotClass)} />
+          </SimpleTooltip>
+        </div>
+
+        <Link
+          href={`/study/youtube?v=${task.session.videoId}`}
+          className="flex-1 text-left min-w-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-state-today/50 rounded-lg p-1 -m-1"
+          aria-label={`Study ${task.session.videoTitle}`}
+        >
+          <div className="flex items-center gap-1.5 font-serif font-medium text-forest-slate text-sm leading-snug hover:text-state-today transition-colors">
+            <Youtube className="h-4 w-4 text-destructive shrink-0" />
+            <span className="line-clamp-1">{task.session.videoTitle}</span>
+          </div>
+        </Link>
+
+        {!isExpanded && task.session.tags.length > 0 && (
+          <div className="hidden sm:flex items-center gap-1 shrink-0">
+            {task.session.tags.slice(0, 2).map((tag) => (
+              <Badge key={tag} variant="tag" className="text-xs">#{tag}</Badge>
+            ))}
+          </div>
+        )}
+
+        <div className="shrink-0 flex items-center gap-1 text-xs font-mono text-mossy-gray">
+          <Calendar className="h-3 w-3" />
+          <span>{formatRelativeDate(task.repetition.nextReviewDate)}</span>
+        </div>
+
+        <SimpleTooltip content={isExpanded ? "Collapse" : "Show details"}>
+          <button
+            onClick={onToggleExpand}
+            className="shrink-0 p-1 rounded-lg hover:bg-canvas text-mossy-gray transition-colors"
+            aria-label={isExpanded ? "Collapse" : "Expand"}
+          >
+            {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          </button>
+        </SimpleTooltip>
+      </div>
+
+      {isExpanded && (
+        <div className="px-4 pb-4 pt-1 border-t border-border/50 bg-canvas/30 animate-fade-in">
+          <div className="flex flex-wrap items-center gap-2 mb-3">
+            <Badge variant={urgency.badgeVariant}>{urgency.label}</Badge>
+            <Badge variant={difficultyVariant[task.session.difficulty]}>
+              {task.session.difficulty}
+            </Badge>
+            <Badge variant="outline">#{task.repetition.reviewCount} reviews</Badge>
+            {task.session.tags.map((tag) => (
+              <Badge key={tag} variant="tag">#{tag}</Badge>
+            ))}
+          </div>
+          <div className="flex justify-end">
+            <Link href={`/study/youtube?v=${task.session.videoId}`} tabIndex={-1}>
+              <Button variant="ghost" size="sm" className="text-xs gap-1.5">
+                <Youtube className="h-3.5 w-3.5 text-destructive" />
+                Open Session
+              </Button>
+            </Link>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MediaIcon({ mediaType }: { mediaType?: MediaType }) {
+  switch (mediaType) {
+    case "audio":
+      return <FileAudio className="h-4 w-4 text-mossy-gray shrink-0" />;
+    case "video":
+      return <FileVideo className="h-4 w-4 text-mossy-gray shrink-0" />;
+    case "pdf":
+    case "document":
+      return <FileText className="h-4 w-4 text-mossy-gray shrink-0" />;
+    case "image":
+      return <ImageIcon className="h-4 w-4 text-mossy-gray shrink-0" />;
+    default:
+      return <LinkIcon className="h-4 w-4 text-mossy-gray shrink-0" />;
+  }
+}
 
 export function TaskRow({
   task,
@@ -78,8 +177,9 @@ export function TaskRow({
           className="flex-1 text-left min-w-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-state-today/50 rounded-lg p-1 -m-1"
           aria-label={`Open ${task.doc.title}`}
         >
-          <div className="font-serif font-medium text-forest-slate text-sm leading-snug line-clamp-1 hover:text-state-today transition-colors">
-            {task.doc.title}
+          <div className="flex items-center gap-1.5 font-serif font-medium text-forest-slate text-sm leading-snug hover:text-state-today transition-colors">
+            <MediaIcon mediaType={task.doc.mediaType} />
+            <span className="line-clamp-1">{task.doc.title}</span>
           </div>
           {task.notes[0] && !isExpanded && (
             <SimpleTooltip content={task.notes[0].content} side="bottom">

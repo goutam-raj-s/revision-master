@@ -6,13 +6,18 @@ import {
   getDocumentsCollection,
   getRepetitionsCollection,
   getNotesCollection,
+  getYoutubeSessionsCollection,
+  getYoutubeRepetitionsCollection,
   serializeDoc,
   serializeRepetition,
   serializeNote,
+  serializeYoutubeSession,
 } from "@/lib/db/collections";
-import type { TaskItem, TaskFilter } from "@/types";
+import type { TaskItem, YoutubeTaskItem, TaskFilter } from "@/types";
 
-export async function getTaskQueue(filter: TaskFilter = "today"): Promise<TaskItem[]> {
+export type AnyTaskItem = TaskItem | YoutubeTaskItem;
+
+export async function getTaskQueue(filter: TaskFilter = "today"): Promise<AnyTaskItem[]> {
   const user = await requireAuth();
   const userId = new ObjectId(user.id);
   const todayStart = new Date();
@@ -23,6 +28,8 @@ export async function getTaskQueue(filter: TaskFilter = "today"): Promise<TaskIt
   const reps = await getRepetitionsCollection();
   const docs = await getDocumentsCollection();
   const notes = await getNotesCollection();
+  const ytReps = await getYoutubeRepetitionsCollection();
+  const ytSessions = await getYoutubeSessionsCollection();
 
   // Build repetition query based on filter
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -39,6 +46,14 @@ export async function getTaskQueue(filter: TaskFilter = "today"): Promise<TaskIt
 
   const repList = await reps.find(repQuery).sort({ nextReviewDate: 1 }).toArray();
 
+  function urgencyFor(nextReviewDate: Date): "overdue" | "today" | "upcoming" {
+    const todayMidnight = new Date(new Date().setHours(0, 0, 0, 0));
+    const todayEnd2 = new Date(new Date().setHours(23, 59, 59, 999));
+    if (nextReviewDate < todayMidnight) return "overdue";
+    if (nextReviewDate <= todayEnd2) return "today";
+    return "upcoming";
+  }
+
   const tasks: TaskItem[] = [];
   for (const rep of repList) {
     const doc = await docs.findOne({
@@ -54,20 +69,37 @@ export async function getTaskQueue(filter: TaskFilter = "today"): Promise<TaskIt
       .limit(3)
       .toArray();
 
-    const today = new Date();
-    today.setHours(23, 59, 59, 999);
-    const isToday = rep.nextReviewDate <= today;
-    const isOverdue = rep.nextReviewDate < new Date(new Date().setHours(0, 0, 0, 0));
-
     tasks.push({
       doc: serializeDoc(doc),
       repetition: serializeRepetition(rep),
       notes: docNotes.map(serializeNote),
-      urgency: isOverdue ? "overdue" : isToday ? "today" : "upcoming",
+      urgency: urgencyFor(rep.nextReviewDate),
     });
   }
 
-  return tasks;
+  // Fetch YouTube repetitions
+  const ytRepList = await ytReps.find(repQuery).sort({ nextReviewDate: 1 }).toArray();
+  const youtubeTasks: YoutubeTaskItem[] = [];
+  for (const rep of ytRepList) {
+    const session = await ytSessions.findOne({ _id: rep.docId, userId });
+    if (!session) continue;
+    youtubeTasks.push({
+      source: "youtube",
+      session: serializeYoutubeSession(session),
+      repetition: serializeRepetition(rep),
+      urgency: urgencyFor(rep.nextReviewDate),
+    });
+  }
+
+  // Merge and sort by nextReviewDate
+  const allTasks: AnyTaskItem[] = [...tasks, ...youtubeTasks];
+  allTasks.sort((a, b) => {
+    const aDate = "source" in a ? a.repetition.nextReviewDate : a.repetition.nextReviewDate;
+    const bDate = "source" in b ? b.repetition.nextReviewDate : b.repetition.nextReviewDate;
+    return aDate < bDate ? -1 : aDate > bDate ? 1 : 0;
+  });
+
+  return allTasks;
 }
 
 export async function getTaskQueueStats(): Promise<{
@@ -78,8 +110,11 @@ export async function getTaskQueueStats(): Promise<{
   const user = await requireAuth();
   const userId = new ObjectId(user.id);
   const reps = await getRepetitionsCollection();
+  const ytReps = await getYoutubeRepetitionsCollection();
   const docs = await getDocumentsCollection();
   const now = new Date();
+  const todayStart = new Date(now);
+  todayStart.setHours(0, 0, 0, 0);
   const todayEnd = new Date(now);
   todayEnd.setHours(23, 59, 59, 999);
 
@@ -89,12 +124,11 @@ export async function getTaskQueueStats(): Promise<{
     .toArray()
     .then((ds) => ds.map((d) => d._id));
 
-  const allReps = await reps
+  const allDocReps = await reps
     .find({ userId, docId: { $nin: completedDocIds } })
     .toArray();
-
-  const todayStart = new Date(now);
-  todayStart.setHours(0, 0, 0, 0);
+  const allYtReps = await ytReps.find({ userId }).toArray();
+  const allReps = [...allDocReps, ...allYtReps];
 
   const overdueCount = allReps.filter((r) => r.nextReviewDate < todayStart).length;
   const todayCount = allReps.filter(

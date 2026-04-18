@@ -14,6 +14,7 @@ import {
   Brain,
   Tag,
   ChevronRight,
+  CirclePlay,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -27,6 +28,7 @@ interface SidebarProps {
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/documents", label: "Documents", icon: BookOpen },
+  { href: "/study/youtube", label: "YouTube", icon: CirclePlay },
   { href: "/terminology", label: "Terminology", icon: BookText },
   { href: "/settings", label: "Settings", icon: Settings },
 ];

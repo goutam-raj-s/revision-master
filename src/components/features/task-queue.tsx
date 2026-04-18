@@ -2,17 +2,24 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { TaskRow } from "./task-row";
+import { TaskRow, YoutubeTaskRow } from "./task-row";
 import { GlassModal } from "./glass-modal";
 import { InboxZero } from "./inbox-zero";
-import { completeReviewAction, rescheduleDocAction, markDocCompletedAction } from "@/actions/documents";
+import { completeReviewAction, rescheduleDocAction } from "@/actions/documents";
 import { toast } from "@/components/ui/toast";
-import { formatRelativeDate } from "@/lib/utils";
 import type { TaskItem, TaskFilter } from "@/types";
+import type { AnyTaskItem } from "@/actions/queue";
 
 interface TaskQueueProps {
-  initialTasks: TaskItem[];
+  initialTasks: AnyTaskItem[];
   filter: TaskFilter;
+}
+
+function getTaskId(task: AnyTaskItem): string {
+  if ("source" in task && task.source === "youtube") {
+    return `yt-${task.session.id}`;
+  }
+  return (task as TaskItem).doc.id;
 }
 
 export function TaskQueue({ initialTasks, filter }: TaskQueueProps) {
@@ -25,12 +32,12 @@ export function TaskQueue({ initialTasks, filter }: TaskQueueProps) {
     setTasks(initialTasks);
   }, [initialTasks]);
 
-  // Keyboard shortcut: press E to complete focused task
+  // Keyboard shortcut: press E to complete focused task (doc tasks only)
   React.useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === "e" && expandedId && !activeTask) {
-        const task = tasks.find((t) => t.doc.id === expandedId);
-        if (task) handleComplete(task.doc.id);
+        const task = tasks.find((t) => !("source" in t) && (t as TaskItem).doc.id === expandedId);
+        if (task && !("source" in task)) handleComplete((task as TaskItem).doc.id);
       }
     };
     document.addEventListener("keydown", handleKey);
@@ -45,7 +52,7 @@ export function TaskQueue({ initialTasks, filter }: TaskQueueProps) {
 
   async function handleComplete(docId: string) {
     await completeReviewAction(docId);
-    setTasks((prev) => prev.filter((t) => t.doc.id !== docId));
+    setTasks((prev) => prev.filter((t) => !("source" in t) && (t as TaskItem).doc.id !== docId));
     toast("Review complete!", { variant: "success" });
     router.refresh();
   }
@@ -53,8 +60,6 @@ export function TaskQueue({ initialTasks, filter }: TaskQueueProps) {
   function handleToggleExpand(id: string) {
     setExpandedId((prev) => (prev === id ? null : id));
   }
-
-  const upcoming = tasks.find((t) => t.urgency === "upcoming");
 
   return (
     <>
@@ -68,17 +73,31 @@ export function TaskQueue({ initialTasks, filter }: TaskQueueProps) {
             }
           />
         ) : (
-          tasks.map((task) => (
-            <TaskRow
-              key={task.doc.id}
-              task={task}
-              isExpanded={expandedId === task.doc.id}
-              onToggleExpand={() => handleToggleExpand(task.doc.id)}
-              onReview={setActiveTask}
-              onReschedule={handleReschedule}
-              onComplete={handleComplete}
-            />
-          ))
+          tasks.map((task) => {
+            const id = getTaskId(task);
+            if ("source" in task && task.source === "youtube") {
+              return (
+                <YoutubeTaskRow
+                  key={id}
+                  task={task}
+                  isExpanded={expandedId === id}
+                  onToggleExpand={() => handleToggleExpand(id)}
+                />
+              );
+            }
+            const docTask = task as TaskItem;
+            return (
+              <TaskRow
+                key={id}
+                task={docTask}
+                isExpanded={expandedId === id}
+                onToggleExpand={() => handleToggleExpand(id)}
+                onReview={setActiveTask}
+                onReschedule={handleReschedule}
+                onComplete={handleComplete}
+              />
+            );
+          })
         )}
       </div>
 
