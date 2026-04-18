@@ -18,7 +18,8 @@ import {
   computeTitleSimilarity,
   computeTagOverlap,
 } from "@/lib/utils";
-import type { ActionResult, Document, SimilarityMatch } from "@/types";
+import type { ActionResult, Document, SimilarityMatch, MediaType, Difficulty } from "@/types";
+import { deleteCloudinaryAsset } from "@/lib/cloudinary";
 
 const AddDocSchema = z.object({
   url: z.string().url(),
@@ -191,10 +192,80 @@ export async function updateDocumentAction(
   return { success: true };
 }
 
+export async function addFileDocumentAction(data: {
+  title: string;
+  cloudinaryPublicId?: string;
+  fileUrl: string;
+  fileSize?: number;
+  mimeType?: string;
+  mediaType: MediaType;
+  tags: string[];
+  difficulty: Difficulty;
+  delayDays: number;
+}): Promise<ActionResult<{ docId: string }>> {
+  const user = await requireAuth();
+
+  const { title, cloudinaryPublicId, fileUrl, fileSize, mimeType, mediaType, tags, difficulty, delayDays } = data;
+
+  if (!title || title.trim().length === 0) {
+    return { success: false, error: "Title is required." };
+  }
+
+  const docs = await getDocumentsCollection();
+  const now = new Date();
+  const nextReviewDate = getCustomNextReviewDate(delayDays);
+
+  const docResult = await docs.insertOne({
+    _id: new ObjectId(),
+    userId: new ObjectId(user.id),
+    url: fileUrl,
+    title: title.trim(),
+    status: "first_visit",
+    difficulty,
+    tags,
+    isLinkBroken: false,
+    mediaType,
+    cloudinaryPublicId,
+    fileUrl,
+    fileSize,
+    mimeType,
+    createdAt: now,
+    updatedAt: now,
+  });
+
+  const reps = await getRepetitionsCollection();
+  await reps.insertOne({
+    _id: new ObjectId(),
+    userId: new ObjectId(user.id),
+    docId: docResult.insertedId,
+    nextReviewDate,
+    intervalDays: delayDays,
+    reviewCount: 0,
+    createdAt: now,
+    updatedAt: now,
+  });
+
+  revalidatePath("/dashboard");
+  revalidatePath("/documents");
+
+  return { success: true, data: { docId: docResult.insertedId.toString() } };
+}
+
 export async function deleteDocumentAction(docId: string): Promise<ActionResult> {
   const user = await requireAuth();
 
   const docs = await getDocumentsCollection();
+  const doc = await docs.findOne({ _id: new ObjectId(docId), userId: new ObjectId(user.id) });
+
+  // Delete Cloudinary asset if present (before removing MongoDB record)
+  if (doc?.cloudinaryPublicId) {
+    try {
+      await deleteCloudinaryAsset(doc.cloudinaryPublicId);
+    } catch (err) {
+      console.error("[deleteDocumentAction] Cloudinary deletion error (continuing):", err);
+    }
+  }
+
   await docs.deleteOne({ _id: new ObjectId(docId), userId: new ObjectId(user.id) });
 
   // Cascade delete

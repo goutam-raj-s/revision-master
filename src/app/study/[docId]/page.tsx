@@ -8,6 +8,7 @@ import { StudyPageWrapper } from "@/components/features/study-page-wrapper";
 import { SimpleTooltip } from "@/components/ui/tooltip";
 import { StudySidebarPanel } from "@/components/features/study-sidebar-panel";
 import { MobileSidebarButton } from "@/components/features/study-mobile-sidebar";
+import { AudioPlayer, VideoPlayer, DocumentDownload } from "@/components/features/media-player";
 import { getDocNotes, getDocTerms } from "@/actions/notes";
 
 interface StudyPageProps {
@@ -70,15 +71,45 @@ export default async function StudyPage({ params }: StudyPageProps) {
 
         {/* Split-pane body */}
         <div className="flex-1 flex min-h-0">
-          {/* Left pane — Google Doc iframe */}
+          {/* Left pane — content varies by mediaType */}
           <div className="flex-1 relative min-w-0">
-            <iframe
-              src={embedUrl}
-              title={doc.title}
-              className="w-full h-full border-0 absolute inset-0"
-              sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
-              loading="eager"
-            />
+            {doc.mediaType === "audio" && doc.fileUrl ? (
+              <div className="absolute inset-0 overflow-auto">
+                <AudioPlayer src={doc.fileUrl} title={doc.title} />
+              </div>
+            ) : doc.mediaType === "video" ? (
+              <div className="absolute inset-0 overflow-auto">
+                <VideoPlayer src={doc.url} title={doc.title} />
+              </div>
+            ) : doc.mediaType === "pdf" && doc.fileUrl ? (
+              <iframe
+                src={doc.fileUrl}
+                title={doc.title}
+                className="w-full h-full border-0 absolute inset-0"
+                loading="eager"
+              />
+            ) : doc.mediaType === "image" && doc.fileUrl ? (
+              <div className="absolute inset-0 overflow-auto flex items-center justify-center p-4">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={doc.fileUrl}
+                  alt={doc.title}
+                  className="max-w-full h-auto rounded-xl shadow-card"
+                />
+              </div>
+            ) : doc.mediaType === "document" && doc.fileUrl ? (
+              <div className="absolute inset-0 overflow-auto">
+                <DocumentDownload src={doc.fileUrl} title={doc.title} />
+              </div>
+            ) : (
+              <iframe
+                src={embedUrl}
+                title={doc.title}
+                className="w-full h-full border-0 absolute inset-0"
+                sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
+                loading="eager"
+              />
+            )}
           </div>
 
           {/* Right pane — Metadata sidebar (visible on lg+) */}
