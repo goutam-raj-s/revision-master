@@ -1,6 +1,7 @@
 "use server";
 
 import { ObjectId } from "mongodb";
+import { randomBytes } from "crypto";
 import { z } from "zod";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
@@ -9,8 +10,10 @@ import { createSession, destroySession, requireAuth } from "@/lib/auth/session";
 import {
   getUsersCollection,
   getUserByEmail,
+  getPasswordResetTokensCollection,
   serializeUser,
 } from "@/lib/db/collections";
+import { sendPasswordResetEmail } from "@/lib/email";
 import type { ActionResult, User } from "@/types";
 
 const RegisterSchema = z.object({
@@ -155,4 +158,79 @@ export async function getCurrentUser(): Promise<User | null> {
   } catch {
     return null;
   }
+}
+
+export async function forgotPasswordAction(
+  _prev: ActionResult,
+  formData: FormData
+): Promise<ActionResult> {
+  const email = (formData.get("email") as string)?.trim().toLowerCase();
+  if (!email) {
+    return { success: true }; // always generic
+  }
+
+  try {
+    const user = await getUserByEmail(email);
+    // Only send email for email/password accounts (not OAuth-only)
+    if (user && (!user.provider || user.provider === "email") && user.passwordHash) {
+      const token = randomBytes(32).toString("hex");
+      const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+      const tokens = await getPasswordResetTokensCollection();
+      await tokens.insertOne({
+        _id: new ObjectId(),
+        userId: user._id,
+        token,
+        expiresAt,
+        createdAt: new Date(),
+      });
+
+      const resetUrl = `${process.env.NEXT_PUBLIC_APP_URL}/reset-password?token=${token}`;
+      await sendPasswordResetEmail(user.email, resetUrl);
+    }
+  } catch {
+    // Swallow errors — never reveal anything
+  }
+
+  return { success: true };
+}
+
+export async function resetPasswordAction(
+  _prev: ActionResult,
+  formData: FormData
+): Promise<ActionResult> {
+  const token = (formData.get("token") as string)?.trim();
+  const newPassword = (formData.get("newPassword") as string) ?? "";
+  const confirmPassword = (formData.get("confirmPassword") as string) ?? "";
+
+  if (!token) {
+    return { success: false, error: "Invalid reset link." };
+  }
+
+  if (newPassword.length < 8) {
+    return { success: false, error: "Password must be at least 8 characters." };
+  }
+
+  if (newPassword !== confirmPassword) {
+    return { success: false, error: "Passwords do not match." };
+  }
+
+  const tokens = await getPasswordResetTokensCollection();
+  const record = await tokens.findOne({ token, expiresAt: { $gt: new Date() } });
+
+  if (!record) {
+    return { success: false, error: "expired" };
+  }
+
+  // Delete token immediately to prevent reuse, even if password update fails
+  await tokens.deleteOne({ _id: record._id });
+
+  const passwordHash = await hashPassword(newPassword);
+  const users = await getUsersCollection();
+  await users.updateOne(
+    { _id: record.userId },
+    { $set: { passwordHash, updatedAt: new Date() } }
+  );
+
+  return { success: true };
 }
