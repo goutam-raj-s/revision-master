@@ -15,6 +15,7 @@ import {
   Tag,
   ChevronRight,
   CirclePlay,
+  Music2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -29,6 +30,7 @@ const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/documents", label: "Documents", icon: BookOpen },
   { href: "/study/youtube", label: "YouTube", icon: CirclePlay },
+  { href: "/music", label: "Music", icon: Music2 },
   { href: "/terminology", label: "Terminology", icon: BookText },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
