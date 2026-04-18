@@ -7,11 +7,14 @@ import type {
   DbRepetition,
   DbNote,
   DbTerm,
+  DbPasswordResetToken,
+  DbYoutubeSession,
   Document,
   Note,
   Repetition,
   Term,
   User,
+  YoutubeSession,
 } from "@/types";
 
 // ─── Collection accessors ──────────────────────────────────────────────────────
@@ -46,6 +49,21 @@ export async function getTermsCollection(): Promise<Collection<DbTerm>> {
   return db.collection<DbTerm>("terms");
 }
 
+export async function getPasswordResetTokensCollection(): Promise<Collection<DbPasswordResetToken>> {
+  const db = await getDb();
+  return db.collection<DbPasswordResetToken>("password_reset_tokens");
+}
+
+export async function getYoutubeSessionsCollection(): Promise<Collection<DbYoutubeSession>> {
+  const db = await getDb();
+  return db.collection<DbYoutubeSession>("youtube_sessions");
+}
+
+export async function getYoutubeRepetitionsCollection(): Promise<Collection<DbRepetition>> {
+  const db = await getDb();
+  return db.collection<DbRepetition>("youtube_repetitions");
+}
+
 // ─── Index setup ───────────────────────────────────────────────────────────────
 
 export async function ensureIndexes(): Promise<void> {
@@ -53,6 +71,12 @@ export async function ensureIndexes(): Promise<void> {
 
   await db.collection("users").createIndexes([
     { key: { email: 1 }, unique: true },
+    { key: { provider: 1, providerAccountId: 1 }, unique: true, sparse: true },
+  ]);
+
+  await db.collection("password_reset_tokens").createIndexes([
+    { key: { token: 1 }, unique: true },
+    { key: { expiresAt: 1 }, expireAfterSeconds: 0 },
   ]);
 
   await db.collection("sessions").createIndexes([
@@ -79,6 +103,16 @@ export async function ensureIndexes(): Promise<void> {
     { key: { userId: 1, term: 1 } },
     { key: { docId: 1 } },
   ]);
+
+  await db.collection("youtube_sessions").createIndexes([
+    { key: { userId: 1, createdAt: -1 } },
+    { key: { userId: 1, videoId: 1 } },
+  ]);
+
+  await db.collection("youtube_repetitions").createIndexes([
+    { key: { userId: 1, nextReviewDate: 1 } },
+    { key: { docId: 1 }, unique: true },
+  ]);
 }
 
 // ─── Serializers ───────────────────────────────────────────────────────────────
@@ -103,6 +137,11 @@ export function serializeDoc(d: DbDocument): Document {
     tags: d.tags,
     isLinkBroken: d.isLinkBroken,
     parentDocId: d.parentDocId?.toString(),
+    mediaType: d.mediaType ?? "google-doc",
+    cloudinaryPublicId: d.cloudinaryPublicId,
+    fileUrl: d.fileUrl,
+    fileSize: d.fileSize,
+    mimeType: d.mimeType,
     createdAt: d.createdAt.toISOString(),
     updatedAt: d.updatedAt.toISOString(),
   };
@@ -141,6 +180,21 @@ export function serializeTerm(t: DbTerm): Term {
     nextReviewDate: t.nextReviewDate?.toISOString(),
     createdAt: t.createdAt.toISOString(),
     updatedAt: t.updatedAt.toISOString(),
+  };
+}
+
+export function serializeYoutubeSession(s: DbYoutubeSession): YoutubeSession {
+  return {
+    id: s._id.toString(),
+    videoId: s.videoId,
+    videoTitle: s.videoTitle,
+    thumbnailUrl: s.thumbnailUrl,
+    videoUrl: s.videoUrl,
+    notes: s.notes,
+    tags: s.tags,
+    difficulty: s.difficulty,
+    createdAt: s.createdAt.toISOString(),
+    updatedAt: s.updatedAt.toISOString(),
   };
 }
 

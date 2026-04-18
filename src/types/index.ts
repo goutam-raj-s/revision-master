@@ -4,6 +4,7 @@ export type DocumentStatus = "first_visit" | "revision" | "updated" | "completed
 export type Difficulty = "easy" | "medium" | "hard";
 export type UserRole = "user" | "admin";
 export type TaskFilter = "today" | "pending" | "upcoming" | "all";
+export type MediaType = "google-doc" | "pdf" | "audio" | "video" | "image" | "document";
 
 // ─── MongoDB Documents ─────────────────────────────────────────────────────────
 
@@ -14,8 +15,18 @@ export interface DbUser {
   name: string;
   role: UserRole;
   geminiApiKeyEncrypted?: string;
+  provider?: "email" | "google" | "github" | "discord";
+  providerAccountId?: string;
   createdAt: Date;
   updatedAt: Date;
+}
+
+export interface DbPasswordResetToken {
+  _id: ObjectId;
+  userId: ObjectId;
+  token: string;
+  expiresAt: Date;
+  createdAt: Date;
 }
 
 export interface DbSession {
@@ -38,6 +49,11 @@ export interface DbDocument {
   isLinkBroken: boolean;
   lastValidatedAt?: Date;
   parentDocId?: ObjectId; // for merge/topic tree
+  mediaType?: MediaType;
+  cloudinaryPublicId?: string;
+  fileUrl?: string;
+  fileSize?: number;
+  mimeType?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -96,6 +112,11 @@ export interface Document {
   tags: string[];
   isLinkBroken: boolean;
   parentDocId?: string;
+  mediaType?: MediaType;
+  cloudinaryPublicId?: string;
+  fileUrl?: string;
+  fileSize?: number;
+  mimeType?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -130,12 +151,48 @@ export interface Term {
   updatedAt: string;
 }
 
+// ─── YouTube Sessions ──────────────────────────────────────────────────────────
+
+export interface DbYoutubeSession {
+  _id: ObjectId;
+  userId: ObjectId;
+  videoId: string;
+  videoTitle: string;
+  thumbnailUrl: string;
+  videoUrl: string;
+  notes: string;
+  tags: string[];
+  difficulty: Difficulty;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface YoutubeSession {
+  id: string;
+  videoId: string;
+  videoTitle: string;
+  thumbnailUrl: string;
+  videoUrl: string;
+  notes: string;
+  tags: string[];
+  difficulty: Difficulty;
+  createdAt: string;
+  updatedAt: string;
+}
+
 // ─── Task Queue ────────────────────────────────────────────────────────────────
 
 export interface TaskItem {
   doc: Document;
   repetition: Repetition;
   notes: Note[];
+  urgency: "today" | "upcoming" | "overdue";
+}
+
+export interface YoutubeTaskItem {
+  source: "youtube";
+  session: YoutubeSession;
+  repetition: Repetition;
   urgency: "today" | "upcoming" | "overdue";
 }
 
