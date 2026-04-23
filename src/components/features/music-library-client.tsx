@@ -14,6 +14,7 @@ import { AddAudioForm } from "./add-audio-form";
 
 type Tab = "tracks" | "playlists" | "favourites" | "recent";
 type SortKey = "recent" | "title" | "plays" | "duration";
+type RevFilter = "all" | "today" | "2days" | "3days";
 
 function sortDocs(docs: Document[], sort: SortKey): Document[] {
   const arr = [...docs];
@@ -39,6 +40,7 @@ export function MusicLibraryClient({ initialDocs, initialPlaylists }: MusicLibra
   const [playlists, setPlaylists] = React.useState<Playlist[]>(initialPlaylists);
   const [search, setSearch] = React.useState("");
   const [sort, setSort] = React.useState<SortKey>("recent");
+  const [revFilter, setRevFilter] = React.useState<RevFilter>("all");
   const [activePlaylistId, setActivePlaylistId] = React.useState<string | null>(null);
   const [isAddOpen, setIsAddOpen] = React.useState(false);
   const store = useAudioPlayer.getState();
@@ -61,6 +63,22 @@ export function MusicLibraryClient({ initialDocs, initialPlaylists }: MusicLibra
       const q = search.toLowerCase();
       base = base.filter((d) => d.title.toLowerCase().includes(q));
     }
+
+    if (revFilter !== "all" && (tab === "tracks" || tab === "favourites")) {
+      const todayEnd = new Date();
+      todayEnd.setHours(23, 59, 59, 999);
+      if (revFilter === "2days") {
+        todayEnd.setDate(todayEnd.getDate() + 2);
+      } else if (revFilter === "3days") {
+        todayEnd.setDate(todayEnd.getDate() + 3);
+      }
+
+      base = base.filter((d) => {
+        if (!d.nextReviewDate) return false;
+        return new Date(d.nextReviewDate) <= todayEnd;
+      });
+    }
+
     return base;
   }
 
@@ -230,16 +248,29 @@ export function MusicLibraryClient({ initialDocs, initialPlaylists }: MusicLibra
                 />
               </div>
               {tab === "tracks" && (
-                <select
-                  value={sort}
-                  onChange={(e) => setSort(e.target.value as SortKey)}
-                  className="text-sm border border-border rounded-xl px-3 py-2 bg-surface text-forest-slate focus:outline-none focus:ring-2 focus:ring-state-today/40"
-                  aria-label="Sort"
-                >
-                  <option value="recent">Recently Added</option>
-                  <option value="title">Title A–Z</option>
-                  <option value="plays">Most Played</option>
-                </select>
+                <div className="flex gap-2">
+                  <select
+                    value={revFilter}
+                    onChange={(e) => setRevFilter(e.target.value as RevFilter)}
+                    className="text-sm border border-border rounded-xl px-3 py-2 bg-surface text-forest-slate focus:outline-none focus:ring-2 focus:ring-state-today/40"
+                    aria-label="Filter Due"
+                  >
+                    <option value="all">All Time</option>
+                    <option value="today">Due Today</option>
+                    <option value="2days">Due In 2 Days</option>
+                    <option value="3days">Due In 3 Days</option>
+                  </select>
+                  <select
+                    value={sort}
+                    onChange={(e) => setSort(e.target.value as SortKey)}
+                    className="text-sm border border-border rounded-xl px-3 py-2 bg-surface text-forest-slate focus:outline-none focus:ring-2 focus:ring-state-today/40"
+                    aria-label="Sort"
+                  >
+                    <option value="recent">Recently Added</option>
+                    <option value="title">Title A–Z</option>
+                    <option value="plays">Most Played</option>
+                  </select>
+                </div>
               )}
             </div>
           )}

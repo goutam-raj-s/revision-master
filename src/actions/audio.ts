@@ -16,11 +16,27 @@ import type { ActionResult, Document, Playlist } from "@/types";
 export async function getUserAudioDocuments(): Promise<Document[]> {
   const user = await requireAuth();
   const docs = await getDocumentsCollection();
-  const results = await docs
-    .find({ userId: new ObjectId(user.id), mediaType: "audio" })
-    .sort({ createdAt: -1 })
-    .toArray();
-  return results.map(serializeDoc);
+  
+  const results = await docs.aggregate([
+    { $match: { userId: new ObjectId(user.id), mediaType: "audio" } },
+    {
+      $lookup: {
+        from: "repetitions",
+        localField: "_id",
+        foreignField: "docId",
+        as: "rep"
+      }
+    },
+    { $sort: { createdAt: -1 } }
+  ]).toArray();
+
+  return results.map((r) => {
+    const doc = serializeDoc(r as any);
+    if (r.rep && r.rep.length > 0 && r.rep[0].nextReviewDate) {
+      doc.nextReviewDate = r.rep[0].nextReviewDate.toISOString();
+    }
+    return doc;
+  });
 }
 
 export async function toggleAudioFavourite(docId: string): Promise<ActionResult> {

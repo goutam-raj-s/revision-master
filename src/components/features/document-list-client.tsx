@@ -47,6 +47,7 @@ export function DocumentListClient({
   const [docs, setDocs] = React.useState(initialDocs);
   const [search, setSearch] = React.useState(initialSearch || "");
   const [tagFilter, setTagFilter] = React.useState<string | null>(initialTagFilter || null);
+  const [mediaFilter, setMediaFilter] = React.useState<string | null>(null);
   const [deleteId, setDeleteId] = React.useState<string | null>(null);
   const [deleting, setDeleting] = React.useState(false);
 
@@ -58,9 +59,11 @@ export function DocumentListClient({
         doc.title.toLowerCase().includes(search.toLowerCase()) ||
         doc.tags.some((t) => t.toLowerCase().includes(search.toLowerCase()));
       const matchTag = !tagFilter || doc.tags.includes(tagFilter);
-      return matchSearch && matchTag;
+      const docMedia = doc.mediaType || "google-doc";
+      const matchMedia = !mediaFilter || docMedia === mediaFilter;
+      return matchSearch && matchTag && matchMedia;
     });
-  }, [docs, search, tagFilter]);
+  }, [docs, search, tagFilter, mediaFilter]);
 
   async function handleDelete() {
     if (!deleteId) return;
@@ -93,6 +96,19 @@ export function DocumentListClient({
             </button>
           )}
         </div>
+        <select
+          value={mediaFilter || ""}
+          onChange={(e) => setMediaFilter(e.target.value || null)}
+          className="text-sm border border-border rounded-xl px-3 py-2 bg-surface text-forest-slate focus:outline-none focus:ring-2 focus:ring-state-today/40 min-w-[140px]"
+          aria-label="Filter Media Type"
+        >
+          <option value="">All Media Types</option>
+          <option value="google-doc">Google Docs</option>
+          <option value="audio">Audio</option>
+          <option value="video">Video</option>
+          <option value="pdf">PDF</option>
+          <option value="image">Image</option>
+        </select>
       </div>
 
       {/* Tag chips */}

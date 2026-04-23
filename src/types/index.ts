@@ -134,6 +134,7 @@ export interface Document {
   lastPlayedAt?: string;
   createdAt: string;
   updatedAt: string;
+  nextReviewDate?: string;
 }
 
 export interface Playlist {
