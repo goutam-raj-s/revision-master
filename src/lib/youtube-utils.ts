@@ -27,6 +27,19 @@ export function extractYoutubeVideoId(url: string): string | null {
   return null;
 }
 
+export function extractYoutubePlaylistId(url: string): string | null {
+  try {
+    const u = new URL(url);
+    if (u.hostname.includes("youtube.com")) {
+      const list = u.searchParams.get("list");
+      if (list) return list;
+    }
+  } catch {
+    // not a valid URL
+  }
+  return null;
+}
+
 export function isYoutubeUrl(url: string): boolean {
-  return extractYoutubeVideoId(url) !== null;
+  return extractYoutubeVideoId(url) !== null || extractYoutubePlaylistId(url) !== null;
 }

@@ -6,7 +6,7 @@ import { CirclePlay as Youtube, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { extractYoutubeVideoId } from "@/lib/youtube-utils";
+import { extractYoutubeVideoId, extractYoutubePlaylistId } from "@/lib/youtube-utils";
 
 export function YoutubeUrlForm() {
   const router = useRouter();
@@ -16,12 +16,22 @@ export function YoutubeUrlForm() {
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
-    const videoId = extractYoutubeVideoId(url.trim());
-    if (!videoId) {
+    const trimmedUrl = url.trim();
+    const playlistId = extractYoutubePlaylistId(trimmedUrl);
+    const videoId = extractYoutubeVideoId(trimmedUrl);
+
+    if (!playlistId && !videoId) {
       setError("Please enter a valid YouTube URL");
       return;
     }
-    router.push(`/study/youtube?v=${videoId}`);
+
+    if (playlistId && videoId) {
+      router.push(`/study/youtube?list=${playlistId}&v=${videoId}`);
+    } else if (playlistId) {
+      router.push(`/study/youtube?list=${playlistId}`);
+    } else if (videoId) {
+      router.push(`/study/youtube?v=${videoId}`);
+    }
   }
 
   return (

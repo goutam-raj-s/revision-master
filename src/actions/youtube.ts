@@ -11,6 +11,7 @@ import {
 import { getCustomNextReviewDate } from "@/lib/srs/engine";
 import type { ActionResult, Difficulty, YoutubeSession, Repetition } from "@/types";
 import { extractYoutubeVideoId } from "@/lib/youtube-utils";
+import play from "play-dl";
 
 // ── Server actions ────────────────────────────────────────────────────────────
 
@@ -33,6 +34,28 @@ export async function fetchYoutubeMetadata(
     };
   } catch {
     return { videoId, title: videoId, thumbnailUrl: "" };
+  }
+}
+
+export async function fetchYoutubePlaylist(
+  playlistId: string
+): Promise<{ playlistId: string; title: string; videos: { videoId: string; title: string; thumbnailUrl: string }[] }> {
+  try {
+    const playlist = await play.playlist_info(`https://www.youtube.com/playlist?list=${playlistId}`, { incomplete: true });
+    const videos = await playlist.all_videos();
+    
+    return {
+      playlistId,
+      title: playlist.title || "YouTube Playlist",
+      videos: videos.map((v) => ({
+        videoId: v.id || "",
+        title: v.title || "Unknown Title",
+        thumbnailUrl: v.thumbnails[0]?.url || "",
+      })).filter((v) => v.videoId), // Remove any invalid videos
+    };
+  } catch (error) {
+    console.error("Failed to fetch playlist", error);
+    throw new Error("Failed to fetch playlist data");
   }
 }
 
