@@ -67,7 +67,7 @@ export default async function YoutubeStudyPage({ searchParams }: YoutubeStudyPag
 
   // Fetch metadata and create/get session
   const metadata = await fetchYoutubeMetadata(`https://www.youtube.com/watch?v=${videoId}`);
-  const result = await createOrGetYoutubeSession(videoId, {
+  const result = await createOrGetYoutubeSession(videoId as string, {
     title: metadata.title,
     thumbnailUrl: metadata.thumbnailUrl,
   });
