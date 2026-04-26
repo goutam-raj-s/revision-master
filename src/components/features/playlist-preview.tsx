@@ -44,7 +44,6 @@ export function PlaylistPreview({ playlist }: PlaylistPreviewProps) {
             >
               <div className="relative aspect-video rounded-xl overflow-hidden bg-muted border border-border shadow-sm group-hover:shadow-md transition-all">
                 {video.thumbnailUrl ? (
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={video.thumbnailUrl}
                     alt={video.title}
