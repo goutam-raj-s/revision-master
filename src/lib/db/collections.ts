@@ -9,6 +9,7 @@ import type {
   DbTerm,
   DbPasswordResetToken,
   DbYoutubeSession,
+  DbYoutubeBookmark,
   DbPlaylist,
   Document,
   Note,
@@ -16,6 +17,7 @@ import type {
   Term,
   User,
   YoutubeSession,
+  YoutubeBookmark,
   Playlist,
 } from "@/types";
 
@@ -59,6 +61,11 @@ export async function getPasswordResetTokensCollection(): Promise<Collection<DbP
 export async function getYoutubeSessionsCollection(): Promise<Collection<DbYoutubeSession>> {
   const db = await getDb();
   return db.collection<DbYoutubeSession>("youtube_sessions");
+}
+
+export async function getYoutubeBookmarksCollection(): Promise<Collection<DbYoutubeBookmark>> {
+  const db = await getDb();
+  return db.collection<DbYoutubeBookmark>("youtube_bookmarks");
 }
 
 export async function getYoutubeRepetitionsCollection(): Promise<Collection<DbRepetition>> {
@@ -119,6 +126,11 @@ export async function ensureIndexes(): Promise<void> {
   await db.collection("youtube_sessions").createIndexes([
     { key: { userId: 1, createdAt: -1 } },
     { key: { userId: 1, videoId: 1 } },
+  ]);
+
+  await db.collection("youtube_bookmarks").createIndexes([
+    { key: { userId: 1, createdAt: -1 } },
+    { key: { userId: 1, youtubeId: 1 }, unique: true },
   ]);
 
   await db.collection("youtube_repetitions").createIndexes([
@@ -220,6 +232,18 @@ export function serializeYoutubeSession(s: DbYoutubeSession): YoutubeSession {
     difficulty: s.difficulty,
     createdAt: s.createdAt.toISOString(),
     updatedAt: s.updatedAt.toISOString(),
+  };
+}
+
+export function serializeYoutubeBookmark(b: DbYoutubeBookmark): YoutubeBookmark {
+  return {
+    id: b._id.toString(),
+    type: b.type,
+    youtubeId: b.youtubeId,
+    title: b.title,
+    thumbnailUrl: b.thumbnailUrl,
+    createdAt: b.createdAt.toISOString(),
+    updatedAt: b.updatedAt.toISOString(),
   };
 }
 

@@ -204,6 +204,27 @@ export interface YoutubeSession {
   updatedAt: string;
 }
 
+export interface DbYoutubeBookmark {
+  _id: ObjectId;
+  userId: ObjectId;
+  type: "video" | "playlist";
+  youtubeId: string;
+  title: string;
+  thumbnailUrl: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface YoutubeBookmark {
+  id: string;
+  type: "video" | "playlist";
+  youtubeId: string;
+  title: string;
+  thumbnailUrl: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 // ─── Task Queue ────────────────────────────────────────────────────────────────
 
 export interface TaskItem {
