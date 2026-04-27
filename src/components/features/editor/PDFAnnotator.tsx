@@ -141,7 +141,7 @@ export function PDFAnnotator({ url, docId, initialHighlights }: PDFAnnotatorProp
                   <Popup
                     popupContent={<div className="p-2 text-xs bg-surface border border-border rounded shadow-lg flex flex-col gap-2 min-w-[150px]">
                       <div className="font-medium text-forest-slate">{highlight.comment.text || "No comment"}</div>
-                      <Button variant="ghost" size="xs" onClick={() => deleteHighlight(highlight.id)} className="text-destructive h-6 text-[10px]">Remove</Button>
+                      <Button variant="ghost" size="sm" onClick={() => deleteHighlight(highlight.id)} className="text-destructive h-6 text-[10px]">Remove</Button>
                     </div>}
                     onMouseOver={(popupContent) =>
                       setTip(highlight, (highlight) => popupContent)
