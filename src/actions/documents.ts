@@ -439,3 +439,65 @@ export async function getAllUserTags(): Promise<{ tag: string; count: number }[]
   const result = await docs.aggregate<{ tag: string; count: number }>(pipeline).toArray();
   return result;
 }
+
+export async function createNativeDocumentAction(data: {
+  title: string;
+  content: string;
+  tags: string[];
+  difficulty: Difficulty;
+  delayDays: number;
+}): Promise<ActionResult<{ docId: string }>> {
+  const user = await requireAuth();
+  const { title, content, tags, difficulty, delayDays } = data;
+
+  const docs = await getDocumentsCollection();
+  const now = new Date();
+  const nextReviewDate = getCustomNextReviewDate(delayDays);
+
+  const docResult = await docs.insertOne({
+    _id: new ObjectId(),
+    userId: new ObjectId(user.id),
+    url: "native://" + new ObjectId().toString(),
+    title: title.trim(),
+    status: "first_visit",
+    difficulty,
+    tags,
+    isLinkBroken: false,
+    mediaType: "native-doc",
+    content,
+    createdAt: now,
+    updatedAt: now,
+  });
+
+  const reps = await getRepetitionsCollection();
+  await reps.insertOne({
+    _id: new ObjectId(),
+    userId: new ObjectId(user.id),
+    docId: docResult.insertedId,
+    nextReviewDate,
+    intervalDays: delayDays,
+    reviewCount: 0,
+    createdAt: now,
+    updatedAt: now,
+  });
+
+  revalidatePath("/dashboard");
+  revalidatePath("/documents");
+
+  return { success: true, data: { docId: docResult.insertedId.toString() } };
+}
+
+export async function updateDocumentContentAction(
+  docId: string,
+  content: string
+): Promise<ActionResult> {
+  const user = await requireAuth();
+  const docs = await getDocumentsCollection();
+
+  await docs.updateOne(
+    { _id: new ObjectId(docId), userId: new ObjectId(user.id) },
+    { $set: { content, updatedAt: new Date() } }
+  );
+
+  return { success: true };
+}

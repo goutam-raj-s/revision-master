@@ -16,7 +16,12 @@ export async function GET(
   }
 
   const p = provider as Provider;
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL!;
+  // Prefer the incoming request's origin so we don't depend on a possibly-missing env var.
+  // Falls back to NEXT_PUBLIC_APP_URL only if the origin is somehow unavailable.
+  const appUrl = request.nextUrl.origin || process.env.NEXT_PUBLIC_APP_URL;
+  if (!appUrl) {
+    return new NextResponse("App URL could not be determined", { status: 500 });
+  }
   const state = randomBytes(16).toString("hex");
   const redirectUri = `${appUrl}/api/auth/${p}/callback`;
 

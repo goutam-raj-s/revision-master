@@ -4,7 +4,7 @@ export type DocumentStatus = "first_visit" | "revision" | "updated" | "completed
 export type Difficulty = "easy" | "medium" | "hard";
 export type UserRole = "user" | "admin";
 export type TaskFilter = "today" | "pending" | "upcoming" | "all";
-export type MediaType = "google-doc" | "pdf" | "audio" | "video" | "image" | "document";
+export type MediaType = "google-doc" | "pdf" | "audio" | "video" | "image" | "document" | "native-doc";
 
 // ─── MongoDB Documents ─────────────────────────────────────────────────────────
 
@@ -57,6 +57,7 @@ export interface DbDocument {
   isFavourite?: boolean;
   playCount?: number;
   lastPlayedAt?: Date;
+  content?: string; // For native documents (TipTap JSON/HTML)
   createdAt: Date;
   updatedAt: Date;
 }
@@ -132,6 +133,7 @@ export interface Document {
   isFavourite?: boolean;
   playCount?: number;
   lastPlayedAt?: string;
+  content?: string;
   createdAt: string;
   updatedAt: string;
   nextReviewDate?: string;

@@ -9,6 +9,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { DocumentDetailClient } from "@/components/features/document-detail-client";
+import { RichTextEditor } from "@/components/features/editor/RichTextEditor";
+import { PDFAnnotator } from "@/components/features/editor/PDFAnnotator";
 import { formatDate, formatRelativeDate } from "@/lib/utils";
 
 interface DocumentDetailPageProps {
@@ -100,8 +102,20 @@ export default async function DocumentDetailPage({ params }: DocumentDetailPageP
 
       <Separator />
 
-      {/* Interactive content: notes, terms, editing */}
-      <DocumentDetailClient doc={doc} rep={rep} initialNotes={notes} initialTerms={terms} />
+      {/* Interactive content: editor (for native docs), annotator (for PDFs) or notes, terms, etc. */}
+      {doc.mediaType === "native-doc" ? (
+        <div className="space-y-6">
+          <RichTextEditor docId={doc.id} initialContent={doc.content || ""} />
+          <DocumentDetailClient doc={doc} rep={rep} initialNotes={notes} initialTerms={terms} />
+        </div>
+      ) : doc.mediaType === "pdf" && doc.fileUrl ? (
+        <div className="space-y-6">
+          <PDFAnnotator url={doc.fileUrl} docId={doc.id} initialHighlights={doc.content} />
+          <DocumentDetailClient doc={doc} rep={rep} initialNotes={notes} initialTerms={terms} />
+        </div>
+      ) : (
+        <DocumentDetailClient doc={doc} rep={rep} initialNotes={notes} initialTerms={terms} />
+      )}
     </div>
   );
 }

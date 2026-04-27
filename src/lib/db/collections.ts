@@ -169,6 +169,7 @@ export function serializeDoc(d: DbDocument): Document {
     isFavourite: d.isFavourite ?? false,
     playCount: d.playCount ?? 0,
     lastPlayedAt: d.lastPlayedAt?.toISOString(),
+    content: d.content,
     createdAt: d.createdAt.toISOString(),
     updatedAt: d.updatedAt.toISOString(),
   };

@@ -33,12 +33,20 @@ export default async function DocumentsPage({ searchParams }: DocumentsPageProps
           <h1 className="text-2xl font-bold text-forest-slate">Documents</h1>
           <p className="text-sm text-mossy-gray mt-0.5">{docs.length} document{docs.length !== 1 ? "s" : ""} in your library</p>
         </div>
-        <Link href="/documents/new">
-          <Button className="gap-2 bouncy-hover">
-            <Plus className="h-4 w-4" />
-            Add Document
-          </Button>
-        </Link>
+        <div className="flex items-center gap-3">
+          <Link href="/documents/create">
+            <Button variant="outline" className="gap-2 bouncy-hover border-state-today/20 text-state-today hover:bg-state-today/5">
+              <Plus className="h-4 w-4" />
+              Create Document
+            </Button>
+          </Link>
+          <Link href="/documents/new">
+            <Button className="gap-2 bouncy-hover">
+              <Plus className="h-4 w-4" />
+              Add Document
+            </Button>
+          </Link>
+        </div>
       </div>
 
       <DocumentListClient
