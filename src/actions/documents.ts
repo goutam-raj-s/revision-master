@@ -192,6 +192,26 @@ export async function updateDocumentAction(
   return { success: true };
 }
 
+export async function updateDocumentTitleAction(
+  docId: string,
+  title: string
+): Promise<ActionResult> {
+  const user = await requireAuth();
+
+  const parsed = z.string().min(1, "Title can't be empty").max(500).safeParse(title.trim());
+  if (!parsed.success) return { success: false, error: parsed.error.issues[0].message };
+
+  const docs = await getDocumentsCollection();
+  await docs.updateOne(
+    { _id: new ObjectId(docId), userId: new ObjectId(user.id) },
+    { $set: { title: parsed.data, updatedAt: new Date() } }
+  );
+
+  revalidatePath("/documents");
+  revalidatePath(`/documents/${docId}`);
+  return { success: true };
+}
+
 export async function addFileDocumentAction(data: {
   title: string;
   cloudinaryPublicId?: string;

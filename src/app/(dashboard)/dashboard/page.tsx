@@ -1,11 +1,13 @@
 import { Suspense } from "react";
-import { Plus, Command } from "lucide-react";
+import { Plus } from "lucide-react";
 import Link from "next/link";
 import { getTaskQueue } from "@/actions/queue";
-import { getDashboardStats } from "@/actions/analytics";
+import { getDashboardStats, getReviewTrendAction } from "@/actions/analytics";
 import { TaskQueue } from "@/components/features/task-queue";
 import { StatsCards } from "@/components/features/stats-cards";
 import { AnalyticsInsights } from "@/components/features/analytics-insights";
+import { OnboardingBanner } from "@/components/features/onboarding-banner";
+import { ReviewTrendChartDynamic as ReviewTrendChart } from "@/components/features/review-trend-chart-dynamic";
 import { Button } from "@/components/ui/button";
 import type { TaskFilter } from "@/types";
 
@@ -61,9 +63,10 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   const params = await searchParams;
   const filter = (params.filter as TaskFilter) || "today";
 
-  const [tasks, stats] = await Promise.all([
+  const [tasks, stats, trend] = await Promise.all([
     getTaskQueue(filter),
     getDashboardStats(),
+    getReviewTrendAction(),
   ]);
 
   return (
@@ -85,6 +88,9 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         </Link>
       </div>
 
+      {/* Onboarding — only for new users with 0 docs */}
+      <OnboardingBanner totalDocs={stats.totalDocs} />
+
       {/* Stats */}
       <StatsCards stats={stats} />
 
@@ -101,6 +107,10 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       <div>
         <h2 className="text-base font-semibold text-forest-slate mb-4">Learning Insights</h2>
         <AnalyticsInsights stats={stats} />
+        <div className="mt-4 bg-surface rounded-xl border border-border p-4">
+          <p className="text-xs font-medium text-mossy-gray mb-2">Reviews this week</p>
+          <ReviewTrendChart data={trend} />
+        </div>
       </div>
     </div>
   );

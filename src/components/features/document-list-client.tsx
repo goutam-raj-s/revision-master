@@ -72,7 +72,22 @@ export function DocumentListClient({
   const [currentPage, setCurrentPage] = React.useState(1);
   const itemsPerPage = 10;
 
-  const [sortOrder, setSortOrder] = React.useState<"newest" | "oldest" | "a-z" | "z-a">("newest");
+  const VALID_SORTS = ["newest", "oldest", "a-z", "z-a", "last-modified"] as const;
+  type SortOrder = typeof VALID_SORTS[number];
+  const [sortOrder, setSortOrder] = React.useState<SortOrder>("newest");
+
+  // Rehydrate persisted filter prefs from localStorage (client-only)
+  React.useEffect(() => {
+    const storedSort = localStorage.getItem("lostbae_doc_sort") as SortOrder | null;
+    const storedMedia = localStorage.getItem("lostbae_doc_media");
+    if (storedSort && (VALID_SORTS as readonly string[]).includes(storedSort)) setSortOrder(storedSort);
+    if (storedMedia !== null) setMediaFilter(storedMedia || null);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Persist sort + media changes
+  React.useEffect(() => { localStorage.setItem("lostbae_doc_sort", sortOrder); }, [sortOrder]);
+  React.useEffect(() => { localStorage.setItem("lostbae_doc_media", mediaFilter ?? ""); }, [mediaFilter]);
 
   // ─── Bulk selection ───────────────────────────────────────────────────────
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
@@ -97,6 +112,7 @@ export function DocumentListClient({
       if (sortOrder === "oldest") return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
       if (sortOrder === "a-z") return a.title.localeCompare(b.title);
       if (sortOrder === "z-a") return b.title.localeCompare(a.title);
+      if (sortOrder === "last-modified") return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
       return 0;
     });
 
@@ -240,6 +256,7 @@ export function DocumentListClient({
           <option value="oldest">Oldest First</option>
           <option value="a-z">A-Z</option>
           <option value="z-a">Z-A</option>
+          <option value="last-modified">Last Modified</option>
         </select>
       </div>
 

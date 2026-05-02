@@ -110,3 +110,46 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     })),
   };
 }
+
+export async function getReviewTrendAction(): Promise<{ day: string; count: number }[]> {
+  const user = await requireAuth();
+  const userId = new ObjectId(user.id);
+  const reps = await getRepetitionsCollection();
+
+  // Build a 7-day window starting from 6 days ago (inclusive of today)
+  const days: { day: string; date: Date }[] = [];
+  const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    d.setHours(0, 0, 0, 0);
+    days.push({ day: DAY_LABELS[d.getDay()], date: d });
+  }
+
+  const windowStart = days[0].date;
+  const windowEnd = new Date();
+  windowEnd.setHours(23, 59, 59, 999);
+
+  const reviewed = await reps
+    .find({
+      userId,
+      lastReviewedAt: { $gte: windowStart, $lte: windowEnd },
+    })
+    .project({ lastReviewedAt: 1 })
+    .toArray();
+
+  // Count by day label index
+  const counts = new Map<string, number>();
+  for (const { day } of days) counts.set(day, 0);
+
+  for (const rep of reviewed) {
+    const d = new Date(rep.lastReviewedAt as Date);
+    const label = DAY_LABELS[d.getDay()];
+    // Only count if this label is within our 7-day window
+    if (counts.has(label)) {
+      counts.set(label, (counts.get(label) ?? 0) + 1);
+    }
+  }
+
+  return days.map(({ day }) => ({ day, count: counts.get(day) ?? 0 }));
+}

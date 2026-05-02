@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { DocumentDetailClient } from "@/components/features/document-detail-client";
+import { InlineTitleEditor } from "@/components/features/inline-title-editor";
 import { RichTextEditorDynamic as RichTextEditor } from "@/components/features/editor/RichTextEditorDynamic";
 import { PDFAnnotatorDynamic as PDFAnnotator } from "@/components/features/editor/PDFAnnotatorDynamic";
 import { formatDate, formatRelativeDate } from "@/lib/utils";
@@ -59,9 +60,7 @@ export default async function DocumentDetailPage({ params }: DocumentDetailPageP
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div className="flex-1 min-w-0">
-          <h1 className="text-2xl font-serif font-semibold text-forest-slate leading-snug">
-            {doc.title}
-          </h1>
+          <InlineTitleEditor docId={doc.id} title={doc.title} />
           <div className="flex flex-wrap items-center gap-2 mt-2">
             <Badge variant={status.variant}>{status.label}</Badge>
             <Badge variant={doc.difficulty === "easy" ? "easy" : doc.difficulty === "medium" ? "medium" : "hard"}>
