@@ -10,6 +10,7 @@ import { StudySidebarPanel } from "@/components/features/study-sidebar-panel";
 import { MobileSidebarButton } from "@/components/features/study-mobile-sidebar";
 import { AudioPlayer, VideoPlayer, DocumentDownload } from "@/components/features/media-player";
 import { getDocNotes, getDocTerms } from "@/actions/notes";
+import { DashboardHeader } from "@/components/features/dashboard-header";
 
 interface StudyPageProps {
   params: Promise<{ docId: string }>;
@@ -37,37 +38,27 @@ export default async function StudyPage({ params }: StudyPageProps) {
   return (
     <StudyPageWrapper>
       <div className="h-screen flex flex-col bg-canvas overflow-hidden">
-        {/* Minimal header */}
-        <header className="shrink-0 flex items-center justify-between px-4 py-3 border-b border-border bg-white shadow-soft z-20">
-          <div className="flex items-center gap-3">
-            <SimpleTooltip content="Back to document" side="bottom">
-              <Link
-                href={`/documents/${doc.id}`}
-                className="flex items-center gap-1.5 text-sm text-mossy-gray hover:text-forest-slate transition-colors"
+        {/* Dashboard Header with breadcrumbs */}
+        <DashboardHeader
+          customBreadcrumbs={[
+            { href: "/dashboard", label: "Dashboard" },
+            { href: "/documents", label: "Documents" },
+            { href: `/documents/${doc.id}`, label: doc.title },
+          ]}
+          rightActions={
+            <SimpleTooltip content="Open original in Google Docs" side="left">
+              <a
+                href={doc.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1.5 text-xs text-mossy-gray hover:text-forest-slate transition-colors"
               >
-                <ArrowLeft className="h-4 w-4" />
-                Back
-              </Link>
+                <ExternalLink className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Open in Google Docs</span>
+              </a>
             </SimpleTooltip>
-            <span className="text-border/60">|</span>
-            <SimpleTooltip content={doc.title} side="bottom">
-              <h1 className="font-serif font-medium text-forest-slate text-sm line-clamp-1 max-w-xl cursor-default">
-                {doc.title}
-              </h1>
-            </SimpleTooltip>
-          </div>
-          <SimpleTooltip content="Open original in Google Docs" side="left">
-            <a
-              href={doc.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-1.5 text-xs text-mossy-gray hover:text-forest-slate transition-colors"
-            >
-              <ExternalLink className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Open in Google Docs</span>
-            </a>
-          </SimpleTooltip>
-        </header>
+          }
+        />
 
         {/* Split-pane body */}
         <div className="flex-1 flex min-h-0">
