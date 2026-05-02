@@ -77,7 +77,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
             <kbd className="ml-2 px-1.5 py-0.5 rounded bg-border text-xs font-mono text-mossy-gray">⌘K</kbd>
           </p>
         </div>
-        <Link href="/documents/new">
+        <Link href="/documents/new" prefetch={true}>
           <Button className="gap-2 bouncy-hover">
             <Plus className="h-4 w-4" />
             Add Document
