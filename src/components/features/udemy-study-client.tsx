@@ -176,6 +176,7 @@ export function UdemyStudyClient({ session }: UdemyStudyClientProps) {
           sessionId={session.id}
           initialNotes={session.notes}
           courseTitle={session.courseTitle}
+          lectureTitle={session.lectureTitle}
           courseUrl={session.courseUrl}
           lectureId={session.lectureId}
         />

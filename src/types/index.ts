@@ -234,6 +234,7 @@ export interface DbUdemySession {
   userId: ObjectId;
   courseSlug: string;
   lectureId?: string;
+  lectureTitle?: string;   // per-lecture title separate from course title
   courseTitle: string;
   courseUrl: string;
   notes: string;
@@ -247,6 +248,7 @@ export interface UdemySession {
   id: string;
   courseSlug: string;
   lectureId?: string;
+  lectureTitle?: string;
   courseTitle: string;
   courseUrl: string;
   notes: string;
@@ -254,6 +256,19 @@ export interface UdemySession {
   difficulty: Difficulty;
   createdAt: string;
   updatedAt: string;
+}
+
+// Lightweight type for course curriculum from Udemy
+export interface UdemyCurriculumSection {
+  id: number;
+  title: string;
+  lectures: UdemyCurriculumLecture[];
+}
+
+export interface UdemyCurriculumLecture {
+  id: number;
+  title: string;
+  durationSeconds?: number;
 }
 
 // ─── Task Queue ────────────────────────────────────────────────────────────────

@@ -10,6 +10,7 @@ interface UdemyNotesPanelProps {
   sessionId: string;
   initialNotes: string;
   courseTitle: string;
+  lectureTitle?: string;
   courseUrl: string;
   lectureId?: string;
 }
@@ -39,7 +40,8 @@ function normaliseTimestamp(raw: string): string | null {
 export function UdemyNotesPanel({
   sessionId,
   initialNotes,
-  courseTitle: initialTitle,
+  courseTitle,
+  lectureTitle: initialLectureTitle,
   courseUrl,
   lectureId,
 }: UdemyNotesPanelProps) {
@@ -52,10 +54,11 @@ export function UdemyNotesPanel({
   const [tsInput, setTsInput] = React.useState("");
   const [tsError, setTsError] = React.useState("");
 
-  // Inline title editing
-  const [courseTitle, setCourseTitle] = React.useState(initialTitle);
+  // Inline title editing — shows lectureTitle if set, else courseTitle
+  const displayTitle = initialLectureTitle || courseTitle;
+  const [editableTitle, setEditableTitle] = React.useState(displayTitle);
   const [editingTitle, setEditingTitle] = React.useState(false);
-  const [titleDraft, setTitleDraft] = React.useState(initialTitle);
+  const [titleDraft, setTitleDraft] = React.useState(displayTitle);
   const titleDebounceRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Debounced auto-save for notes
@@ -114,12 +117,12 @@ export function UdemyNotesPanel({
 
   function commitTitleEdit() {
     const trimmed = titleDraft.trim();
-    if (!trimmed || trimmed === courseTitle) {
+    if (!trimmed || trimmed === editableTitle) {
       setEditingTitle(false);
-      setTitleDraft(courseTitle);
+      setTitleDraft(editableTitle);
       return;
     }
-    setCourseTitle(trimmed);
+    setEditableTitle(trimmed);
     setEditingTitle(false);
     if (titleDebounceRef.current) clearTimeout(titleDebounceRef.current);
     titleDebounceRef.current = setTimeout(() => {
@@ -152,7 +155,7 @@ export function UdemyNotesPanel({
                   if (e.key === "Enter") commitTitleEdit();
                   if (e.key === "Escape") {
                     setEditingTitle(false);
-                    setTitleDraft(courseTitle);
+                    setTitleDraft(editableTitle);
                   }
                 }}
                 className="h-6 text-sm px-1.5 py-0 font-semibold"
@@ -167,7 +170,7 @@ export function UdemyNotesPanel({
               <button
                 onClick={() => {
                   setEditingTitle(false);
-                  setTitleDraft(courseTitle);
+                  setTitleDraft(editableTitle);
                 }}
                 className="text-mossy-gray hover:opacity-80"
                 aria-label="Cancel edit"
@@ -178,7 +181,7 @@ export function UdemyNotesPanel({
           ) : (
             <div className="flex items-center gap-1.5 group">
               <h2 className="text-sm font-semibold text-forest-slate line-clamp-2 leading-snug">
-                {courseTitle}
+                {editableTitle}
               </h2>
               <button
                 onClick={() => {

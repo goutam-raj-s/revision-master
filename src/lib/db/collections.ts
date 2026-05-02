@@ -266,6 +266,7 @@ export function serializeUdemySession(s: DbUdemySession): UdemySession {
     id: s._id.toString(),
     courseSlug: s.courseSlug,
     lectureId: s.lectureId,
+    lectureTitle: s.lectureTitle,
     courseTitle: s.courseTitle,
     courseUrl: s.courseUrl,
     notes: s.notes,
