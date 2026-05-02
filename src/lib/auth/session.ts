@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import { cache } from "react";
 import { ObjectId } from "mongodb";
 import { generateToken } from "@/lib/crypto";
 import { getSessionsCollection, getUserById, serializeUser } from "@/lib/db/collections";
@@ -33,7 +34,7 @@ export async function createSession(userId: string): Promise<string> {
   return token;
 }
 
-export async function getSession(): Promise<User | null> {
+export const getSession = cache(async function getSession(): Promise<User | null> {
   const cookieStore = await cookies();
   const token = cookieStore.get(SESSION_COOKIE)?.value;
   if (!token) return null;
@@ -49,7 +50,7 @@ export async function getSession(): Promise<User | null> {
   if (!user) return null;
 
   return serializeUser(user);
-}
+});
 
 export async function destroySession(): Promise<void> {
   const cookieStore = await cookies();

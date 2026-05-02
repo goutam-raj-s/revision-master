@@ -4,6 +4,7 @@ _bmad
 .claude
 .gemini
 .github
+.codex
 .windsurf
 docs
 node_modules

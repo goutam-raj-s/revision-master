@@ -1,4 +1,5 @@
 import { ObjectId, type Collection } from "mongodb";
+import { cache } from "react";
 import { getDb } from "./client";
 import type {
   DbUser,
@@ -250,10 +251,10 @@ export function serializeYoutubeBookmark(b: DbYoutubeBookmark): YoutubeBookmark 
 
 // ─── Common queries ────────────────────────────────────────────────────────────
 
-export async function getUserById(id: string): Promise<DbUser | null> {
+export const getUserById = cache(async function getUserById(id: string): Promise<DbUser | null> {
   const col = await getUsersCollection();
   return col.findOne({ _id: new ObjectId(id) });
-}
+});
 
 export async function getUserByEmail(email: string): Promise<DbUser | null> {
   const col = await getUsersCollection();
