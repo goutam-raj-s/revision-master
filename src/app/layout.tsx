@@ -15,6 +15,8 @@ export const metadata: Metadata = {
     "Transform scattered Google Docs into a structured, revisable knowledge graph with spaced repetition.",
 };
 
+import NextTopLoader from 'nextjs-toploader';
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -23,6 +25,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${inter.variable} h-full`}>
       <body className="min-h-full bg-canvas font-sans antialiased">
+        <NextTopLoader color="#059669" showSpinner={false} />
         {children}
         <Toaster />
       </body>
