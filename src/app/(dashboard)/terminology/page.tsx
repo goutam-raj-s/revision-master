@@ -5,7 +5,7 @@ import { getUserDocuments } from "@/actions/documents";
 import { Card, CardContent } from "@/components/ui/card";
 import { TerminologyClient } from "@/components/features/terminology-client";
 
-export const metadata = { title: "Terminology — Revision Master" };
+export const metadata = { title: "Terminology — lostbae" };
 
 export default async function TerminologyPage() {
   const [terms, docs] = await Promise.all([getAllTerms(), getUserDocuments()]);

@@ -129,7 +129,7 @@ export async function fetchDocTitleAction(url: string): Promise<ActionResult<{ t
 
   try {
     const res = await fetch(url, {
-      headers: { "User-Agent": "Mozilla/5.0 (compatible; RevisionMaster/1.0)" },
+      headers: { "User-Agent": "Mozilla/5.0 (compatible; lostbae/1.0)" },
       next: { revalidate: 3600 },
     });
     if (!res.ok) {

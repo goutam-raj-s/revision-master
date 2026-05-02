@@ -10,7 +10,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Revision Master — Spaced Repetition for Your Google Docs",
+  title: "lostbae — Spaced Repetition for Your Google Docs",
   description:
     "Transform scattered Google Docs into a structured, revisable knowledge graph with spaced repetition.",
 };

@@ -12,7 +12,7 @@ interface DocumentsPageProps {
   searchParams: Promise<{ tag?: string; search?: string; status?: string }>;
 }
 
-export const metadata = { title: "Documents — Revision Master" };
+export const metadata = { title: "Documents — lostbae" };
 
 export default async function DocumentsPage({ searchParams }: DocumentsPageProps) {
   const params = await searchParams;

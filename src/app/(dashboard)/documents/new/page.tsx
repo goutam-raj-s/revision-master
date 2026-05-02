@@ -1,7 +1,7 @@
 import { Brain } from "lucide-react";
 import { AddDocumentForm } from "@/components/features/add-document-form";
 
-export const metadata = { title: "Add Document — Revision Master" };
+export const metadata = { title: "Add Document — lostbae" };
 
 export default function NewDocumentPage() {
   return (

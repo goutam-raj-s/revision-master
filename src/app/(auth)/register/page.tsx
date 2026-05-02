@@ -106,7 +106,7 @@ function RegisterFormBase() {
           </div>
         </div>
         <CardTitle className="text-2xl font-bold text-forest-slate">Start learning smarter</CardTitle>
-        <CardDescription>Create your Revision Master account</CardDescription>
+        <CardDescription>Create your lostbae account</CardDescription>
       </CardHeader>
 
       <CardContent>

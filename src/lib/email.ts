@@ -12,9 +12,9 @@ const transport = nodemailer.createTransport({
 
 export async function sendPasswordResetEmail(to: string, resetUrl: string): Promise<void> {
   await transport.sendMail({
-    from: `"Revision Master" <${process.env.GMAIL_USER}>`,
+    from: `"lostbae" <${process.env.GMAIL_USER}>`,
     to,
-    subject: "Reset your Revision Master password",
+    subject: "Reset your lostbae password",
     html: `
       <!DOCTYPE html>
       <html>
@@ -28,7 +28,7 @@ export async function sendPasswordResetEmail(to: string, resetUrl: string): Prom
             </div>
 
             <p style="color: #4a5568; font-size: 15px; line-height: 1.6; margin: 0 0 24px;">
-              We received a request to reset the password for your Revision Master account. Click the button below to choose a new password.
+              We received a request to reset the password for your lostbae account. Click the button below to choose a new password.
             </p>
 
             <div style="text-align: center; margin: 32px 0;">

@@ -116,7 +116,7 @@ function LoginFormBase() {
           </div>
         </div>
         <CardTitle className="text-2xl font-bold text-forest-slate">Welcome back</CardTitle>
-        <CardDescription>Sign in to your Revision Master account</CardDescription>
+        <CardDescription>Sign in to your lostbae account</CardDescription>
       </CardHeader>
 
       <CardContent>

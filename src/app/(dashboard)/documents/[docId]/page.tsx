@@ -9,18 +9,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { DocumentDetailClient } from "@/components/features/document-detail-client";
-import dynamic from "next/dynamic";
+import { RichTextEditorDynamic as RichTextEditor } from "@/components/features/editor/RichTextEditorDynamic";
+import { PDFAnnotatorDynamic as PDFAnnotator } from "@/components/features/editor/PDFAnnotatorDynamic";
 import { formatDate, formatRelativeDate } from "@/lib/utils";
-
-const RichTextEditor = dynamic(
-  () => import("@/components/features/editor/RichTextEditor").then((mod) => mod.RichTextEditor),
-  { ssr: false, loading: () => <div className="h-64 animate-pulse bg-gray-100 rounded-md" /> }
-);
-
-const PDFAnnotator = dynamic(
-  () => import("@/components/features/editor/PDFAnnotator").then((mod) => mod.PDFAnnotator),
-  { ssr: false, loading: () => <div className="h-96 animate-pulse bg-gray-100 rounded-md" /> }
-);
 
 interface DocumentDetailPageProps {
   params: Promise<{ docId: string }>;

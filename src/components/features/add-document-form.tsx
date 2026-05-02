@@ -348,6 +348,7 @@ function LinkTab({
               onBlur={handleUrlBlur}
               placeholder="https://youtu.be/..."
               className="pl-9"
+              autoFocus
               required
             />
           </div>
@@ -394,6 +395,7 @@ function LinkTab({
               onBlur={handleUrlBlur}
               placeholder="https://... or Vimeo URL"
               className="pl-9"
+              autoFocus
               required
             />
           </div>
@@ -452,6 +454,7 @@ function LinkTab({
             onBlur={handleUrlBlur}
             placeholder="https://docs.google.com/... or video URL"
             className="pl-9"
+            autoFocus
             required
           />
           {fetchingTitle && (

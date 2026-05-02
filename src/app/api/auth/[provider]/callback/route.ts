@@ -78,14 +78,14 @@ async function fetchUserProfile(provider: Provider, accessToken: string): Promis
     return { id: data.id, email: data.email, name: data.name };
   } else if (provider === "github") {
     const userRes = await fetch("https://api.github.com/user", {
-      headers: { Authorization: `Bearer ${accessToken}`, "User-Agent": "RevisionMaster" },
+      headers: { Authorization: `Bearer ${accessToken}`, "User-Agent": "lostbae" },
     });
     const user = await userRes.json();
 
     let email: string = user.email;
     if (!email) {
       const emailsRes = await fetch("https://api.github.com/user/emails", {
-        headers: { Authorization: `Bearer ${accessToken}`, "User-Agent": "RevisionMaster" },
+        headers: { Authorization: `Bearer ${accessToken}`, "User-Agent": "lostbae" },
       });
       const emails: { email: string; primary: boolean; verified: boolean }[] = await emailsRes.json();
       const primary = emails.find((e) => e.primary && e.verified);

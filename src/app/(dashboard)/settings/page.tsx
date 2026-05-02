@@ -4,7 +4,7 @@ import { SettingsClient } from "@/components/features/settings-client";
 import { redirect } from "next/navigation";
 import { ObjectId } from "mongodb";
 
-export const metadata = { title: "Settings — Revision Master" };
+export const metadata = { title: "Settings — lostbae" };
 
 export default async function SettingsPage() {
   const user = await getSession();
