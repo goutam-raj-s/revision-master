@@ -28,3 +28,19 @@ The following is a curated list of modern UX convenience practices implemented a
 ## 5. Performance UX
 - **Background Prefetching**: High-priority navigation links (like "Add Document") use `prefetch={true}` so the next page is loaded in the background, making the transition instantaneous.
 - **Deferred Heavy UI (Code-splitting)**: Massive UI components like the `RichTextEditor` and `PDFAnnotator` are lazy-loaded, ensuring the rest of the page remains interactive immediately while the heavy chunks download in the background.
+- **Skeleton Loading**: We use Skeleton components instead of simple spinners for page transitions (e.g., Documents list) to reduce perceived load times and avoid Layout Shifts.
+
+## 6. Advanced Data Handling
+- **Paginated Tables**: For structured views like the documents list, we use proper `<Table>` layouts with bottom pagination, avoiding infinite-scroll jank and making large data sets manageable.
+- **Combo Filtering & Sorting**: Users can search by keywords, filter by media type, and sort (Newest, Oldest, A-Z, Z-A) simultaneously without losing context.
+
+## 7. Form & Input Polish
+- **Multi-step Forms**: The `AddDocumentForm` is separated into distinct phases (Upload -> Processing -> Metadata input) rather than overwhelming users with one giant form.
+- **Show/Hide Password**: Login and Register forms feature a toggleable eye icon so users can verify their input.
+- **Auto-save**: The `RichTextEditor` listens to user edits and automatically debounces saves (every 2 seconds) so no work is ever lost.
+- **File Upload with Preview**: The custom file uploader detects file types and renders a neat preview tile before submission.
+- **Clear Error Messages**: Form validation includes inline feedback, avoiding mystery submission failures.
+
+## 8. Improved Navigation
+- **Sticky Dashboard Header**: Core pages now have a sticky top header with dynamic breadcrumbs.
+- **Breadcrumbs**: Users can easily see their nested location (e.g., Dashboard > Documents > [Title]) and click back.

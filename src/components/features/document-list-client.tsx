@@ -20,6 +20,23 @@ import {
   DialogClose,
 } from "@/components/ui/dialog";
 import { toast } from "@/components/ui/toast";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 import { deleteDocumentAction, getUserDocuments } from "@/actions/documents";
 import type { Document } from "@/types";
 
@@ -50,10 +67,14 @@ export function DocumentListClient({
   const [mediaFilter, setMediaFilter] = React.useState<string | null>(null);
   const [deleteId, setDeleteId] = React.useState<string | null>(null);
   const [deleting, setDeleting] = React.useState(false);
+  const [currentPage, setCurrentPage] = React.useState(1);
+  const itemsPerPage = 10;
 
-  // Client-side search filter
+  const [sortOrder, setSortOrder] = React.useState<"newest" | "oldest" | "a-z" | "z-a">("newest");
+
+  // Client-side search filter & sort
   const filtered = React.useMemo(() => {
-    return docs.filter((doc) => {
+    let result = docs.filter((doc) => {
       const matchSearch =
         !search ||
         doc.title.toLowerCase().includes(search.toLowerCase()) ||
@@ -63,7 +84,33 @@ export function DocumentListClient({
       const matchMedia = !mediaFilter || docMedia === mediaFilter;
       return matchSearch && matchTag && matchMedia;
     });
-  }, [docs, search, tagFilter, mediaFilter]);
+
+    result.sort((a, b) => {
+      if (sortOrder === "newest") {
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      } else if (sortOrder === "oldest") {
+        return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+      } else if (sortOrder === "a-z") {
+        return a.title.localeCompare(b.title);
+      } else if (sortOrder === "z-a") {
+        return b.title.localeCompare(a.title);
+      }
+      return 0;
+    });
+
+    return result;
+  }, [docs, search, tagFilter, mediaFilter, sortOrder]);
+
+  // Reset to page 1 when filters change
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [search, tagFilter, mediaFilter]);
+
+  const totalPages = Math.ceil(filtered.length / itemsPerPage);
+  const paginatedDocs = filtered.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
 
   async function handleDelete() {
     if (!deleteId) return;
@@ -109,6 +156,17 @@ export function DocumentListClient({
           <option value="pdf">PDF</option>
           <option value="image">Image</option>
         </select>
+        <select
+          value={sortOrder}
+          onChange={(e) => setSortOrder(e.target.value as any)}
+          className="text-sm border border-border rounded-xl px-3 py-2 bg-surface text-forest-slate focus:outline-none focus:ring-2 focus:ring-state-today/40 min-w-[140px]"
+          aria-label="Sort Order"
+        >
+          <option value="newest">Newest First</option>
+          <option value="oldest">Oldest First</option>
+          <option value="a-z">A-Z</option>
+          <option value="z-a">Z-A</option>
+        </select>
       </div>
 
       {/* Tag chips */}
@@ -149,101 +207,180 @@ export function DocumentListClient({
 
       {/* Doc list */}
       {filtered.length === 0 ? (
-        <div className="py-12 text-center">
-          <BookOpen className="h-10 w-10 text-mossy-gray/30 mx-auto mb-3" />
-          <p className="text-sm text-mossy-gray">No documents match your search.</p>
-          <Link href="/documents/new">
-            <Button variant="outline" size="sm" className="mt-3">Add your first document</Button>
-          </Link>
-        </div>
+        docs.length === 0 ? (
+          <div className="py-16 text-center bg-surface border border-border rounded-xl flex flex-col items-center justify-center">
+            <div className="h-16 w-16 bg-state-today/10 text-state-today rounded-full flex items-center justify-center mb-4">
+              <BookOpen className="h-8 w-8" />
+            </div>
+            <h3 className="text-lg font-semibold text-forest-slate mb-1">Your library is empty</h3>
+            <p className="text-sm text-mossy-gray max-w-[250px] mb-5">
+              Start building your knowledge base by adding your first document.
+            </p>
+            <Link href="/documents/new">
+              <Button size="sm" className="rounded-full shadow-soft hover:shadow-hover">
+                Add your first document
+              </Button>
+            </Link>
+          </div>
+        ) : (
+          <div className="py-12 text-center bg-surface border border-border rounded-xl flex flex-col items-center justify-center">
+            <Search className="h-10 w-10 text-mossy-gray/30 mx-auto mb-3" />
+            <h3 className="text-md font-medium text-forest-slate mb-1">No matches found</h3>
+            <p className="text-sm text-mossy-gray">Try adjusting your search or filters.</p>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="mt-4 rounded-full"
+              onClick={() => {
+                setSearch("");
+                setTagFilter(null);
+                setMediaFilter("");
+              }}
+            >
+              Clear filters
+            </Button>
+          </div>
+        )
       ) : (
-        <div className="space-y-2">
-          {filtered.map((doc) => {
-            const status = STATUS_CONFIG[doc.status];
-            return (
-              <div
-                key={doc.id}
-                className="group flex items-center gap-3 bg-surface rounded-2xl border border-border px-4 py-3 shadow-card task-row-hover"
-              >
-                {/* Status dot */}
-                <SimpleTooltip content={status.label}>
-                  <div className={cn(
-                    "h-2 w-2 rounded-full shrink-0 cursor-default",
-                    doc.status === "revision" && "bg-state-today",
-                    doc.status === "first_visit" && "bg-state-upcoming",
-                    doc.status === "updated" && "bg-state-stale",
-                    doc.status === "completed" && "bg-state-completed",
-                  )} />
-                </SimpleTooltip>
-
-                {/* Title */}
-                <SimpleTooltip content={doc.title} side="bottom">
-                  <Link
-                    href={`/documents/${doc.id}`}
-                    className="flex-1 min-w-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-state-today/50 rounded"
-                  >
-                    <div className="font-serif font-medium text-forest-slate text-sm line-clamp-1 group-hover:text-state-today transition-colors">
-                      {doc.title}
-                    </div>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <span className="text-xs text-mossy-gray font-mono">
-                        {formatDate(doc.createdAt)}
-                      </span>
-                      {doc.parentDocId && (
-                        <span className="text-xs text-mossy-gray">· merged</span>
-                      )}
-                    </div>
-                  </Link>
-                </SimpleTooltip>
-
-                {/* Tags */}
-                <div className="hidden sm:flex items-center gap-1 shrink-0">
-                  {doc.tags.slice(0, 2).map((tag) => (
-                    <Badge key={tag} variant="tag" className="text-xs">#{tag}</Badge>
-                  ))}
-                </div>
-
-                {/* Status badge */}
-                <Badge variant={status.variant} className="shrink-0 hidden md:flex">
-                  {status.label}
-                </Badge>
-
-                {/* Difficulty */}
-                <Badge
-                  variant={doc.difficulty === "easy" ? "easy" : doc.difficulty === "medium" ? "medium" : "hard"}
-                  className="shrink-0 hidden lg:flex"
-                >
-                  {doc.difficulty}
-                </Badge>
-
-                {/* Actions */}
-                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <SimpleTooltip content="Study Document">
-                    <Link
-                      href={`/study/${doc.id}`}
-                      className="p-1.5 rounded-lg hover:bg-canvas text-mossy-gray hover:text-forest-slate transition-colors"
-                      aria-label="Study Document"
-                    >
-                      <BookOpen className="h-3.5 w-3.5" />
-                    </Link>
-                  </SimpleTooltip>
-                  <SimpleTooltip content="Delete permanently">
-                    <button
-                      onClick={() => setDeleteId(doc.id)}
-                      className="p-1.5 rounded-lg hover:bg-destructive/10 text-mossy-gray hover:text-destructive transition-colors"
-                      aria-label="Delete document"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
-                  </SimpleTooltip>
-                </div>
-
-                <Link href={`/documents/${doc.id}`} className="shrink-0 text-mossy-gray">
-                  <ChevronRight className="h-4 w-4" />
-                </Link>
-              </div>
-            );
-          })}
+        <div className="space-y-4">
+          <div className="bg-surface rounded-xl border border-border overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-canvas/50">
+                  <TableHead className="w-[40px]"></TableHead>
+                  <TableHead>Title</TableHead>
+                  <TableHead className="hidden sm:table-cell">Tags</TableHead>
+                  <TableHead className="hidden md:table-cell">Status</TableHead>
+                  <TableHead className="hidden lg:table-cell">Difficulty</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {paginatedDocs.map((doc) => {
+                  const status = STATUS_CONFIG[doc.status];
+                  return (
+                    <TableRow key={doc.id} className="group task-row-hover">
+                      <TableCell>
+                        <SimpleTooltip content={status.label}>
+                          <div className={cn(
+                            "h-2 w-2 rounded-full shrink-0 cursor-default",
+                            doc.status === "revision" && "bg-state-today",
+                            doc.status === "first_visit" && "bg-state-upcoming",
+                            doc.status === "updated" && "bg-state-stale",
+                            doc.status === "completed" && "bg-state-completed",
+                          )} />
+                        </SimpleTooltip>
+                      </TableCell>
+                      <TableCell>
+                        <Link href={`/documents/${doc.id}`} className="block">
+                          <div className="font-serif font-medium text-forest-slate text-sm line-clamp-1 group-hover:text-state-today transition-colors">
+                            {doc.title}
+                          </div>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <span className="text-xs text-mossy-gray font-mono">
+                              {formatDate(doc.createdAt)}
+                            </span>
+                            {doc.parentDocId && (
+                              <span className="text-xs text-mossy-gray">· merged</span>
+                            )}
+                          </div>
+                        </Link>
+                      </TableCell>
+                      <TableCell className="hidden sm:table-cell">
+                        <div className="flex items-center gap-1 flex-wrap">
+                          {doc.tags.slice(0, 2).map((tag) => (
+                            <Badge key={tag} variant="tag" className="text-[10px] px-1.5 py-0">#{tag}</Badge>
+                          ))}
+                        </div>
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell">
+                        <Badge variant={status.variant} className="text-[10px] px-1.5 py-0">
+                          {status.label}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="hidden lg:table-cell">
+                        <Badge
+                          variant={doc.difficulty === "easy" ? "easy" : doc.difficulty === "medium" ? "medium" : "hard"}
+                          className="text-[10px] px-1.5 py-0"
+                        >
+                          {doc.difficulty}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <SimpleTooltip content="Study Document">
+                            <Link
+                              href={`/study/${doc.id}`}
+                              className="p-1.5 rounded-lg hover:bg-canvas text-mossy-gray hover:text-forest-slate transition-colors"
+                            >
+                              <BookOpen className="h-3.5 w-3.5" />
+                            </Link>
+                          </SimpleTooltip>
+                          <SimpleTooltip content="Delete permanently">
+                            <button
+                              onClick={() => setDeleteId(doc.id)}
+                              className="p-1.5 rounded-lg hover:bg-destructive/10 text-mossy-gray hover:text-destructive transition-colors"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </SimpleTooltip>
+                          <Link href={`/documents/${doc.id}`} className="p-1.5 rounded-lg text-mossy-gray hover:text-forest-slate transition-colors">
+                            <ChevronRight className="h-4 w-4" />
+                          </Link>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
+          
+          {totalPages > 1 && (
+            <Pagination className="justify-end">
+              <PaginationContent>
+                <PaginationItem>
+                  <PaginationPrevious 
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                  />
+                </PaginationItem>
+                
+                {Array.from({ length: Math.min(5, totalPages) }).map((_, i) => {
+                  let pageNum = i + 1;
+                  if (totalPages > 5 && currentPage > 3) {
+                    pageNum = currentPage - 2 + i;
+                    if (pageNum > totalPages) pageNum = totalPages - (4 - i);
+                  }
+                  
+                  return (
+                    <PaginationItem key={pageNum}>
+                      <PaginationLink 
+                        isActive={currentPage === pageNum}
+                        onClick={() => setCurrentPage(pageNum)}
+                        className="cursor-pointer"
+                      >
+                        {pageNum}
+                      </PaginationLink>
+                    </PaginationItem>
+                  );
+                })}
+                
+                {totalPages > 5 && currentPage < totalPages - 2 && (
+                  <PaginationItem>
+                    <PaginationEllipsis />
+                  </PaginationItem>
+                )}
+                
+                <PaginationItem>
+                  <PaginationNext 
+                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                    className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                  />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
+          )}
         </div>
       )}
 

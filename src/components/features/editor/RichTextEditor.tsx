@@ -36,7 +36,24 @@ export function RichTextEditor({
 }: RichTextEditorProps) {
   const [isSaving, setIsSaving] = React.useState(false);
 
-  const editor = useEditor({
+  const saveTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleSave = React.useCallback(async (contentToSave: string) => {
+    if (!docId) return;
+    setIsSaving(true);
+    const result = await updateDocumentContentAction(docId, contentToSave);
+    if (result.success) {
+      toast("Changes saved automatically", { variant: "default" });
+      onSave?.(contentToSave);
+    } else {
+      toast(result.error || "Failed to save changes", { variant: "error" });
+    }
+    setIsSaving(false);
+  }, [docId, onSave]);
+
+
+
+  const editorConfig = {
     immediatelyRender: false,
     extensions: [
       StarterKit,
@@ -79,9 +96,21 @@ export function RichTextEditor({
     ],
     content: initialContent,
     editable: !readOnly,
-  });
+    onUpdate: ({ editor }: any) => {
+      if (readOnly) return;
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+      setIsSaving(true);
+      saveTimeoutRef.current = setTimeout(() => {
+        handleSave(editor.getHTML());
+      }, 2000); // Auto-save after 2 seconds of inactivity
+    },
+  };
 
-  const handleSave = async () => {
+  const editor = useEditor(editorConfig);
+
+  const handleManualSave = React.useCallback(async () => {
     if (!editor || !docId) return;
     setIsSaving(true);
     const content = editor.getHTML();
@@ -93,7 +122,7 @@ export function RichTextEditor({
       toast(result.error || "Failed to save changes", { variant: "error" });
     }
     setIsSaving(false);
-  };
+  }, [editor, docId, onSave]);
 
   const handleExportPDF = async () => {
     if (!editor) return;
@@ -183,7 +212,7 @@ export function RichTextEditor({
               <Download className="h-4 w-4" />
               Export PDF
             </Button>
-            <Button size="sm" onClick={handleSave} disabled={isSaving} className="gap-2">
+            <Button size="sm" onClick={handleManualSave} disabled={isSaving} className="gap-2">
               {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
               Save Changes
             </Button>

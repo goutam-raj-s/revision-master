@@ -93,6 +93,7 @@ type ToastItem = {
   title: string;
   description?: string;
   variant?: "default" | "success" | "error";
+  action?: React.ReactNode;
 };
 
 type ToastStore = {
@@ -113,7 +114,7 @@ export const toastStore = {
     const id = Math.random().toString(36).slice(2);
     toasts = [...toasts, { ...toast, id }];
     emitChange();
-    setTimeout(() => toastStore.remove(id), 4000);
+    setTimeout(() => toastStore.remove(id), 6000); // 6 seconds to give time for undo
   },
   remove(id: string) {
     toasts = toasts.filter((t) => t.id !== id);
@@ -125,7 +126,7 @@ export const toastStore = {
   },
 };
 
-export function toast(title: string, opts?: { description?: string; variant?: "default" | "success" | "error" }) {
+export function toast(title: string, opts?: { description?: string; variant?: "default" | "success" | "error"; action?: React.ReactNode }) {
   toastStore.add({ title, ...opts });
 }
 
@@ -141,14 +142,21 @@ export function Toaster() {
     <ToastProvider>
       {items.map((item) => (
         <Toast key={item.id} variant={item.variant} open>
-          <div className="flex items-start gap-2">
-            {item.variant === "success" && <CheckCircle2 className="h-4 w-4 mt-0.5 shrink-0" />}
-            {item.variant === "error" && <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />}
-            {(!item.variant || item.variant === "default") && <Info className="h-4 w-4 mt-0.5 shrink-0 text-mossy-gray" />}
-            <div>
-              <ToastTitle>{item.title}</ToastTitle>
-              {item.description && <ToastDescription>{item.description}</ToastDescription>}
+          <div className="flex items-center gap-4 w-full">
+            <div className="flex items-start gap-2 flex-1">
+              {item.variant === "success" && <CheckCircle2 className="h-4 w-4 mt-0.5 shrink-0" />}
+              {item.variant === "error" && <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />}
+              {(!item.variant || item.variant === "default") && <Info className="h-4 w-4 mt-0.5 shrink-0 text-mossy-gray" />}
+              <div>
+                <ToastTitle>{item.title}</ToastTitle>
+                {item.description && <ToastDescription>{item.description}</ToastDescription>}
+              </div>
             </div>
+            {item.action && (
+              <div className="shrink-0">
+                {item.action}
+              </div>
+            )}
           </div>
           <ToastClose onClick={() => toastStore.remove(item.id)} />
         </Toast>
