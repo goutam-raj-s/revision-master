@@ -37,6 +37,8 @@ export function RichTextEditor({
   const [isSaving, setIsSaving] = React.useState(false);
 
   const saveTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Store editor ref so keyboard handler can access it
+  const editorRef = React.useRef<ReturnType<typeof useEditor>>(null);
 
   const handleSave = React.useCallback(async (contentToSave: string) => {
     if (!docId) return;
@@ -50,6 +52,22 @@ export function RichTextEditor({
     }
     setIsSaving(false);
   }, [docId, onSave]);
+
+  // ⌘S / Ctrl+S → save
+  React.useEffect(() => {
+    if (readOnly) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "s") {
+        e.preventDefault();
+        const ed = editorRef.current;
+        if (ed && docId) {
+          handleSave(ed.getHTML());
+        }
+      }
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [readOnly, docId, handleSave]);
 
 
 
@@ -109,6 +127,8 @@ export function RichTextEditor({
   };
 
   const editor = useEditor(editorConfig);
+  // Keep editorRef in sync so Ctrl+S handler always has the latest editor
+  React.useEffect(() => { editorRef.current = editor; }, [editor]);
 
   const handleManualSave = React.useCallback(async () => {
     if (!editor || !docId) return;
@@ -212,9 +232,10 @@ export function RichTextEditor({
               <Download className="h-4 w-4" />
               Export PDF
             </Button>
-            <Button size="sm" onClick={handleManualSave} disabled={isSaving} className="gap-2">
+            <Button size="sm" onClick={handleManualSave} disabled={isSaving} className="gap-2" title="Save (⌘S / Ctrl+S)">
               {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-              Save Changes
+              Save
+              <kbd className="ml-1 px-1 py-0.5 rounded text-[10px] font-mono bg-white/20 text-white/60">⌘S</kbd>
             </Button>
           </div>
         </div>

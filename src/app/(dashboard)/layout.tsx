@@ -6,8 +6,10 @@ import { AudioEngine } from "@/components/features/audio-engine";
 import { MiniPlayer } from "@/components/features/mini-player";
 import { ExpandedPlayer } from "@/components/features/expanded-player";
 import { DashboardHeader } from "@/components/features/dashboard-header";
+import { GlobalFAB } from "@/components/features/global-fab";
 import { getUserDocuments, getAllUserTags } from "@/actions/documents";
 import { TooltipProvider } from "@/components/ui/tooltip";
+
 
 export default async function DashboardLayout({
   children,
@@ -34,6 +36,7 @@ export default async function DashboardLayout({
           </div>
         </main>
         <CommandPalette documents={docs} tags={tags} />
+        <GlobalFAB />
         <AudioEngine />
         <MiniPlayer />
         <ExpandedPlayer />

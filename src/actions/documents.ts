@@ -283,6 +283,42 @@ export async function deleteDocumentAction(docId: string): Promise<ActionResult>
   return { success: true };
 }
 
+export async function bulkDeleteDocumentsAction(docIds: string[]): Promise<ActionResult> {
+  const user = await requireAuth();
+  if (!docIds.length) return { success: false, error: "No documents selected." };
+
+  const docs = await getDocumentsCollection();
+  const reps = await getRepetitionsCollection();
+  const notes = await getNotesCollection();
+  const terms = await getTermsCollection();
+
+  const objectIds = docIds.map((id) => new ObjectId(id));
+
+  // Delete Cloudinary assets for any file-backed docs
+  const docsToDelete = await docs
+    .find({ _id: { $in: objectIds }, userId: new ObjectId(user.id) })
+    .toArray();
+
+  for (const doc of docsToDelete) {
+    if (doc.cloudinaryPublicId) {
+      try {
+        await deleteCloudinaryAsset(doc.cloudinaryPublicId);
+      } catch (err) {
+        console.error("[bulkDeleteDocumentsAction] Cloudinary error (continuing):", err);
+      }
+    }
+  }
+
+  await docs.deleteMany({ _id: { $in: objectIds }, userId: new ObjectId(user.id) });
+  await reps.deleteMany({ docId: { $in: objectIds } });
+  await notes.deleteMany({ docId: { $in: objectIds } });
+  await terms.deleteMany({ docId: { $in: objectIds } });
+
+  revalidatePath("/documents");
+  revalidatePath("/dashboard");
+  return { success: true };
+}
+
 export async function rescheduleDocAction(
   docId: string,
   daysFromNow: number
