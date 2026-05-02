@@ -5,6 +5,7 @@ import { CommandPalette } from "@/components/features/command-palette";
 import { AudioEngine } from "@/components/features/audio-engine";
 import { MiniPlayer } from "@/components/features/mini-player";
 import { ExpandedPlayer } from "@/components/features/expanded-player";
+import { DashboardHeader } from "@/components/features/dashboard-header";
 import { getUserDocuments, getAllUserTags } from "@/actions/documents";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
@@ -26,8 +27,9 @@ export default async function DashboardLayout({
     <TooltipProvider delayDuration={300}>
       <div className="flex h-screen overflow-hidden">
         <Sidebar user={user} />
-        <main className="flex-1 overflow-y-auto bg-canvas pb-16">
-          <div className="max-w-screen-2xl mx-auto px-4 md:px-8 py-6 md:py-8">
+        <main className="flex-1 overflow-y-auto bg-canvas pb-16 flex flex-col">
+          <DashboardHeader />
+          <div className="max-w-screen-2xl mx-auto px-4 md:px-8 py-6 md:py-8 w-full flex-1">
             {children}
           </div>
         </main>
