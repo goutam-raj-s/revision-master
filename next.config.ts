@@ -2,6 +2,9 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   experimental: {
+    staleTimes: {
+      dynamic: 60,
+    },
     serverActions: {
       bodySizeLimit: "10mb",
     },
