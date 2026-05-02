@@ -5,7 +5,7 @@ workflowType: 'testarch-test-design-handoff'
 sourceWorkflow: 'testarch-test-design'
 generatedBy: 'TEA Master Test Architect'
 generatedAt: '2026-04-11T15:52:00+05:30'
-projectName: 'Revision-Master'
+projectName: 'lostbae'
 ---
 
 # TEA → BMAD Integration Handoff

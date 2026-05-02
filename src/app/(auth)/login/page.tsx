@@ -4,7 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useActionState, Suspense } from "react";
-import { Brain, ArrowRight, Eye, EyeOff } from "lucide-react";
+import { HeartHandshake, ArrowRight, Eye, EyeOff } from "lucide-react";
 import { loginAction } from "@/actions/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -112,7 +112,7 @@ function LoginFormBase() {
       <CardHeader className="text-center pb-2">
         <div className="flex justify-center mb-4">
           <div className="h-12 w-12 rounded-2xl bg-state-today flex items-center justify-center shadow-soft">
-            <Brain className="h-6 w-6 text-white" />
+            <HeartHandshake className="h-6 w-6 text-white" />
           </div>
         </div>
         <CardTitle className="text-2xl font-bold text-forest-slate">Welcome back</CardTitle>

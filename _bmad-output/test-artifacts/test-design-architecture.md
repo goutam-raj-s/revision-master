@@ -6,14 +6,14 @@ workflowType: 'testarch-test-design'
 inputDocuments: ['planning-artifacts/prd.md', 'planning-artifacts/architecture.md']
 ---
 
-# Test Design for Architecture: Revision-Master
+# Test Design for Architecture: lostbae
 
 **Purpose:** Architectural concerns, testability gaps, and NFR requirements for review by Architecture/Dev teams. Serves as a contract between QA and Engineering on what must be addressed before test development begins.
 
 **Date:** 2026-04-11
 **Author:** TEA Master Test Architect
 **Status:** Architecture Review Pending
-**Project:** Revision-Master
+**Project:** lostbae
 **PRD Reference:** `_bmad-output/planning-artifacts/prd.md`
 **ADR Reference:** `_bmad-output/planning-artifacts/architecture.md`
 

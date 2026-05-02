@@ -4,11 +4,11 @@ inputDocuments: ['prd.md', 'architecture.md', 'ux-design-specification.md']
 workflowType: 'create-epics-and-stories'
 ---
 
-# Revision-Master - Epic Breakdown
+# lostbae - Epic Breakdown
 
 ## Overview
 
-This document provides the complete epic and story breakdown for Revision-Master, decomposing the requirements from the PRD, UX Design if it exists, and Architecture requirements into implementable stories.
+This document provides the complete epic and story breakdown for lostbae, decomposing the requirements from the PRD, UX Design if it exists, and Architecture requirements into implementable stories.
 
 ## Requirements Inventory
 
@@ -147,7 +147,7 @@ Users can register, log in, and access a secure personalized dashboard. Admin us
 ### Story 1.1: Initialize Project from Starter Template
 
 As a **developer**,
-I want to initialize the Revision-Master project using the official Next.js starter with TypeScript, Tailwind, ESLint, App Router, and src directory,
+I want to initialize the lostbae project using the official Next.js starter with TypeScript, Tailwind, ESLint, App Router, and src directory,
 So that I have a production-ready foundation optimized for Vercel deployment.
 
 **Acceptance Criteria:**

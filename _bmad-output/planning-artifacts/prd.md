@@ -1,8 +1,8 @@
 ---
 stepsCompleted: ['step-01-init.md', 'step-02-discovery.md', 'step-02b-vision.md', 'step-02c-executive-summary.md', 'step-03-success.md', 'step-04-journeys.md', 'step-05-domain.md', 'step-06-innovation.md', 'step-07-project-type.md', 'step-08-scoping.md', 'step-09-functional.md', 'step-10-nonfunctional.md', 'step-11-polish.md', 'step-12-complete.md']
 inputDocuments: [
-  '/Users/gautam/Desktop/Projects/Revision-Master/_bmad-output/brainstorming/brainstorming-session-2026-04-11-11-52.md',
-  '/Users/gautam/Desktop/Projects/Revision-Master/_bmad-output/planning-artifacts/product-brief-Revision-Master.md'
+  '/Users/gautam/Desktop/Projects/lostbae/_bmad-output/brainstorming/brainstorming-session-2026-04-11-11-52.md',
+  '/Users/gautam/Desktop/Projects/lostbae/_bmad-output/planning-artifacts/product-brief-lostbae.md'
 ]
 briefCount: 1
 researchCount: 0
@@ -16,14 +16,14 @@ classification:
   projectContext: Greenfield
 ---
 
-# Product Requirements Document - Revision-Master
+# Product Requirements Document - lostbae
 
 **Author:** Gautam
 **Date:** 2026-04-11
 
 ## Executive Summary
 
-Learning isn't the problem; remembering is. Revision-Master acts as an active intelligence layer that transforms scattered, unstructured Google Docs into a structured, revisable knowledge graph. Instead of re-learning the same topics or losing track of past insights, users link their public Google Docs to the platform. By leveraging spaced repetition, intelligent tag management, and AI-driven terminology generation via the Gemini API, the platform schedules learning reviews at optimal intervals—ensuring that knowledge consolidates effectively without confining the user to a walled-garden application.
+Learning isn't the problem; remembering is. lostbae acts as an active intelligence layer that transforms scattered, unstructured Google Docs into a structured, revisable knowledge graph. Instead of re-learning the same topics or losing track of past insights, users link their public Google Docs to the platform. By leveraging spaced repetition, intelligent tag management, and AI-driven terminology generation via the Gemini API, the platform schedules learning reviews at optimal intervals—ensuring that knowledge consolidates effectively without confining the user to a walled-garden application.
 
 ## Project Classification
 
@@ -31,6 +31,10 @@ Learning isn't the problem; remembering is. Revision-Master acts as an active in
 - **Domain:** EdTech / Personal Knowledge Management
 - **Complexity:** Medium
 - **Context:** Greenfield
+
+## Brand Identity & Logo
+- **Brand Concept:** "lostbae" is designed to act as a supportive buddy or companion for the user's learning journey, taking care of both boys and girls. The branding incorporates a touch of romanticizing (a dedicated, caring companion) while clearly demonstrating its functional purpose.
+- **Logo Execution:** The logo text "lostbae" features no full stop. It is accompanied by a `HeartHandshake` icon to represent the dual nature of partnership/care and functional assistance.
 
 ## Success Criteria
 
@@ -110,7 +114,7 @@ Success for the platform is measured by engagement and consolidation:
 
 ### 1. Primary User — Capturing the Brain-Dump (Success Path)
 **Persona:** Alex, a continuous-learning software engineer.
-**Opening Scene:** Alex just read an article on Redis caching strategies and dumped raw notes into a new public Google Doc. He pastes the URL into Revision-Master.
+**Opening Scene:** Alex just read an article on Redis caching strategies and dumped raw notes into a new public Google Doc. He pastes the URL into lostbae.
 **Rising Action:** The system fetches the document title ("Redis Cache Patterns") and asks, "When should we first review this?" Alex selects "+2 days", adds the tags "Backend" and "Redis", and sets difficulty to "Medium".
 **Climax:** Two days later, "Redis" appears at the top of the "Pending Revision" queue. Alex opens it, highlights "Cache Stampede", and defines it via manual entry or Gemini API. The term is saved to his independent DB.
 **Resolution:** Alex marks the revision as "Completed," scheduling the next review for "+7 days." The doc is a permanent node in the personalized learning graph.
@@ -118,7 +122,7 @@ Success for the platform is measured by engagement and consolidation:
 ### 2. Primary User — The Consolidation Moment (Edge Case)
 **Persona:** Alex (5 months later).
 **Opening Scene:** Forgetting about the original Redis document, Alex learns something new about Redis and creates a brand new Google Doc.
-**Rising Action:** Alex pastes the new URL into Revision-Master. The semantic engine analyzes the title and contents against historical docs.
+**Rising Action:** Alex pastes the new URL into lostbae. The semantic engine analyzes the title and contents against historical docs.
 **Climax:** The UI flags a warning: *"You already have a document strongly related to this topic: 'Redis Cache Patterns' (created 5 months ago)."*
 **Resolution:** Alex clicks "Merge." The system groups the new doc under the original "Redis Cache Patterns" node, consolidating new learnings organically without overwriting files.
 
@@ -206,7 +210,7 @@ Success for the platform is measured by engagement and consolidation:
 ## Innovation & Novel Patterns
 
 ### Strategic Value Drivers
-1. **BYOS (Bring Your Own Storage) Spaced Repetition:** Unlike competitors (RemNote, Obsidan, Roam) that tightly couple learning intervals to proprietary flashcard containers, Revision-Master empowers spaced repetition workflows *over* natural, unstructured external assets.
+1. **BYOS (Bring Your Own Storage) Spaced Repetition:** Unlike competitors (RemNote, Obsidan, Roam) that tightly couple learning intervals to proprietary flashcard containers, lostbae empowers spaced repetition workflows *over* natural, unstructured external assets.
 2. **Pre-Emptive Consolidation Pipeline:** Running document-scale deduplication and theme matching strictly upstream upon creation protects the user from duplicating long-form notes prematurely—an intelligence leap over single-flashcard duplicate checks.
 3. **In-Context AI Extraction:** Marrying natural document review with instantly generated AI definitions prevents passive-reading syndrome by converting highlights directly into indexable knowledge graphs.
 
@@ -325,7 +329,7 @@ Extend the ingestion pipeline to accept any standard file type. Files are upload
 ### Feature C: YouTube Study Route — Watch & Annotate
 
 #### Background & Motivation
-YouTube is among the most-used learning platforms globally. Users regularly watch tutorials, lectures, and conference talks as part of their learning workflow. However, notes taken during YouTube sessions are scattered across external tools. Revision-Master should offer a native, distraction-reduced YouTube study environment where video and note-taking coexist, with notes stored in the DB and linked to the video for future retrieval and revision scheduling.
+YouTube is among the most-used learning platforms globally. Users regularly watch tutorials, lectures, and conference talks as part of their learning workflow. However, notes taken during YouTube sessions are scattered across external tools. lostbae should offer a native, distraction-reduced YouTube study environment where video and note-taking coexist, with notes stored in the DB and linked to the video for future retrieval and revision scheduling.
 
 #### Design Philosophy
 The video itself is **never stored** — only the YouTube URL and a reference ID are persisted. Notes, tags, timestamps, and revision schedules are stored entirely in the application DB and are the primary knowledge artifact.

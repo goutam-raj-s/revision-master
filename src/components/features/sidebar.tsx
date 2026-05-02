@@ -11,7 +11,7 @@ import {
   LogOut,
   Menu,
   X,
-  Brain,
+  HeartHandshake,
   Tag,
   ChevronRight,
   CirclePlay,
@@ -46,10 +46,10 @@ export function Sidebar({ user }: SidebarProps) {
       {/* Logo */}
       <Link href="/dashboard" className="flex items-center gap-2 px-4 py-5 border-b border-border transition-opacity hover:opacity-80">
         <div className="h-7 w-7 rounded-xl bg-state-today flex items-center justify-center shrink-0">
-          <Brain className="h-4 w-4 text-white" />
+          <HeartHandshake className="h-4 w-4 text-white" />
         </div>
         <span className="font-bold text-forest-slate text-xl tracking-tighter lowercase">
-          lost<span className="text-state-today opacity-80">bae</span><span className="text-state-today">.</span>
+          lost<span className="text-state-today opacity-80">bae</span>
         </span>
       </Link>
 

@@ -11,7 +11,7 @@ context: []
 
 ## Intent
 
-**Problem:** Users watch YouTube tutorials and lectures as a core part of their learning but have no way to capture timestamped notes alongside the video inside Revision-Master, leaving that knowledge scattered in external tools and disconnected from the revision queue.
+**Problem:** Users watch YouTube tutorials and lectures as a core part of their learning but have no way to capture timestamped notes alongside the video inside lostbae, leaving that knowledge scattered in external tools and disconnected from the revision queue.
 
 **Approach:** Add a `/study/youtube` route with a resizable split-pane layout: YouTube IFrame player on the left, note-taking panel with timestamp capture on the right. Notes (with clickable `[MM:SS]` markers) and metadata are stored in a new `youtube_sessions` MongoDB collection. The video itself is never stored. Sessions integrate into the spaced-repetition task queue identically to documents. Video metadata (title, thumbnail) fetched via YouTube oEmbed (no API key required).
 

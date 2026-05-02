@@ -1,12 +1,12 @@
 lastStep: 14
 stepsCompleted: ['step-01-init.md', 'step-02-discovery.md', 'step-03-core-experience.md', 'step-04-emotional-response.md', 'step-05-inspiration.md', 'step-06-design-system.md', 'step-07-defining-experience.md', 'step-08-visual-foundation.md', 'step-09-design-directions.md', 'step-10-user-journeys.md', 'step-11-component-strategy.md', 'step-12-ux-patterns.md', 'step-13-responsive-accessibility.md', 'step-14-complete.md']
 inputDocuments: [
-  '/Users/gautam/Desktop/Projects/Revision-Master/_bmad-output/planning-artifacts/prd.md',
-  '/Users/gautam/Desktop/Projects/Revision-Master/_bmad-output/planning-artifacts/product-brief-Revision-Master.md'
+  '/Users/gautam/Desktop/Projects/lostbae/_bmad-output/planning-artifacts/prd.md',
+  '/Users/gautam/Desktop/Projects/lostbae/_bmad-output/planning-artifacts/product-brief-lostbae.md'
 ]
 ---
 
-# UX Design Specification Revision-Master
+# UX Design Specification lostbae
 
 **Author:** Gautam
 **Date:** 2026-04-11
@@ -17,12 +17,16 @@ inputDocuments: [
 
 ### Project Vision
 
-Revision-Master acts as an active intelligence layer for unstructured Google Docs, providing a "Bring Your Own Storage" spaced-repetition workflow. It transforms linear brain-dumps into structured, interconnected knowledge graphs by automatically scheduling reviews, managing custom tags, and utilizing Gemini AI terminology generation, all to eliminate redundant learning loops.
+lostbae acts as an active intelligence layer for unstructured Google Docs, providing a "Bring Your Own Storage" spaced-repetition workflow. It transforms linear brain-dumps into structured, interconnected knowledge graphs by automatically scheduling reviews, managing custom tags, and utilizing Gemini AI terminology generation, all to eliminate redundant learning loops.
 
 ### Target Users
 
 - **Primary Persona:** Software engineers, continuous learners, researchers, and students.
 - **Context:** Tech-savvy users who natively capture insights in Google Docs but suffer from "knowledge fragmentation" and loss of recall over time.
+
+### Brand Identity & Logo
+- **Brand Concept:** "lostbae" reflects the concept of a buddy or companion for many things, taking care of both boys and girls (with a touch of romanticizing as well as demonstrating a clear purpose).
+- **Logo Execution:** No full stop. Represented by a `HeartHandshake` icon to symbolize the dual nature of partnership/care and functional assistance.
 
 ### Key Design Challenges
 
@@ -61,7 +65,7 @@ The defining core action is the rapid, satisfying clearance of the daily "Pendin
 
 ### Experience Principles
 
-- **Frictionless Ingestion:** Imposing minimal friction between having an idea in a Google Doc and tracking it in Revision-Master.
+- **Frictionless Ingestion:** Imposing minimal friction between having an idea in a Google Doc and tracking it in lostbae.
 - **Rewarding Clearance:** Elevating the mundane task of revision into a visually satisfying, dopamine-releasing habit driven by the premium, light-themed aesthetic.
 - **Clear Information Hierarchy:** Ensuring the embedded external content (Google Doc iframes) and our metadata (tags, notes, Gemini definitions) never fight for visual supremacy.
 
@@ -169,7 +173,7 @@ We will utilize a "Themeable/Custom" hybrid approach. Instead of a rigid, establ
 
 ### Defining Experience
 
-The signature moment of Revision-Master is the **"Inbox Zero" Clearance Loop intertwined with Pre-emptive Similarity Warnings**. If an engineer dumps a link and instantly gets told, "Wait, you already wrote about Redis 5 months ago," they will instantly realize the product's value. The second defining action is clearing the daily scheduled review queue with a sense of fluid speed, knowing the mathematical repetition schedule is handled flawlessly behind the scenes.
+The signature moment of lostbae is the **"Inbox Zero" Clearance Loop intertwined with Pre-emptive Similarity Warnings**. If an engineer dumps a link and instantly gets told, "Wait, you already wrote about Redis 5 months ago," they will instantly realize the product's value. The second defining action is clearing the daily scheduled review queue with a sense of fluid speed, knowing the mathematical repetition schedule is handled flawlessly behind the scenes.
 
 ### User Mental Model
 
@@ -372,7 +376,7 @@ We will leverage shadcn/ui for accessible, unstyled primitives to ensure rapid d
 ## Responsive Design & Accessibility
 
 ### Responsive Strategy
-- **Desktop-First Execution:** The core value of Revision-Master (side-by-side Google Doc embedding and tagging) inherently demands a wide viewport. The primary design effort will focus on Desktop (`1024px+`) and Ultrawide monitors (with constrained `max-w-screen-2xl` containers to prevent extreme stretching).
+- **Desktop-First Execution:** The core value of lostbae (side-by-side Google Doc embedding and tagging) inherently demands a wide viewport. The primary design effort will focus on Desktop (`1024px+`) and Ultrawide monitors (with constrained `max-w-screen-2xl` containers to prevent extreme stretching).
 - **Mobile Degradation:** On mobile (`< 768px`), the app degrades gracefully into a linear read-out. The "Split Screen" becomes a stacked view: Tap to open the Google Doc link externally, or swipe to mark complete based on title/notes alone. 
 
 ### Breakpoint Strategy

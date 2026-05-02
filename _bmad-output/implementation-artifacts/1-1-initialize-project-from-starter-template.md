@@ -5,7 +5,7 @@ Status: done
 ## Story
 
 As a **developer**,
-I want to initialize the Revision-Master project using the official Next.js starter with TypeScript, Tailwind, ESLint, App Router, and src directory,
+I want to initialize the lostbae project using the official Next.js starter with TypeScript, Tailwind, ESLint, App Router, and src directory,
 so that I have a production-ready foundation optimized for Vercel deployment.
 
 ## Acceptance Criteria

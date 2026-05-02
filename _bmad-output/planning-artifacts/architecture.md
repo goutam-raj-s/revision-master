@@ -1,8 +1,8 @@
 ---
 stepsCompleted: [1, 2, 3, 4, 5, 6, 7, 8]
-inputDocuments: ['prd.md', 'product-brief-Revision-Master.md', 'ux-design-specification.md']
+inputDocuments: ['prd.md', 'product-brief-lostbae.md', 'ux-design-specification.md']
 workflowType: 'architecture'
-project_name: 'Revision-Master'
+project_name: 'lostbae'
 user_name: 'Gautam'
 date: '2026-04-11'
 ---

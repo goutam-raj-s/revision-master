@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { useActionState, Suspense } from "react";
-import { Brain, ArrowRight, Eye, EyeOff } from "lucide-react";
+import { HeartHandshake, ArrowRight, Eye, EyeOff } from "lucide-react";
 import { resetPasswordAction } from "@/actions/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,7 +28,7 @@ function ResetPasswordForm() {
         <CardHeader className="text-center pb-2">
           <div className="flex justify-center mb-4">
             <div className="h-12 w-12 rounded-2xl bg-destructive/80 flex items-center justify-center shadow-soft">
-              <Brain className="h-6 w-6 text-white" />
+              <HeartHandshake className="h-6 w-6 text-white" />
             </div>
           </div>
           <CardTitle className="text-2xl font-bold text-forest-slate">Invalid reset link</CardTitle>
@@ -54,7 +54,7 @@ function ResetPasswordForm() {
         <CardHeader className="text-center pb-2">
           <div className="flex justify-center mb-4">
             <div className="h-12 w-12 rounded-2xl bg-destructive/80 flex items-center justify-center shadow-soft">
-              <Brain className="h-6 w-6 text-white" />
+              <HeartHandshake className="h-6 w-6 text-white" />
             </div>
           </div>
           <CardTitle className="text-2xl font-bold text-forest-slate">Link expired</CardTitle>
@@ -80,7 +80,7 @@ function ResetPasswordForm() {
         <CardHeader className="text-center pb-2">
           <div className="flex justify-center mb-4">
             <div className="h-12 w-12 rounded-2xl bg-state-today flex items-center justify-center shadow-soft">
-              <Brain className="h-6 w-6 text-white" />
+              <HeartHandshake className="h-6 w-6 text-white" />
             </div>
           </div>
           <CardTitle className="text-2xl font-bold text-forest-slate">Password updated!</CardTitle>
@@ -104,7 +104,7 @@ function ResetPasswordForm() {
       <CardHeader className="text-center pb-2">
         <div className="flex justify-center mb-4">
           <div className="h-12 w-12 rounded-2xl bg-state-today flex items-center justify-center shadow-soft">
-            <Brain className="h-6 w-6 text-white" />
+            <HeartHandshake className="h-6 w-6 text-white" />
           </div>
         </div>
         <CardTitle className="text-2xl font-bold text-forest-slate">Set new password</CardTitle>

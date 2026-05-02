@@ -6,14 +6,14 @@ workflowType: 'testarch-test-design'
 inputDocuments: ['planning-artifacts/prd.md']
 ---
 
-# Test Design for QA: Revision-Master
+# Test Design for QA: lostbae
 
 **Purpose:** Test execution recipe for QA team. Defines what to test, how to test it, and what QA needs from other teams.
 
 **Date:** 2026-04-11
 **Author:** TEA Master Test Architect
 **Status:** Draft
-**Project:** Revision-Master
+**Project:** lostbae
 
 ---
 
