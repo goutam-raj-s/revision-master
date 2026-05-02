@@ -17,6 +17,7 @@ import {
   CirclePlay,
   Music2,
   Film,
+  GraduationCap,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -31,6 +32,7 @@ const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/documents", label: "Documents", icon: BookOpen },
   { href: "/study/youtube", label: "YouTube", icon: CirclePlay },
+  { href: "/study/udemy", label: "Udemy", icon: GraduationCap },
   { href: "/music", label: "Music", icon: Music2 },
   { href: "/video", label: "Video", icon: Film },
   { href: "/terminology", label: "Terminology", icon: BookText },

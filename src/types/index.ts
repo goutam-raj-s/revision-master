@@ -227,6 +227,35 @@ export interface YoutubeBookmark {
   updatedAt: string;
 }
 
+// ─── Udemy Sessions ──────────────────────────────────────────────────────────────
+
+export interface DbUdemySession {
+  _id: ObjectId;
+  userId: ObjectId;
+  courseSlug: string;
+  lectureId?: string;
+  courseTitle: string;
+  courseUrl: string;
+  notes: string;
+  tags: string[];
+  difficulty: Difficulty;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface UdemySession {
+  id: string;
+  courseSlug: string;
+  lectureId?: string;
+  courseTitle: string;
+  courseUrl: string;
+  notes: string;
+  tags: string[];
+  difficulty: Difficulty;
+  createdAt: string;
+  updatedAt: string;
+}
+
 // ─── Task Queue ────────────────────────────────────────────────────────────────
 
 export interface TaskItem {
