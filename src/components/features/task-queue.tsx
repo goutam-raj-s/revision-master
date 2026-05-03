@@ -2,13 +2,11 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { Search, X } from "lucide-react";
 import { TaskRow, YoutubeTaskRow } from "./task-row";
 import { GlassModal } from "./glass-modal";
 import { InboxZero } from "./inbox-zero";
 import { completeReviewAction, rescheduleDocAction } from "@/actions/documents";
 import { toast } from "@/components/ui/toast";
-import { Input } from "@/components/ui/input";
 import type { TaskItem, TaskFilter } from "@/types";
 import type { AnyTaskItem } from "@/actions/queue";
 
@@ -29,7 +27,6 @@ export function TaskQueue({ initialTasks, filter }: TaskQueueProps) {
   const [tasks, setTasks] = React.useState(initialTasks);
   const [expandedId, setExpandedId] = React.useState<string | null>(null);
   const [activeTask, setActiveTask] = React.useState<TaskItem | null>(null);
-  const [search, setSearch] = React.useState("");
 
   const VALID_SORTS = ["newest", "oldest", "a-z", "z-a", "last-modified"] as const;
   type SortOrder = typeof VALID_SORTS[number];
@@ -47,17 +44,8 @@ export function TaskQueue({ initialTasks, filter }: TaskQueueProps) {
     setTasks(initialTasks);
   }, [initialTasks]);
 
-  const filteredAndSortedTasks = React.useMemo(() => {
-    const result = tasks.filter((task) => {
-      const title = "source" in task ? task.session.videoTitle : task.doc.title;
-      const tags = "source" in task ? task.session.tags : task.doc.tags;
-      
-      const matchSearch =
-        !search ||
-        title.toLowerCase().includes(search.toLowerCase()) ||
-        tags.some((t) => t.toLowerCase().includes(search.toLowerCase()));
-      return matchSearch;
-    });
+  const sortedTasks = React.useMemo(() => {
+    const result = [...tasks];
 
     result.sort((a, b) => {
       const aTitle = "source" in a ? a.session.videoTitle : a.doc.title;
@@ -76,7 +64,7 @@ export function TaskQueue({ initialTasks, filter }: TaskQueueProps) {
     });
 
     return result;
-  }, [tasks, search, sortOrder]);
+  }, [tasks, sortOrder]);
 
   // Keyboard shortcut: press E to complete focused task (doc tasks only)
   React.useEffect(() => {
@@ -109,24 +97,7 @@ export function TaskQueue({ initialTasks, filter }: TaskQueueProps) {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-mossy-gray" />
-          <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search titles and tags…"
-            className="pl-9"
-          />
-          {search && (
-            <button
-              onClick={() => setSearch("")}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-mossy-gray hover:text-forest-slate"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          )}
-        </div>
+      <div className="flex justify-end gap-3">
         <select
           value={sortOrder}
           onChange={(e) => setSortOrder(e.target.value as SortOrder)}
@@ -142,16 +113,16 @@ export function TaskQueue({ initialTasks, filter }: TaskQueueProps) {
       </div>
 
       <div className="space-y-2.5">
-        {filteredAndSortedTasks.length === 0 ? (
+        {sortedTasks.length === 0 ? (
           <InboxZero
             nextDate={
-              filter === "today" && search === ""
+              filter === "today"
                 ? "No upcoming reviews found"
                 : undefined
             }
           />
         ) : (
-          filteredAndSortedTasks.map((task) => {
+          sortedTasks.map((task) => {
             const id = getTaskId(task);
             if ("source" in task && task.source === "youtube") {
               return (
