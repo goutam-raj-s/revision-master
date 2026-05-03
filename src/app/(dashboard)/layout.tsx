@@ -30,7 +30,7 @@ export default async function DashboardLayout({
       <div className="flex h-screen overflow-hidden">
         <Sidebar user={user} />
         <main className="flex-1 overflow-y-auto bg-canvas pb-16 flex flex-col">
-          <DashboardHeader />
+          <DashboardHeader showLogo={true} />
           <div className="max-w-screen-2xl mx-auto px-4 md:px-8 py-6 md:py-8 w-full flex-1">
             {children}
           </div>

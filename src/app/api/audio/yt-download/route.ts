@@ -45,7 +45,12 @@ export async function POST(request: Request) {
       async start(controller) {
         try {
           // 1. Get info
-          const info = await youtubedl(cleanUrl, { dumpJson: true }) as any;
+          const info = await youtubedl(cleanUrl, {
+            dumpJson: true,
+            noWarnings: true,
+            jsRuntimes: "node",
+            addHeader: "User-Agent:Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36"
+          }) as any;
           const title = info.title || "YouTube Audio";
 
           controller.enqueue(encoder.encode(JSON.stringify({ type: "progress", value: 1, text: "Starting download..." }) + "\n"));
@@ -58,7 +63,10 @@ export async function POST(request: Request) {
             extractAudio: true,
             audioFormat: "mp3",
             ffmpegLocation: ffmpegStatic as string,
-            output: tmpFile
+            output: tmpFile,
+            noWarnings: true,
+            jsRuntimes: "node",
+            addHeader: "User-Agent:Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36"
           } as any);
 
           const subprocess = dl as any;

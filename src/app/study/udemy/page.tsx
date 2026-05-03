@@ -12,6 +12,7 @@ import { slugToTitle } from "@/lib/udemy-utils";
 import { UdemyStudyClient } from "@/components/features/udemy-study-client";
 import { UdemyUrlForm } from "@/components/features/udemy-url-form";
 import { UdemyRecentSessions } from "@/components/features/udemy-recent-sessions";
+import { DashboardHeader } from "@/components/features/dashboard-header";
 import { UdemyCourseExplorer } from "@/components/features/udemy-course-explorer";
 
 interface UdemyStudyPageProps {
@@ -32,17 +33,10 @@ export default async function UdemyStudyPage({ searchParams }: UdemyStudyPagePro
     const sessions = await listUdemySessions();
     return (
       <div className="h-screen flex flex-col bg-canvas overflow-y-auto">
-        <header className="shrink-0 flex items-center gap-3 px-4 py-3 border-b border-border bg-white shadow-soft z-20 sticky top-0">
-          <Link
-            href="/dashboard"
-            className="flex items-center gap-1.5 text-sm text-mossy-gray hover:text-forest-slate transition-colors"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back
-          </Link>
-          <span className="text-border/60">|</span>
-          <h1 className="font-serif font-medium text-forest-slate text-sm">Udemy Study</h1>
-        </header>
+        <DashboardHeader 
+          showLogo={true}
+          customBreadcrumbs={[{ href: "/dashboard", label: "Dashboard" }, { href: "/study/udemy", label: "Udemy Study" }]}
+        />
         <div className="flex-1 flex flex-col items-center p-8 w-full max-w-5xl mx-auto">
           <div className="mt-[10vh] w-full flex justify-center">
             <UdemyUrlForm />
@@ -63,19 +57,14 @@ export default async function UdemyStudyPage({ searchParams }: UdemyStudyPagePro
 
     return (
       <div className="h-screen flex flex-col bg-canvas overflow-hidden">
-        <header className="shrink-0 flex items-center gap-3 px-4 py-3 border-b border-border bg-white shadow-soft z-20">
-          <Link
-            href="/study/udemy"
-            className="flex items-center gap-1.5 text-sm text-mossy-gray hover:text-forest-slate transition-colors"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back
-          </Link>
-          <span className="text-border/60">|</span>
-          <h1 className="font-serif font-medium text-forest-slate text-sm line-clamp-1 max-w-xl">
-            {courseTitle}
-          </h1>
-        </header>
+        <DashboardHeader 
+          showLogo={true}
+          customBreadcrumbs={[
+            { href: "/dashboard", label: "Dashboard" },
+            { href: "/study/udemy", label: "Udemy Study" },
+            { href: `/study/udemy?course=${courseSlug}`, label: courseTitle },
+          ]}
+        />
         <div className="flex-1 min-h-0">
           <UdemyCourseExplorer
             courseSlug={courseSlug}
@@ -106,29 +95,25 @@ export default async function UdemyStudyPage({ searchParams }: UdemyStudyPagePro
 
   return (
     <div className="h-screen flex flex-col bg-canvas overflow-hidden">
-      <header className="shrink-0 flex items-center justify-between px-4 py-3 border-b border-border bg-white shadow-soft z-20">
-        <div className="flex items-center gap-3">
-          <Link
-            href={`/study/udemy?course=${courseSlug}`}
-            className="flex items-center gap-1.5 text-sm text-mossy-gray hover:text-forest-slate transition-colors"
+      <DashboardHeader 
+        showLogo={true}
+        customBreadcrumbs={[
+          { href: "/dashboard", label: "Dashboard" },
+          { href: "/study/udemy", label: "Udemy Study" },
+          { href: `/study/udemy?course=${courseSlug}`, label: session.courseTitle },
+          { href: `/study/udemy?course=${courseSlug}&lecture=${lectureId}`, label: displayTitle },
+        ]}
+        rightActions={
+          <a
+            href={lectureUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs text-mossy-gray hover:text-forest-slate transition-colors"
           >
-            <ArrowLeft className="h-4 w-4" />
-            Course
-          </Link>
-          <span className="text-border/60">|</span>
-          <h1 className="font-serif font-medium text-forest-slate text-sm line-clamp-1 max-w-xl">
-            {displayTitle}
-          </h1>
-        </div>
-        <a
-          href={lectureUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-xs text-mossy-gray hover:text-forest-slate transition-colors"
-        >
-          Open on Udemy ↗
-        </a>
-      </header>
+            Open on Udemy ↗
+          </a>
+        }
+      />
       <div className="flex-1 min-h-0">
         <UdemyStudyClient session={session} />
       </div>

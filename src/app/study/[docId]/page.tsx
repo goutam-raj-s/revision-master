@@ -10,6 +10,7 @@ import { MobileSidebarButton } from "@/components/features/study-mobile-sidebar"
 import { AudioPlayer, VideoPlayer, DocumentDownload } from "@/components/features/media-player";
 import { getDocNotes, getDocTerms } from "@/actions/notes";
 import { DashboardHeader } from "@/components/features/dashboard-header";
+import { RichTextEditorDynamic as RichTextEditor } from "@/components/features/editor/RichTextEditorDynamic";
 
 interface StudyPageProps {
   params: Promise<{ docId: string }>;
@@ -100,10 +101,11 @@ export default async function StudyPage({ params }: StudyPageProps) {
                 <DocumentDownload src={doc.fileUrl} title={doc.title} />
               </div>
             ) : doc.mediaType === "native-doc" ? (
-              <div className="absolute inset-0 overflow-auto p-4 md:p-8 bg-canvas tiptap-content">
-                <div 
-                  className="max-w-3xl mx-auto"
-                  dangerouslySetInnerHTML={{ __html: doc.content || "" }}
+              <div className="absolute inset-0 overflow-hidden flex flex-col">
+                <RichTextEditor 
+                  docId={doc.id} 
+                  initialContent={doc.content || ""} 
+                  readOnly={false} // Allow editing during study
                 />
               </div>
             ) : (

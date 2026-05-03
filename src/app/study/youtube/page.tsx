@@ -9,6 +9,7 @@ import { PlaylistPreview } from "@/components/features/playlist-preview";
 import { getYoutubeBookmarks, checkYoutubeBookmark } from "@/actions/youtube-bookmarks";
 import { YoutubeBookmarkToggle } from "@/components/features/youtube-bookmark-toggle";
 import { YoutubeBookmarksList } from "@/components/features/youtube-bookmarks-list";
+import { DashboardHeader } from "@/components/features/dashboard-header";
 
 interface YoutubeStudyPageProps {
   searchParams: Promise<{ v?: string; list?: string }>;
@@ -25,17 +26,10 @@ export default async function YoutubeStudyPage({ searchParams }: YoutubeStudyPag
 
     return (
       <div className="h-screen flex flex-col bg-canvas overflow-y-auto">
-        <header className="shrink-0 flex items-center gap-3 px-4 py-3 border-b border-border bg-white shadow-soft z-20 sticky top-0">
-          <Link
-            href="/dashboard"
-            className="flex items-center gap-1.5 text-sm text-mossy-gray hover:text-forest-slate transition-colors"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back
-          </Link>
-          <span className="text-border/60">|</span>
-          <h1 className="font-serif font-medium text-forest-slate text-sm">YouTube Study</h1>
-        </header>
+        <DashboardHeader 
+          showLogo={true}
+          customBreadcrumbs={[{ href: "/dashboard", label: "Dashboard" }, { href: "/study/youtube", label: "YouTube Study" }]}
+        />
         <div className="flex-1 flex flex-col items-center p-8 w-full max-w-5xl mx-auto">
           <div className="mt-[10vh] w-full flex justify-center">
             <YoutubeUrlForm />
@@ -54,28 +48,23 @@ export default async function YoutubeStudyPage({ searchParams }: YoutubeStudyPag
 
       return (
         <div className="h-screen flex flex-col bg-canvas overflow-hidden">
-          <header className="shrink-0 flex items-center justify-between px-4 py-3 border-b border-border bg-white shadow-soft z-20">
-            <div className="flex items-center gap-3">
-              <Link
-                href="/dashboard"
-                className="flex items-center gap-1.5 text-sm text-mossy-gray hover:text-forest-slate transition-colors"
-              >
-                <ArrowLeft className="h-4 w-4" />
-                Dashboard
-              </Link>
-              <span className="text-border/60">|</span>
-              <h1 className="font-serif font-medium text-forest-slate text-sm line-clamp-1 max-w-xl">
-                {playlistData.title}
-              </h1>
-            </div>
-            <YoutubeBookmarkToggle 
-              youtubeId={playlistId} 
-              type="playlist" 
-              title={playlistData.title} 
-              thumbnailUrl={playlistData.videos[0]?.thumbnailUrl || ""} 
-              initialIsBookmarked={isBookmarked} 
-            />
-          </header>
+          <DashboardHeader 
+            showLogo={true}
+            customBreadcrumbs={[
+              { href: "/dashboard", label: "Dashboard" },
+              { href: "/study/youtube", label: "YouTube Study" },
+              { href: `/study/youtube?list=${playlistId}`, label: playlistData.title },
+            ]}
+            rightActions={
+              <YoutubeBookmarkToggle 
+                youtubeId={playlistId} 
+                type="playlist" 
+                title={playlistData.title} 
+                thumbnailUrl={playlistData.videos[0]?.thumbnailUrl || ""} 
+                initialIsBookmarked={isBookmarked} 
+              />
+            }
+          />
           <PlaylistPreview playlist={playlistData} />
         </div>
       );
@@ -101,48 +90,33 @@ export default async function YoutubeStudyPage({ searchParams }: YoutubeStudyPag
   return (
     <div className="h-screen flex flex-col bg-canvas overflow-hidden">
       {/* Minimal header */}
-      <header className="shrink-0 flex items-center justify-between px-4 py-3 border-b border-border bg-white shadow-soft z-20">
-        <div className="flex items-center gap-3">
-          {playlistId ? (
-            <Link
-              href={`/study/youtube?list=${playlistId}`}
-              className="flex items-center gap-1.5 text-sm text-mossy-gray hover:text-forest-slate transition-colors"
+      <DashboardHeader 
+        showLogo={true}
+        customBreadcrumbs={[
+          { href: "/dashboard", label: "Dashboard" },
+          { href: "/study/youtube", label: "YouTube Study" },
+          { href: `/study/youtube?v=${videoId}`, label: session.videoTitle },
+        ]}
+        rightActions={
+          <div className="flex items-center gap-3">
+            <YoutubeBookmarkToggle 
+              youtubeId={videoId as string} 
+              type="video" 
+              title={session.videoTitle} 
+              thumbnailUrl={session.thumbnailUrl} 
+              initialIsBookmarked={isBookmarked} 
+            />
+            <a
+              href={`https://www.youtube.com/watch?v=${videoId}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs text-mossy-gray hover:text-forest-slate transition-colors"
             >
-              <ArrowLeft className="h-4 w-4" />
-              Playlist
-            </Link>
-          ) : (
-            <Link
-              href="/dashboard"
-              className="flex items-center gap-1.5 text-sm text-mossy-gray hover:text-forest-slate transition-colors"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Back
-            </Link>
-          )}
-          <span className="text-border/60">|</span>
-          <h1 className="font-serif font-medium text-forest-slate text-sm line-clamp-1 max-w-xl">
-            {session.videoTitle}
-          </h1>
-        </div>
-        <div className="flex items-center gap-3">
-          <YoutubeBookmarkToggle 
-            youtubeId={videoId as string} 
-            type="video" 
-            title={session.videoTitle} 
-            thumbnailUrl={session.thumbnailUrl} 
-            initialIsBookmarked={isBookmarked} 
-          />
-          <a
-            href={`https://www.youtube.com/watch?v=${videoId}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-xs text-mossy-gray hover:text-forest-slate transition-colors"
-          >
-            Open on YouTube ↗
-          </a>
-        </div>
-      </header>
+              Open on YouTube ↗
+            </a>
+          </div>
+        }
+      />
 
       {/* Main split-pane body */}
       <div className="flex-1 min-h-0">

@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 export function DashboardHeader({
   customBreadcrumbs,
   rightActions,
-  showLogo = false,
+  showLogo = true,
   className,
 }: {
   customBreadcrumbs?: { href: string; label: string }[];
