@@ -54,10 +54,9 @@ export function ResizablePanelGroup({
   const [isDraggingState, setIsDraggingState] = React.useState(false);
   const pendingPercent = React.useRef(split);
 
-  // Keep internal state synced with controlled prop
-  React.useEffect(() => {
-    if (controlledSplit !== undefined) setSplit(controlledSplit);
-  }, [controlledSplit]);
+  // We do not sync controlled prop into internal state anymore.
+  // This allows the component to revert to its previous uncontrolled state
+  // when a controlled prop (like `split=100` during fullscreen) is removed.
 
   const handleMouseMove = React.useCallback(
     (e: MouseEvent) => {
@@ -90,7 +89,7 @@ export function ResizablePanelGroup({
     e.preventDefault();
     isDragging.current = true;
     setIsDraggingState(true);
-    pendingPercent.current = split;
+    pendingPercent.current = effectiveSplit;
     document.body.style.userSelect = "none";
     document.body.style.cursor = "col-resize";
     document.addEventListener("mousemove", handleMouseMove);
@@ -180,9 +179,9 @@ export function ResizableVerticalGroup({
   const [isDraggingState, setIsDraggingState] = React.useState(false);
   const pending = React.useRef(topPx);
 
-  React.useEffect(() => {
-    if (controlledHeight !== undefined) setTopPx(controlledHeight);
-  }, [controlledHeight]);
+  // We do not sync controlled prop into internal state anymore.
+  // This allows the component to revert to its previous uncontrolled state
+  // when a controlled prop is removed.
 
   const handleMouseMove = React.useCallback(
     (e: MouseEvent) => {
@@ -213,7 +212,7 @@ export function ResizableVerticalGroup({
     e.preventDefault();
     isDragging.current = true;
     setIsDraggingState(true);
-    pending.current = topPx;
+    pending.current = effectiveHeight;
     document.body.style.userSelect = "none";
     document.body.style.cursor = "row-resize";
     document.addEventListener("mousemove", handleMouseMove);
