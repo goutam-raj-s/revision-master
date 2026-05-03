@@ -188,7 +188,8 @@ export async function forgotPasswordAction(
       const resetUrl = `${process.env.NEXT_PUBLIC_APP_URL}/reset-password?token=${token}`;
       await sendPasswordResetEmail(user.email, resetUrl);
     }
-  } catch {
+  } catch (error) {
+    console.error("Forgot password email error:", error);
     // Swallow errors — never reveal anything
   }
 
