@@ -3,16 +3,18 @@
 import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ChevronRight, Home } from "lucide-react";
+import { ChevronRight, HeartHandshake } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function DashboardHeader({
   customBreadcrumbs,
   rightActions,
+  showLogo = false,
   className,
 }: {
   customBreadcrumbs?: { href: string; label: string }[];
   rightActions?: React.ReactNode;
+  showLogo?: boolean;
   className?: string;
 } = {}) {
   const pathname = usePathname();
@@ -36,9 +38,22 @@ export function DashboardHeader({
   return (
     <div className={cn("sticky top-0 z-40 flex h-14 shrink-0 items-center justify-between border-b border-border bg-canvas/80 px-4 shadow-sm backdrop-blur-md md:px-8", className)}>
       <nav aria-label="Breadcrumb" className="flex items-center text-sm font-medium text-mossy-gray">
-        <Link href="/dashboard" className="flex items-center gap-1 hover:text-forest-slate transition-colors">
-          <Home className="h-4 w-4" />
-        </Link>
+        {showLogo ? (
+          <Link href="/dashboard" className="flex items-center gap-2 hover:opacity-80 transition-opacity mr-2">
+            <div className="h-6 w-6 rounded-lg bg-state-today flex items-center justify-center shrink-0">
+              <HeartHandshake className="h-3.5 w-3.5 text-white" />
+            </div>
+            <span className="font-bold text-forest-slate text-lg tracking-tighter lowercase hidden sm:inline-block">
+              lost<span className="text-state-today opacity-80">bae</span>
+            </span>
+          </Link>
+        ) : (
+          <Link href="/dashboard" className="flex items-center gap-1 hover:text-forest-slate transition-colors">
+            <div className="h-6 w-6 rounded-lg bg-state-today flex items-center justify-center shrink-0">
+              <HeartHandshake className="h-3.5 w-3.5 text-white" />
+            </div>
+          </Link>
+        )}
         
         {breadcrumbs.map((crumb, index) => {
           const isLast = index === breadcrumbs.length - 1;

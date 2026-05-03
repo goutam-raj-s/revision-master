@@ -39,6 +39,7 @@ export default async function StudyPage({ params }: StudyPageProps) {
       <div className="h-screen flex flex-col bg-canvas overflow-hidden">
         {/* Dashboard Header with breadcrumbs */}
         <DashboardHeader
+          showLogo={true}
           customBreadcrumbs={[
             { href: "/dashboard", label: "Dashboard" },
             { href: "/documents", label: "Documents" },
@@ -97,6 +98,13 @@ export default async function StudyPage({ params }: StudyPageProps) {
             ) : doc.mediaType === "document" && doc.fileUrl ? (
               <div className="absolute inset-0 overflow-auto">
                 <DocumentDownload src={doc.fileUrl} title={doc.title} />
+              </div>
+            ) : doc.mediaType === "native-doc" ? (
+              <div className="absolute inset-0 overflow-auto p-4 md:p-8 bg-canvas">
+                <div 
+                  className="prose prose-sm md:prose-base dark:prose-invert max-w-3xl mx-auto"
+                  dangerouslySetInnerHTML={{ __html: doc.content || "" }}
+                />
               </div>
             ) : (
               <iframe
