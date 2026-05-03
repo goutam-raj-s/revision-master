@@ -74,7 +74,7 @@ export function DocumentListClient({
 
   const VALID_SORTS = ["newest", "oldest", "a-z", "z-a", "last-modified"] as const;
   type SortOrder = typeof VALID_SORTS[number];
-  const [sortOrder, setSortOrder] = React.useState<SortOrder>("newest");
+  const [sortOrder, setSortOrder] = React.useState<SortOrder>("last-modified");
 
   // Rehydrate persisted filter prefs from localStorage (client-only)
   React.useEffect(() => {
@@ -96,7 +96,7 @@ export function DocumentListClient({
 
   // Client-side search filter & sort
   const filtered = React.useMemo(() => {
-    let result = docs.filter((doc) => {
+    const result = docs.filter((doc) => {
       const matchSearch =
         !search ||
         doc.title.toLowerCase().includes(search.toLowerCase()) ||
@@ -248,7 +248,7 @@ export function DocumentListClient({
         </select>
         <select
           value={sortOrder}
-          onChange={(e) => setSortOrder(e.target.value as any)}
+          onChange={(e) => setSortOrder(e.target.value as SortOrder)}
           className="text-sm border border-border rounded-xl px-3 py-2 bg-surface text-forest-slate focus:outline-none focus:ring-2 focus:ring-state-today/40 min-w-[140px]"
           aria-label="Sort Order"
         >
