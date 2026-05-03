@@ -166,15 +166,22 @@ export async function forgotPasswordAction(
 ): Promise<ActionResult> {
   const email = (formData.get("email") as string)?.trim().toLowerCase();
   console.log("=== FORGOT PASSWORD ACTION TRIGGERED ===", email);
-  
+
   if (!email) {
     return { success: true }; // always generic
   }
 
   try {
     const user = await getUserByEmail(email);
+    console.log("USER FOUND IN DB:", user ? "Yes" : "No");
+    if (user) {
+      console.log("USER PROVIDER:", user.provider);
+      console.log("HAS PASSWORD HASH:", !!user.passwordHash);
+    }
+
     // Only send email for email/password accounts (not OAuth-only)
     if (user && (!user.provider || user.provider === "email") && user.passwordHash) {
+      console.log("CONDITIONS MET! GENERATING TOKEN...");
       const token = randomBytes(32).toString("hex");
       const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
 
@@ -188,7 +195,9 @@ export async function forgotPasswordAction(
       });
 
       const resetUrl = `${process.env.NEXT_PUBLIC_APP_URL}/reset-password?token=${token}`;
+      console.log("reached just before sending email")
       await sendPasswordResetEmail(user.email, resetUrl);
+      console.log("sent email successfully")
     }
   } catch (error) {
     console.error("Forgot password email error:", error);
