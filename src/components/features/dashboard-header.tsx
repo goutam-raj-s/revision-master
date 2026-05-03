@@ -9,9 +9,11 @@ import { cn } from "@/lib/utils";
 export function DashboardHeader({
   customBreadcrumbs,
   rightActions,
+  className,
 }: {
   customBreadcrumbs?: { href: string; label: string }[];
   rightActions?: React.ReactNode;
+  className?: string;
 } = {}) {
   const pathname = usePathname();
 
@@ -32,7 +34,7 @@ export function DashboardHeader({
   })();
 
   return (
-    <div className="sticky top-0 z-40 flex h-14 shrink-0 items-center justify-between border-b border-border bg-canvas/80 px-4 shadow-sm backdrop-blur-md md:px-8">
+    <div className={cn("sticky top-0 z-40 flex h-14 shrink-0 items-center justify-between border-b border-border bg-canvas/80 px-4 shadow-sm backdrop-blur-md md:px-8", className)}>
       <nav aria-label="Breadcrumb" className="flex items-center text-sm font-medium text-mossy-gray">
         <Link href="/dashboard" className="flex items-center gap-1 hover:text-forest-slate transition-colors">
           <Home className="h-4 w-4" />

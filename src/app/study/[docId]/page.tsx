@@ -2,11 +2,10 @@ import { notFound } from "next/navigation";
 import { requireAuth } from "@/lib/auth/session";
 import { getDocById, serializeDoc, getRepetitionByDocId, serializeRepetition } from "@/lib/db/collections";
 import { getGoogleDocEmbedUrl } from "@/lib/utils";
-import Link from "next/link";
-import { ArrowLeft, ExternalLink } from "lucide-react";
+import { ExternalLink } from "lucide-react";
 import { StudyPageWrapper } from "@/components/features/study-page-wrapper";
 import { SimpleTooltip } from "@/components/ui/tooltip";
-import { StudySidebarPanel } from "@/components/features/study-sidebar-panel";
+import { StudySplitPane } from "@/components/features/study-split-pane";
 import { MobileSidebarButton } from "@/components/features/study-mobile-sidebar";
 import { AudioPlayer, VideoPlayer, DocumentDownload } from "@/components/features/media-player";
 import { getDocNotes, getDocTerms } from "@/actions/notes";
@@ -60,11 +59,14 @@ export default async function StudyPage({ params }: StudyPageProps) {
           }
         />
 
-        {/* Split-pane body */}
-        <div className="flex-1 flex min-h-0">
-          {/* Left pane — content varies by mediaType */}
-          <div className="flex-1 relative min-w-0">
-            {doc.mediaType === "audio" && doc.fileUrl ? (
+        {/* Split-pane body — resizable */}
+        <StudySplitPane
+          doc={doc}
+          rep={rep}
+          initialNotes={initialNotes}
+          initialTerms={initialTerms}
+          leftContent={
+            doc.mediaType === "audio" && doc.fileUrl ? (
               <div className="absolute inset-0 overflow-auto">
                 <AudioPlayer src={doc.fileUrl} title={doc.title} />
               </div>
@@ -100,19 +102,9 @@ export default async function StudyPage({ params }: StudyPageProps) {
                 sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
                 loading="eager"
               />
-            )}
-          </div>
-
-          {/* Right pane — Metadata sidebar (visible on lg+) */}
-          <div className="hidden lg:flex lg:w-[30%] lg:min-w-[260px] lg:max-w-[400px] shrink-0">
-            <StudySidebarPanel
-              doc={doc}
-              rep={rep}
-              initialNotes={initialNotes}
-              initialTerms={initialTerms}
-            />
-          </div>
-        </div>
+            )
+          }
+        />
 
         {/* Mobile FAB — opens sidebar as overlay (hidden on lg+) */}
         <MobileSidebarButton
