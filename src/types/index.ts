@@ -29,6 +29,13 @@ export interface DbPasswordResetToken {
   createdAt: Date;
 }
 
+export interface DbLoginRecord {
+  _id: ObjectId;
+  userAgent: string;
+  ipAddress: string;
+  accessedAt: Date;
+}
+
 export interface DbSession {
   _id: ObjectId;
   userId: ObjectId;

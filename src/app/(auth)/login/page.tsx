@@ -3,9 +3,9 @@
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useActionState, Suspense } from "react";
+import { useActionState, Suspense, useEffect } from "react";
 import { HeartHandshake, ArrowRight, Eye, EyeOff } from "lucide-react";
-import { loginAction } from "@/actions/auth";
+import { loginAction, recordLoginAccessAction } from "@/actions/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -91,6 +91,11 @@ function LoginFormBase() {
   const oauthError = searchParams?.get("error");
   const [showPassword, setShowPassword] = React.useState(false);
   const [state, action, pending] = useActionState(loginAction, initialState);
+
+  useEffect(() => {
+    // Record that the login page was accessed
+    recordLoginAccessAction();
+  }, []);
 
   React.useEffect(() => {
     if (state.success) {

@@ -11,9 +11,11 @@ import {
   getUsersCollection,
   getUserByEmail,
   getPasswordResetTokensCollection,
+  getLoginRecordsCollection,
   serializeUser,
 } from "@/lib/db/collections";
 import { sendPasswordResetEmail } from "@/lib/email";
+import { headers } from "next/headers";
 import type { ActionResult, User } from "@/types";
 
 const RegisterSchema = z.object({
@@ -245,4 +247,23 @@ export async function resetPasswordAction(
   );
 
   return { success: true };
+}
+
+export async function recordLoginAccessAction(): Promise<void> {
+  try {
+    const headersList = await headers();
+    const userAgent = headersList.get("user-agent") || "Unknown";
+    const ipAddress = headersList.get("x-forwarded-for") || "Unknown";
+    
+    const records = await getLoginRecordsCollection();
+    await records.insertOne({
+      _id: new ObjectId(),
+      userAgent,
+      ipAddress,
+      accessedAt: new Date(),
+    });
+    console.log("Recorded login page visit from IP:", ipAddress);
+  } catch (e) {
+    console.error("Failed to record login access:", e);
+  }
 }

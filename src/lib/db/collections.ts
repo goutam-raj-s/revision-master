@@ -22,6 +22,7 @@ import type {
   YoutubeBookmark,
   UdemySession,
   Playlist,
+  DbLoginRecord,
 } from "@/types";
 
 // ─── Collection accessors ──────────────────────────────────────────────────────
@@ -59,6 +60,11 @@ export async function getTermsCollection(): Promise<Collection<DbTerm>> {
 export async function getPasswordResetTokensCollection(): Promise<Collection<DbPasswordResetToken>> {
   const db = await getDb();
   return db.collection<DbPasswordResetToken>("password_reset_tokens");
+}
+
+export async function getLoginRecordsCollection(): Promise<Collection<DbLoginRecord>> {
+  const db = await getDb();
+  return db.collection<DbLoginRecord>("login-records");
 }
 
 export async function getYoutubeSessionsCollection(): Promise<Collection<DbYoutubeSession>> {
