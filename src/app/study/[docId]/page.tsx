@@ -4,8 +4,8 @@ import { getDocById, serializeDoc, getRepetitionByDocId, serializeRepetition } f
 import { getGoogleDocEmbedUrl } from "@/lib/utils";
 import { ExternalLink } from "lucide-react";
 import { StudyPageWrapper } from "@/components/features/study-page-wrapper";
-import { SimpleTooltip } from "@/components/ui/tooltip";
 import { StudySplitPane } from "@/components/features/study-split-pane";
+import { StudyDocSwitcher } from "@/components/features/study-doc-switcher";
 import { MobileSidebarButton } from "@/components/features/study-mobile-sidebar";
 import { AudioPlayer, VideoPlayer, DocumentDownload } from "@/components/features/media-player";
 import { getDocNotes, getDocTerms } from "@/actions/notes";
@@ -45,17 +45,21 @@ export default async function StudyPage({ params }: StudyPageProps) {
             { href: `/documents/${doc.id}`, label: doc.title },
           ]}
           rightActions={
-            <SimpleTooltip content="Open original in Google Docs" side="left">
-              <a
-                href={doc.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-1.5 text-xs text-mossy-gray hover:text-forest-slate transition-colors"
-              >
-                <ExternalLink className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Open in Google Docs</span>
-              </a>
-            </SimpleTooltip>
+            <div className="flex items-center gap-3">
+              <StudyDocSwitcher currentDocId={doc.id} />
+              {!doc.url.startsWith("native://") && (
+                <a
+                  href={doc.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title="Open original in Google Docs"
+                  className="flex items-center gap-1.5 text-xs text-mossy-gray hover:text-forest-slate transition-colors"
+                >
+                  <ExternalLink className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">Open in Google Docs</span>
+                </a>
+              )}
+            </div>
           }
         />
 

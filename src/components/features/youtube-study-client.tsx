@@ -1,9 +1,11 @@
 "use client";
 
 import * as React from "react";
+import { cn } from "@/lib/utils";
 import { ResizablePanelGroup } from "@/components/ui/resizable-panel";
 import YoutubePlayer, { type YoutubePlayerHandle } from "./youtube-player";
 import { YoutubeNotesPanel } from "./youtube-notes-panel";
+import { YoutubeFullscreenOverlay, FullscreenButton } from "./youtube-fullscreen-overlay";
 import type { YoutubeSession } from "@/types";
 
 interface YoutubeStudyClientProps {
@@ -12,7 +14,9 @@ interface YoutubeStudyClientProps {
 
 export function YoutubeStudyClient({ session }: YoutubeStudyClientProps) {
   const playerRef = React.useRef<YoutubePlayerHandle | null>(null);
+  const containerRef = React.useRef<HTMLDivElement | null>(null);
   const [isMobile, setIsMobile] = React.useState(false);
+  const [isFullscreen, setIsFullscreen] = React.useState(false);
 
   React.useEffect(() => {
     const mq = window.matchMedia("(max-width: 767px)");
@@ -20,6 +24,13 @@ export function YoutubeStudyClient({ session }: YoutubeStudyClientProps) {
     const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
     mq.addEventListener("change", handler);
     return () => mq.removeEventListener("change", handler);
+  }, []);
+
+  // Track fullscreen state — hide default notes column in fullscreen
+  React.useEffect(() => {
+    const onChange = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener("fullscreenchange", onChange);
+    return () => document.removeEventListener("fullscreenchange", onChange);
   }, []);
 
   // Global T key listener — insert timestamp (skip if focused in input/textarea)
@@ -31,9 +42,6 @@ export function YoutubeStudyClient({ session }: YoutubeStudyClientProps) {
       }
       if (e.key === "t" || e.key === "T") {
         e.preventDefault();
-        // Dispatch a custom event that the notes panel listens to, or call directly
-        // We expose an imperative handle via a ref on the notes panel approach,
-        // but it's simpler to dispatch a custom event
         window.dispatchEvent(new CustomEvent("yt-insert-timestamp"));
       }
     }
@@ -42,11 +50,13 @@ export function YoutubeStudyClient({ session }: YoutubeStudyClientProps) {
   }, []);
 
   const playerEl = (
-    <YoutubePlayer
-      ref={playerRef}
-      videoId={session.videoId}
-      className="w-full aspect-video"
-    />
+    <div className={cn("w-full bg-black flex items-center justify-center", isFullscreen ? "h-full" : "aspect-video")}>
+      <YoutubePlayer
+        ref={playerRef}
+        videoId={session.videoId}
+        className="w-full h-full"
+      />
+    </div>
   );
 
   const notesEl = (
@@ -61,21 +71,61 @@ export function YoutubeStudyClient({ session }: YoutubeStudyClientProps) {
 
   if (isMobile) {
     return (
-      <div className="flex flex-col h-full w-full overflow-auto">
+      <div ref={containerRef} className="flex flex-col h-full w-full overflow-auto relative">
         <div className="shrink-0">{playerEl}</div>
-        <div className="flex-1 min-h-0">{notesEl}</div>
+        {/* Hide default notes panel in fullscreen — overlay FAB handles it */}
+        <div className={`flex-1 min-h-0 ${isFullscreen ? "hidden" : ""}`}>{notesEl}</div>
+        <YoutubeFullscreenOverlay
+          sessionId={session.id}
+          initialNotes={session.notes}
+          videoTitle={session.videoTitle}
+          thumbnailUrl={session.thumbnailUrl}
+          playerRef={playerRef}
+        />
       </div>
     );
   }
 
   return (
-    <ResizablePanelGroup defaultSplit={60} minSplit={30} maxSplit={80} className="h-full">
-      <div className="h-full flex flex-col justify-start pt-6 px-4">
-        {playerEl}
-      </div>
-      <div className="h-full overflow-hidden">
-        {notesEl}
-      </div>
-    </ResizablePanelGroup>
+    <div ref={containerRef} className={cn("h-full relative", isFullscreen && "bg-black")}>
+      {/*
+        ResizablePanelGroup always gets two children (required by its type).
+        In fullscreen we pass split=100 (controlled) to push the right pane to 0%
+        and hide it visually — the overlay FAB handles notes instead.
+      */}
+      <ResizablePanelGroup
+        defaultSplit={60}
+        minSplit={30}
+        maxSplit={100}
+        // In fullscreen: force left pane to 100% via controlled split
+        split={isFullscreen ? 100 : undefined}
+        className={cn("h-full", isFullscreen && "[&>div[role='separator']]:hidden")}
+      >
+        {/* Player column */}
+        <div className={cn("h-full flex flex-col justify-center gap-2", isFullscreen ? "p-0" : "pt-6 px-4")}>
+          {playerEl}
+          {/* Fullscreen button sits below the video in normal view */}
+          {!isFullscreen && (
+            <div className="flex items-center justify-end pr-1">
+              <FullscreenButton targetRef={containerRef} />
+            </div>
+          )}
+        </div>
+
+        {/* Notes column — visually hidden in fullscreen (split=100 collapses it to 0px) */}
+        <div className={`h-full overflow-hidden ${isFullscreen ? "invisible pointer-events-none" : ""}`}>
+          {notesEl}
+        </div>
+      </ResizablePanelGroup>
+
+      {/* Fullscreen notes overlay — FAB + sliding panel, only active in fullscreen */}
+      <YoutubeFullscreenOverlay
+        sessionId={session.id}
+        initialNotes={session.notes}
+        videoTitle={session.videoTitle}
+        thumbnailUrl={session.thumbnailUrl}
+        playerRef={playerRef}
+      />
+    </div>
   );
 }

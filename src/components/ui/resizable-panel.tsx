@@ -51,6 +51,7 @@ export function ResizablePanelGroup({
   const leftRef = React.useRef<HTMLDivElement>(null);
   const rightRef = React.useRef<HTMLDivElement>(null);
   const isDragging = React.useRef(false);
+  const [isDraggingState, setIsDraggingState] = React.useState(false);
   const pendingPercent = React.useRef(split);
 
   // Keep internal state synced with controlled prop
@@ -75,6 +76,7 @@ export function ResizablePanelGroup({
   const handleMouseUp = React.useCallback(() => {
     if (!isDragging.current) return;
     isDragging.current = false;
+    setIsDraggingState(false);
     document.removeEventListener("mousemove", handleMouseMove);
     document.removeEventListener("mouseup", handleMouseUp);
     document.body.style.userSelect = "";
@@ -87,6 +89,7 @@ export function ResizablePanelGroup({
   function startDrag(e: React.MouseEvent) {
     e.preventDefault();
     isDragging.current = true;
+    setIsDraggingState(true);
     pendingPercent.current = split;
     document.body.style.userSelect = "none";
     document.body.style.cursor = "col-resize";
@@ -154,6 +157,7 @@ export function ResizablePanelGroup({
       >
         {children[1]}
       </div>
+      {isDraggingState && <div className="fixed inset-0 z-[9999] cursor-col-resize" />}
     </div>
   );
 }
@@ -173,6 +177,7 @@ export function ResizableVerticalGroup({
   const containerRef = React.useRef<HTMLDivElement>(null);
   const topRef = React.useRef<HTMLDivElement>(null);
   const isDragging = React.useRef(false);
+  const [isDraggingState, setIsDraggingState] = React.useState(false);
   const pending = React.useRef(topPx);
 
   React.useEffect(() => {
@@ -194,6 +199,7 @@ export function ResizableVerticalGroup({
   const handleMouseUp = React.useCallback(() => {
     if (!isDragging.current) return;
     isDragging.current = false;
+    setIsDraggingState(false);
     document.removeEventListener("mousemove", handleMouseMove);
     document.removeEventListener("mouseup", handleMouseUp);
     document.body.style.userSelect = "";
@@ -206,6 +212,7 @@ export function ResizableVerticalGroup({
   function startDrag(e: React.MouseEvent) {
     e.preventDefault();
     isDragging.current = true;
+    setIsDraggingState(true);
     pending.current = topPx;
     document.body.style.userSelect = "none";
     document.body.style.cursor = "row-resize";
@@ -267,6 +274,7 @@ export function ResizableVerticalGroup({
       <div className="flex-1 overflow-auto min-h-0">
         {children[1]}
       </div>
+      {isDraggingState && <div className="fixed inset-0 z-[9999] cursor-row-resize" />}
     </div>
   );
 }

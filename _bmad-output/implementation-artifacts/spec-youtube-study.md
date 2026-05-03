@@ -106,7 +106,15 @@ Player initialized inside `window.onYouTubeIframeAPIReady` or after polling `win
 **Timestamp regex:**
 `/\[(\d{1,2}):(\d{2})\]/g` → converts `[MM:SS]` to `<button>` with `onClick`. Render in a separate read-only `div` below the textarea, not inline inside the textarea.
 
-## Verification
+**Fullscreen Custom Overlay:**
+Native YouTube fullscreen (`fs: 1`) prevents custom React overlays due to browser security (parent elements cannot be rendered above a fullscreen iframe). To support overlay notes in fullscreen:
+- Native `fs` button is disabled (`fs: 0`).
+- A custom "Fullscreen + Notes" button sits under the video.
+- The button calls `requestFullscreen()` on the parent container.
+- When `document.fullscreenElement` is active, the `ResizablePanelGroup`'s right pane is collapsed (`split={100}`), the video fills the screen, and a floating FAB triggers an absolute-positioned notes side-drawer.
+
+**IFrame Drag Fix (ResizablePanelGroup):**
+Dragging the panel divider over an iframe swallows `mouseup` events, causing the drag to "stick". Fixed by unconditionally rendering a `<div className="fixed inset-0 z-[9999]">` overlay across the screen whenever `isDragging` is true, ensuring the parent document captures the mouse events.
 
 **Commands:**
 - `npm run build` -- expected: no TypeScript errors, build succeeds

@@ -39,8 +39,10 @@ const YoutubePlayer = forwardRef<YoutubePlayerHandle, Props>(
       const initPlayer = () => {
         if (destroyed) return;
         playerRef.current = new window.YT.Player(containerId, {
+          height: "100%",
+          width: "100%",
           videoId,
-          playerVars: { autoplay: 0, rel: 0, modestbranding: 1 },
+          playerVars: { autoplay: 0, rel: 0, modestbranding: 1, fs: 0 },
         });
       };
 
