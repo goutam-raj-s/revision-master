@@ -1,0 +1,18 @@
+
+- currently in dashboard their is no sorting or filter like in documents page.
+- also in both documents and dashboard, default sort is by last modified
+- at both places their will be search option too
+
+- https://lostbae.com/documents/69f2f1e9f423b27321ccbfe9 this is showing docs content
+  but https://lostbae.com/study/69f2f1e9f423b27321ccbfe9 is showing blank white
+  page. This is happening only in documents that are created within application.
+  Might be reason is that whatever typed inside document is stored as notes and
+  not as document content. This is not expected. notes and content are different
+  and have different purpose.
+
+- adding audios through youtube link show this error
+WARNING: [youtube] No supported JavaScript runtime could be found. Only deno is enabled by default; to use another runtime add --js-runtimes RUNTIME[:PATH] to your command/config. YouTube extraction without a JS runtime has been deprecated, and some formats may be missing. See https://github.com/yt-dlp/yt-dlp/wiki/EJS for details on installing one WARNING: [youtube] No title found in player responses; falling back to title from initial data. Other metadata may also be missing ERROR: [youtube] 4RHgCJVcdQM: Sign in to confirm you’re not a bot. Use --cookies-from-browser or --cookies for the authentication. See https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp for how to manually pass cookies. Also see https://github.com/yt-dlp/yt-dlp/wiki/Extractors#exporting-youtube-cookies for tips on effectively exporting YouTube cookies
+if can't be fixed immediately leave it.
+
+- brand logo should be visible in every page, so that no matter where user is, can go 
+to dashboard directly
