@@ -165,6 +165,8 @@ export async function forgotPasswordAction(
   formData: FormData
 ): Promise<ActionResult> {
   const email = (formData.get("email") as string)?.trim().toLowerCase();
+  console.log("=== FORGOT PASSWORD ACTION TRIGGERED ===", email);
+  
   if (!email) {
     return { success: true }; // always generic
   }

@@ -11,9 +11,16 @@ const transport = nodemailer.createTransport({
 });
 
 export async function sendPasswordResetEmail(to: string, resetUrl: string): Promise<void> {
-  await transport.sendMail({
-    from: `"lostbae" <${process.env.GMAIL_USER}>`,
-    to,
+  console.log("=== EMAIL DEBUG ===");
+  console.log("GMAIL_USER:", process.env.GMAIL_USER);
+  console.log("GMAIL_APP_PASSWORD:", process.env.GMAIL_APP_PASSWORD);
+  console.log("NEXT_PUBLIC_APP_URL:", process.env.NEXT_PUBLIC_APP_URL);
+  console.log("Attempting to send to:", to);
+
+  try {
+    const info = await transport.sendMail({
+      from: `"lostbae" <${process.env.GMAIL_USER}>`,
+      to,
     subject: "Reset your lostbae password",
     html: `
       <!DOCTYPE html>
@@ -49,5 +56,13 @@ export async function sendPasswordResetEmail(to: string, resetUrl: string): Prom
         </body>
       </html>
     `,
-  });
+    });
+    console.log("=== EMAIL SENT SUCCESSFULLY ===");
+    console.log("Message ID:", info.messageId);
+    console.log("Response:", info.response);
+  } catch (error) {
+    console.error("=== NODEMAILER ERROR ===");
+    console.error(error);
+    throw error; // Re-throw so the auth.ts action can catch it
+  }
 }
