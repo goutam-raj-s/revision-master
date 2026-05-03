@@ -100,9 +100,9 @@ export default async function StudyPage({ params }: StudyPageProps) {
                 <DocumentDownload src={doc.fileUrl} title={doc.title} />
               </div>
             ) : doc.mediaType === "native-doc" ? (
-              <div className="absolute inset-0 overflow-auto p-4 md:p-8 bg-canvas">
+              <div className="absolute inset-0 overflow-auto p-4 md:p-8 bg-canvas tiptap-content">
                 <div 
-                  className="prose prose-sm md:prose-base dark:prose-invert max-w-3xl mx-auto"
+                  className="max-w-3xl mx-auto"
                   dangerouslySetInnerHTML={{ __html: doc.content || "" }}
                 />
               </div>

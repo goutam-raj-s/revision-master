@@ -182,43 +182,6 @@ export function RichTextEditor({
       {!readOnly && <EditorToolbar editor={editor} />}
       
       <div className="flex-1 overflow-y-auto p-8 tiptap-content min-h-[500px]">
-        <style jsx global>{`
-          .ProseMirror {
-            outline: none;
-          }
-          .ProseMirror p.is-editor-empty:first-child::before {
-            content: attr(data-placeholder);
-            float: left;
-            color: #adb5bd;
-            pointer-events: none;
-            height: 0;
-          }
-          .tiptap-content table {
-            border-collapse: collapse;
-            table-layout: fixed;
-            width: 100%;
-            margin: 0;
-            overflow: hidden;
-          }
-          .tiptap-content table td,
-          .tiptap-content table th {
-            min-width: 1em;
-            border: 2px solid #ced4da;
-            padding: 3px 5px;
-            vertical-align: top;
-            box-sizing: border-box;
-            position: relative;
-          }
-          .tiptap-content table th {
-            font-weight: bold;
-            text-align: left;
-            background-color: #f8f9fa;
-          }
-          .tiptap-content h1 { font-size: 2rem; font-weight: bold; margin-bottom: 1rem; }
-          .tiptap-content h2 { font-size: 1.5rem; font-weight: bold; margin-bottom: 0.75rem; }
-          .tiptap-content ul { list-style-type: disc; padding-left: 1.5rem; margin-bottom: 1rem; }
-          .tiptap-content ol { list-style-type: decimal; padding-left: 1.5rem; margin-bottom: 1rem; }
-        `}</style>
         <EditorContent editor={editor} />
       </div>
 

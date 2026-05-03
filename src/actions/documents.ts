@@ -555,5 +555,9 @@ export async function updateDocumentContentAction(
     { $set: { content, updatedAt: new Date() } }
   );
 
+  revalidatePath("/documents");
+  revalidatePath(`/documents/${docId}`);
+  revalidatePath(`/study/${docId}`);
+
   return { success: true };
 }
