@@ -69,15 +69,32 @@ export async function POST(req: Request) {
 
     if (existing) {
       docId = existing._id;
+      
+      const updateData: any = { 
+        updatedAt: now, 
+        status: "updated",
+        mediaType: "native-doc"
+      };
+
+      if (notes && notes.trim().length > 0) {
+        const newHtml = notes.split('\n').map(line => `<p>${line}</p>`).join('');
+        updateData.content = existing.content ? `${existing.content}<br>${newHtml}` : newHtml;
+      }
+
       // Append tags and update status
       await docs.updateOne(
         { _id: existing._id },
         { 
-          $set: { updatedAt: now, status: "updated" },
+          $set: updateData,
           $addToSet: { tags: { $each: tagList } }
         }
       );
     } else {
+
+      let contentHtml = "";
+      if (notes && notes.trim().length > 0) {
+        contentHtml = notes.split('\n').map(line => `<p>${line}</p>`).join('');
+      }
 
       const docResult = await docs.insertOne({
         _id: new ObjectId(),
@@ -88,7 +105,8 @@ export async function POST(req: Request) {
         difficulty: "medium",
         tags: tagList,
         isLinkBroken: false,
-        mediaType: "document",
+        mediaType: "native-doc",
+        content: contentHtml,
         createdAt: now,
         updatedAt: now,
       });
@@ -105,20 +123,6 @@ export async function POST(req: Request) {
         reviewCount: 0,
         createdAt: now,
         updatedAt: now,
-      });
-    }
-
-    // Add notes if provided
-    if (notes && notes.trim().length > 0) {
-      const notesCol = await getNotesCollection();
-      await notesCol.insertOne({
-        _id: new ObjectId(),
-        userId: new ObjectId(userId),
-        docId,
-        content: notes.trim(),
-        isDone: false,
-        createdAt: new Date(),
-        updatedAt: new Date(),
       });
     }
 
