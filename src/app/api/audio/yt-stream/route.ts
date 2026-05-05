@@ -1,8 +1,11 @@
 import { NextResponse } from "next/server";
-import { exec } from "child_process";
-import { promisify } from "util";
+import play from "play-dl";
+import { create } from "youtube-dl-exec";
+import path from "path";
 
-const execAsync = promisify(exec);
+// Explicitly construct the path to yt-dlp binary to avoid Turbopack/Next.js bundling issues
+const ytDlpPath = path.join(process.cwd(), "node_modules", "youtube-dl-exec", "bin", "yt-dlp");
+const youtubedl = create(ytDlpPath);
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -13,21 +16,38 @@ export async function GET(request: Request) {
   }
 
   try {
-    // using child_process to execute yt-dlp. yt-dlp must be installed on the environment.
-    const { stdout, stderr } = await execAsync(`yt-dlp -f bestaudio --get-url "${url}"`);
+    // play-dl is generally more reliable and faster for streaming metadata/urls
+    const stream = await play.stream(url);
     
-    if (stderr && stderr.toLowerCase().includes("error")) {
-      return NextResponse.json({ error: "Failed to extract audio stream" }, { status: 500 });
+    if (!stream || !stream.url) {
+      throw new Error("No stream URL returned from play-dl");
     }
 
-    const streamUrl = stdout.trim();
-    if (!streamUrl) {
-      return NextResponse.json({ error: "No stream URL returned" }, { status: 500 });
-    }
-
-    return NextResponse.json({ streamUrl });
+    return NextResponse.json({ streamUrl: stream.url });
   } catch (error: any) {
-    console.error("yt-dlp error:", error);
-    return NextResponse.json({ error: "Failed to extract audio stream from YouTube URL" }, { status: 500 });
+    console.warn("play-dl error, falling back to youtube-dl-exec:", error.message || error);
+    
+    try {
+      // Fallback to youtube-dl-exec which is slower but often more robust against YT changes
+      const output = await youtubedl(url, {
+        getUrl: true,
+        format: "bestaudio",
+        noWarnings: true,
+        callHome: false,
+        noCheckCertificate: true,
+      });
+      
+      // youtubedl output might be a single string URL or multiple separated by newlines
+      const streamUrl = typeof output === 'string' ? output.split('\n')[0].trim() : String(output).trim();
+      
+      if (!streamUrl) {
+        return NextResponse.json({ error: "No stream URL returned from fallback" }, { status: 500 });
+      }
+      
+      return NextResponse.json({ streamUrl });
+    } catch (fallbackError: any) {
+      console.error("youtube-dl-exec fallback error:", fallbackError.message || fallbackError);
+      return NextResponse.json({ error: "Failed to extract audio stream from YouTube URL" }, { status: 500 });
+    }
   }
 }
