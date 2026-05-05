@@ -73,6 +73,11 @@ input, textarea {
   font-family: inherit;
 }
 
+textarea {
+  resize: vertical;
+  max-width: 100%;
+}
+
 input:focus, textarea:focus {
   outline: none;
   border-color: var(--primary-color);

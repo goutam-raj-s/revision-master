@@ -59,16 +59,25 @@ export async function POST(req: Request) {
     }
 
     let docId: ObjectId;
+    const now = new Date();
+
+    const tagList = ["web-clip"];
+    if (tags && tags.trim()) {
+      const customTags = tags.split(',').map(t => t.trim()).filter(t => t.length > 0);
+      tagList.push(...customTags);
+    }
 
     if (existing) {
       docId = existing._id;
-      // Maybe update the title? We'll just leave it.
+      // Append tags and update status
+      await docs.updateOne(
+        { _id: existing._id },
+        { 
+          $set: { updatedAt: now, status: "updated" },
+          $addToSet: { tags: { $each: tagList } }
+        }
+      );
     } else {
-      const tagList = ["web-clip"];
-      if (tags && tags.trim()) {
-        const customTags = tags.split(',').map(t => t.trim()).filter(t => t.length > 0);
-        tagList.push(...customTags);
-      }
 
       const docResult = await docs.insertOne({
         _id: new ObjectId(),
@@ -118,7 +127,6 @@ export async function POST(req: Request) {
       const termsCol = await getTermsCollection();
       const lines = terminology.split('\n');
       const termsToInsert = [];
-      const now = new Date();
       
       for (const line of lines) {
         if (!line.trim() || !line.includes(':')) continue;

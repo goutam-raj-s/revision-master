@@ -45,6 +45,32 @@ document.addEventListener('DOMContentLoaded', async () => {
     statusMessage.classList.remove('hidden');
   }
 
+  // Restore drafted values if any
+  try {
+    const draft = await chrome.storage.local.get(['draft_notes', 'draft_tags', 'draft_terminology', 'draft_action']);
+    if (draft.draft_notes) notesInput.value = draft.draft_notes;
+    if (draft.draft_tags) tagsInput.value = draft.draft_tags;
+    if (draft.draft_terminology) terminologyInput.value = draft.draft_terminology;
+    if (draft.draft_action) actionIfExistsInput.value = draft.draft_action;
+  } catch (e) {
+    console.error("Could not load drafts:", e);
+  }
+
+  // Live save inputs
+  const saveDraft = () => {
+    chrome.storage.local.set({
+      draft_notes: notesInput.value,
+      draft_tags: tagsInput.value,
+      draft_terminology: terminologyInput.value,
+      draft_action: actionIfExistsInput.value
+    });
+  };
+
+  notesInput.addEventListener('input', saveDraft);
+  tagsInput.addEventListener('input', saveDraft);
+  terminologyInput.addEventListener('input', saveDraft);
+  actionIfExistsInput.addEventListener('change', saveDraft);
+
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     submitBtn.disabled = true;
@@ -83,6 +109,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       notesInput.value = '';
       tagsInput.value = '';
       terminologyInput.value = '';
+      
+      // Clear drafts
+      await chrome.storage.local.remove(['draft_notes', 'draft_tags', 'draft_terminology', 'draft_action']);
       
       // Auto close after 2 seconds if injected
       if (isInjected) {
