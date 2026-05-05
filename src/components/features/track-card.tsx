@@ -8,12 +8,15 @@ import { deleteDocumentAction } from "@/actions/documents";
 import { TrackAvatar } from "./mini-player";
 import { cn } from "@/lib/utils";
 import type { Document, Playlist } from "@/types";
+import { getYoutubeThumbnail } from "@/lib/youtube-utils";
 
 export function toAudioTrack(doc: Document): AudioTrack {
+  const url = doc.fileUrl || doc.url;
   return {
     id: doc.id,
     title: doc.title,
-    url: doc.fileUrl!,
+    url,
+    thumbnailUrl: getYoutubeThumbnail(url),
     isFavourite: doc.isFavourite ?? false,
     playCount: doc.playCount ?? 0,
   };
@@ -83,7 +86,11 @@ export function TrackCard({ track, playlists = [], onFavouriteToggled, onDeleted
       >
         <div className="relative p-4 flex flex-col items-center gap-3">
           <div className="relative">
-            <TrackAvatar title={track.title} size={64} />
+            <TrackAvatar 
+              title={track.title} 
+              thumbnailUrl={getYoutubeThumbnail(track.url)} 
+              size={64} 
+            />
             <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity">
               <Play className="h-6 w-6 text-white fill-white" />
             </div>

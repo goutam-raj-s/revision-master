@@ -7,6 +7,7 @@ import { MiniPlayer } from "@/components/features/mini-player";
 import { ExpandedPlayer } from "@/components/features/expanded-player";
 import { DashboardHeader } from "@/components/features/dashboard-header";
 import { GlobalFAB } from "@/components/features/global-fab";
+import { GlobalClipperWidget } from "@/components/features/global-clipper-widget";
 import { getUserDocuments, getAllUserTags } from "@/actions/documents";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
@@ -37,6 +38,7 @@ export default async function DashboardLayout({
         </main>
         <CommandPalette documents={docs} tags={tags} />
         <GlobalFAB />
+        <GlobalClipperWidget />
         <AudioEngine />
         <MiniPlayer />
         <ExpandedPlayer />

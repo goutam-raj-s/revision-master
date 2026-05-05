@@ -15,7 +15,25 @@ function formatTime(seconds: number): string {
   return `${m}:${String(s).padStart(2, "0")}`;
 }
 
-function TrackAvatar({ title, size = 40 }: { title: string; size?: number }) {
+function TrackAvatar({ title, thumbnailUrl, size = 40 }: { title: string; thumbnailUrl?: string; size?: number }) {
+  if (thumbnailUrl) {
+    return (
+      <div 
+        className="rounded-full overflow-hidden shrink-0 bg-canvas border border-border"
+        style={{ width: size, height: size }}
+      >
+        <img 
+          src={thumbnailUrl} 
+          alt={title} 
+          className="w-full h-full object-cover"
+          onError={(e) => {
+            (e.target as HTMLImageElement).style.display = "none";
+          }}
+        />
+      </div>
+    );
+  }
+
   const hue = title.charCodeAt(0) % 360;
   return (
     <div
@@ -165,7 +183,7 @@ export function MiniPlayer() {
       <div className="flex items-center gap-3 px-4 pb-2 pt-1 h-14">
         {/* Avatar + info */}
         <div className="flex items-center gap-3 min-w-0 flex-1">
-          <TrackAvatar title={currentTrack.title} size={36} />
+          <TrackAvatar title={currentTrack.title} thumbnailUrl={currentTrack.thumbnailUrl} size={36} />
           <div className="min-w-0 overflow-hidden">
             <div className="text-sm font-medium text-forest-slate truncate line-clamp-1">
               {currentTrack.title}

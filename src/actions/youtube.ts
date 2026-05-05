@@ -21,18 +21,16 @@ export async function fetchYoutubeMetadata(
   const videoId = extractYoutubeVideoId(url);
   if (!videoId) throw new Error("Invalid YouTube URL");
 
-  const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
   try {
-    const oembedUrl = `https://www.youtube.com/oembed?url=${encodeURIComponent(videoUrl)}&format=json`;
-    const res = await fetch(oembedUrl, { next: { revalidate: 3600 } });
-    if (!res.ok) throw new Error("oEmbed fetch failed");
-    const data = await res.json();
+    const videoInfo = await play.video_basic_info(url);
     return {
       videoId,
-      title: data.title ?? videoId,
-      thumbnailUrl: data.thumbnail_url ?? "",
+      title: videoInfo.video_details.title || videoId,
+      thumbnailUrl: videoInfo.video_details.thumbnails[0]?.url || "",
     };
-  } catch {
+  } catch (error) {
+    console.error("fetchYoutubeMetadata error:", error);
+    // Fallback to minimal info
     return { videoId, title: videoId, thumbnailUrl: "" };
   }
 }
@@ -200,5 +198,22 @@ export async function getYoutubeSessionRepetition(sessionId: string): Promise<Re
     return rep ? serializeRepetition(rep) : null;
   } catch {
     return null;
+  }
+}
+export async function searchYoutubeVideos(
+  query: string,
+  limit = 5
+): Promise<{ videoId: string; title: string; thumbnailUrl: string; duration: string }[]> {
+  try {
+    const results = await play.search(query, { limit, source: { youtube: "video" } });
+    return results.map((v) => ({
+      videoId: v.id || "",
+      title: v.title || "Unknown Title",
+      thumbnailUrl: v.thumbnails[0]?.url || "",
+      duration: v.durationRaw || "0:00",
+    })).filter((v) => v.videoId);
+  } catch (error) {
+    console.error("YouTube search failed", error);
+    return [];
   }
 }

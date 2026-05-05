@@ -16,11 +16,14 @@ import {
   Clock,
   GripVertical,
   Trash2,
+  Search,
 } from "lucide-react";
 import { useAudioPlayer } from "@/store/audio-player";
 import { toggleAudioFavourite } from "@/actions/audio";
 import { TrackAvatar } from "./mini-player";
 import { cn } from "@/lib/utils";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { YoutubeSearch } from "./youtube-search";
 
 const SPEED_OPTIONS = [0.5, 0.75, 1, 1.25, 1.5, 2];
 const SLEEP_PRESETS = [15, 30, 45, 60, 90];
@@ -59,6 +62,7 @@ export function ExpandedPlayer() {
   const [showSleepPicker, setShowSleepPicker] = React.useState(false);
   const [countdown, setCountdown] = React.useState<string | null>(null);
   const [dragIndex, setDragIndex] = React.useState<number | null>(null);
+  const [isSearchOpen, setIsSearchOpen] = React.useState(false);
 
   const store = useAudioPlayer.getState();
 
@@ -129,7 +133,7 @@ export function ExpandedPlayer() {
         <div className="flex flex-col md:flex-row gap-8">
           {/* Left column */}
           <div className="flex flex-col items-center gap-4 md:w-64 shrink-0">
-            <TrackAvatar title={currentTrack.title} size={120} />
+            <TrackAvatar title={currentTrack.title} thumbnailUrl={currentTrack.thumbnailUrl} size={120} />
             <div className="text-center">
               <h2 className="font-semibold text-forest-slate text-lg leading-tight">{currentTrack.title}</h2>
             </div>
@@ -270,6 +274,15 @@ export function ExpandedPlayer() {
                   </div>
                 )}
               </div>
+
+              {/* YouTube Search */}
+              <button
+                onClick={() => setIsSearchOpen(true)}
+                className="p-2 rounded-lg text-mossy-gray hover:text-forest-slate hover:bg-canvas transition-colors"
+                aria-label="Search YouTube"
+              >
+                <Search className="h-4 w-4" />
+              </button>
             </div>
 
             {/* Volume */}
@@ -319,7 +332,7 @@ export function ExpandedPlayer() {
                 >
                   <GripVertical className="h-4 w-4 text-mossy-gray shrink-0 cursor-grab" />
                   <span className="text-xs text-mossy-gray w-5 shrink-0">{idx + 1}</span>
-                  <TrackAvatar title={track.title} size={28} />
+                  <TrackAvatar title={track.title} thumbnailUrl={track.thumbnailUrl} size={28} />
                   <span className="flex-1 text-sm truncate">{track.title}</span>
                   <button
                     onClick={(e) => {
@@ -337,6 +350,21 @@ export function ExpandedPlayer() {
           )}
         </div>
       </div>
+
+      <Dialog open={isSearchOpen} onOpenChange={setIsSearchOpen}>
+        <DialogContent className="sm:max-w-xl">
+          <DialogHeader>
+            <DialogTitle>YouTube Search</DialogTitle>
+            <DialogDescription>
+              Search for music on YouTube and add it to your library.
+            </DialogDescription>
+          </DialogHeader>
+          <YoutubeSearch onSuccess={() => {
+            setIsSearchOpen(false);
+            window.location.reload();
+          }} />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -11,8 +11,10 @@ import { cn } from "@/lib/utils";
 import type { Document, Playlist } from "@/types";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { AddAudioForm } from "./add-audio-form";
+import { YoutubeSearch } from "./youtube-search";
+import { Button } from "@/components/ui/button";
 
-type Tab = "tracks" | "playlists" | "favourites" | "recent";
+type Tab = "tracks" | "playlists" | "favourites" | "recent" | "youtube_search";
 type SortKey = "recent" | "title" | "plays" | "duration";
 type RevFilter = "all" | "today" | "2days" | "3days";
 
@@ -43,6 +45,7 @@ export function MusicLibraryClient({ initialDocs, initialPlaylists }: MusicLibra
   const [revFilter, setRevFilter] = React.useState<RevFilter>("all");
   const [activePlaylistId, setActivePlaylistId] = React.useState<string | null>(null);
   const [isAddOpen, setIsAddOpen] = React.useState(false);
+  const [isYoutubeSearchOpen, setIsYoutubeSearchOpen] = React.useState(false);
   const store = useAudioPlayer.getState();
 
   const activePlaylist = playlists.find((p) => p.id === activePlaylistId) ?? null;
@@ -125,6 +128,7 @@ export function MusicLibraryClient({ initialDocs, initialPlaylists }: MusicLibra
     { key: "playlists", label: "Playlists" },
     { key: "favourites", label: "Favourites" },
     { key: "recent", label: "Recently Played" },
+    { key: "youtube_search", label: "Search YouTube" },
   ];
 
   return (
@@ -231,8 +235,21 @@ export function MusicLibraryClient({ initialDocs, initialPlaylists }: MusicLibra
         </div>
       )}
 
+      {/* YouTube Search tab */}
+      {tab === "youtube_search" && (
+        <div className="bg-surface border border-border rounded-2xl p-6 shadow-sm">
+          <div className="max-w-2xl mx-auto">
+            <h2 className="text-lg font-semibold text-forest-slate mb-4">Discover Music on YouTube</h2>
+            <YoutubeSearch onSuccess={() => {
+              setTab("tracks");
+              window.location.reload();
+            }} />
+          </div>
+        </div>
+      )}
+
       {/* Track-based tabs */}
-      {tab !== "playlists" && (
+      {tab !== "playlists" && tab !== "youtube_search" && (
         <div>
           {/* Search + sort */}
           {(tab === "tracks" || tab === "favourites") && (
@@ -247,6 +264,15 @@ export function MusicLibraryClient({ initialDocs, initialPlaylists }: MusicLibra
                   className="w-full pl-9 pr-3 py-2 text-sm border border-border rounded-xl bg-surface focus:outline-none focus:ring-2 focus:ring-state-today/40 text-forest-slate"
                 />
               </div>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => setTab("youtube_search")}
+                className="flex items-center gap-1.5 h-9 rounded-xl border-border hover:bg-canvas text-forest-slate"
+              >
+                <Search className="h-4 w-4" />
+                Search YouTube
+              </Button>
               {tab === "tracks" && (
                 <div className="flex gap-2">
                   <select
@@ -335,9 +361,6 @@ export function MusicLibraryClient({ initialDocs, initialPlaylists }: MusicLibra
           </DialogHeader>
           <AddAudioForm onSuccess={() => {
             setIsAddOpen(false);
-            // Typically we'd revalidate path to fetch new tracks, but since we are in client,
-            // the form will be rehydrated or we can let the page reload to see it.
-            // A hard refresh is fine for now.
             window.location.reload();
           }} />
         </DialogContent>

@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Revision Master Clipper</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="clipper-container">
+    <div class="header">
+      <h2>Clip to Revision Master</h2>
+      <button id="close-btn" class="close-btn">&times;</button>
+    </div>
+    
+    <div id="status-message" class="status-message hidden"></div>
+
+    <form id="clipper-form">
+      <div class="form-group">
+        <label for="title">Title</label>
+        <input type="text" id="title" name="title" required>
+      </div>
+
+      <div class="form-group">
+        <label for="url">URL</label>
+        <input type="url" id="url" name="url" readonly>
+      </div>
+
+      <div class="form-group">
+        <label for="notes">Notes</label>
+        <textarea id="notes" name="notes" rows="4" placeholder="Add your notes here..."></textarea>
+      </div>
+
+      <button type="submit" id="submit-btn" class="submit-btn">Save to Revision Master</button>
+    </form>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>
