@@ -87,8 +87,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     try {
-      // Use local dev server by default (running on 3001 in this environment)
-      const apiUrl = 'http://localhost:3001/api/documents/clipper';
+      // Use production server
+      const apiUrl = 'https://lostbae.com/api/documents/clipper';
       
       const response = await fetch(apiUrl, {
         method: 'POST',
@@ -98,6 +98,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         body: JSON.stringify(payload),
         credentials: 'include'
       });
+
+      if (response.status === 401) {
+        throw new Error('Please log in to lostbae.com first to save clips.');
+      }
 
       if (!response.ok) {
         throw new Error(`Failed to save: ${response.statusText}`);
@@ -125,7 +129,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
     } catch (error) {
       console.error('Error saving clip:', error);
-      showStatus(error.message || 'Failed to save. Make sure Revision Master is running.', true);
+      showStatus(error.message || 'Failed to connect to lostbae.com.', true);
     } finally {
       submitBtn.disabled = false;
       submitBtn.textContent = 'Save to Revision Master';
