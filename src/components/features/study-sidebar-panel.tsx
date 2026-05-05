@@ -355,7 +355,7 @@ export function StudySidebarPanel({
             {/* Active notes */}
             {activeNotes.map((note) => (
               <div key={note.id} className="group bg-canvas rounded-xl border border-border p-3 relative">
-                <p className="text-xs text-forest-slate leading-relaxed pr-12">{note.content}</p>
+                <p className="text-xs text-forest-slate leading-relaxed pr-12 whitespace-pre-wrap">{note.content}</p>
                 <div className="absolute top-2 right-2 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
                   <SimpleTooltip content="Mark done" side="left">
                     <button
@@ -385,7 +385,7 @@ export function StudySidebarPanel({
                 <p className="text-xs text-mossy-gray font-medium mb-1.5">Archived</p>
                 {notes.filter((n) => n.isDone).map((note) => (
                   <div key={note.id} className="group relative bg-canvas/50 rounded-xl border border-border/50 px-3 py-2 opacity-60 mb-1.5">
-                    <p className="text-xs text-mossy-gray line-through pr-8">{note.content}</p>
+                    <p className="text-xs text-mossy-gray line-through pr-8 whitespace-pre-wrap">{note.content}</p>
                     <button
                       onClick={() => handleDeleteNote(note.id)}
                       className="absolute top-1.5 right-1.5 opacity-0 group-hover:opacity-100 p-1 rounded-lg hover:text-destructive text-mossy-gray"

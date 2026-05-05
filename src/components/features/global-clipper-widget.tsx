@@ -26,6 +26,7 @@ export function GlobalClipperWidget() {
         notes: formData.get("notes") as string,
         tags: formData.get("tags") as string,
         terminology: formData.get("terminology") as string,
+        actionIfExists: formData.get("actionIfExists") as string,
       };
 
       try {
@@ -124,6 +125,18 @@ export function GlobalClipperWidget() {
             placeholder="https://..."
             className="w-full text-sm px-3 py-2 border border-zinc-200 dark:border-zinc-800 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 bg-transparent"
           />
+        </div>
+
+        <div className="space-y-1">
+          <label htmlFor="clipper-action" className="text-xs font-medium text-zinc-500">If URL already saved:</label>
+          <select
+            id="clipper-action"
+            name="actionIfExists"
+            className="w-full text-sm px-3 py-2 border border-zinc-200 dark:border-zinc-800 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 bg-transparent"
+          >
+            <option value="append">Append note to existing</option>
+            <option value="create_new">Create new document</option>
+          </select>
         </div>
 
         <div className="space-y-1">

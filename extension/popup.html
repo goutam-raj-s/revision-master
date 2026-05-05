@@ -27,6 +27,14 @@
       </div>
 
       <div class="form-group">
+        <label for="actionIfExists">If URL already saved:</label>
+        <select id="actionIfExists" name="actionIfExists">
+          <option value="append">Append note to existing</option>
+          <option value="create_new">Create new document</option>
+        </select>
+      </div>
+
+      <div class="form-group">
         <label for="notes">Notes</label>
         <textarea id="notes" name="notes" rows="3" placeholder="Add your notes here..."></textarea>
       </div>

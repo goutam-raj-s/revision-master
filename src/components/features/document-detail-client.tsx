@@ -175,7 +175,7 @@ export function DocumentDetailClient({ doc, rep, initialNotes, initialTerms }: D
             {/* Active notes */}
             {activeNotes.map((note) => (
               <div key={note.id} className="group relative bg-surface rounded-2xl border border-border p-4 shadow-card">
-                <p className="text-sm text-forest-slate leading-relaxed pr-16">{note.content}</p>
+                <p className="text-sm text-forest-slate leading-relaxed pr-16 whitespace-pre-wrap">{note.content}</p>
                 <div className="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                   <SimpleTooltip content="Mark done" side="left">
                     <button
@@ -205,7 +205,7 @@ export function DocumentDetailClient({ doc, rep, initialNotes, initialTerms }: D
                 <p className="text-xs text-mossy-gray font-medium mb-2">Archived</p>
                 {doneNotes.map((note) => (
                   <div key={note.id} className="group relative bg-canvas rounded-xl border border-border/50 px-4 py-3 opacity-60">
-                    <p className="text-sm text-mossy-gray line-through pr-10">{note.content}</p>
+                    <p className="text-sm text-mossy-gray line-through pr-10 whitespace-pre-wrap">{note.content}</p>
                     <button
                       onClick={() => handleDeleteNote(note.id)}
                       className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 p-1 rounded-lg hover:text-destructive text-mossy-gray"

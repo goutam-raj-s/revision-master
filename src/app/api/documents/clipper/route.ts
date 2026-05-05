@@ -10,7 +10,8 @@ const ClipperPayloadSchema = z.object({
   title: z.string().min(1).max(500),
   notes: z.string().optional(),
   tags: z.string().optional(),
-  terminology: z.string().optional()
+  terminology: z.string().optional(),
+  actionIfExists: z.enum(["append", "create_new"]).optional().default("append")
 });
 
 
@@ -47,11 +48,15 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400, headers: corsHeaders });
     }
 
-    const { url, title, notes, tags, terminology } = parsed.data;
+    const { url, title, notes, tags, terminology, actionIfExists } = parsed.data;
     const userId = session.id;
 
     const docs = await getDocumentsCollection();
-    const existing = await docs.findOne({ userId: new ObjectId(userId), url });
+    
+    let existing = null;
+    if (actionIfExists === "append") {
+      existing = await docs.findOne({ url, userId: new ObjectId(userId) });
+    }
 
     let docId: ObjectId;
 

@@ -5,6 +5,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const notesInput = document.getElementById('notes');
   const tagsInput = document.getElementById('tags');
   const terminologyInput = document.getElementById('terminology');
+  const actionIfExistsInput = document.getElementById('actionIfExists');
   const statusMessage = document.getElementById('status-message');
   const submitBtn = document.getElementById('submit-btn');
   const closeBtn = document.getElementById('close-btn');
@@ -55,7 +56,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       url: urlInput.value,
       notes: notesInput.value,
       tags: tagsInput.value,
-      terminology: terminologyInput.value
+      terminology: terminologyInput.value,
+      actionIfExists: actionIfExistsInput.value
     };
 
     try {
