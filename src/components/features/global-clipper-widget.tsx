@@ -24,6 +24,8 @@ export function GlobalClipperWidget() {
         title: formData.get("title") as string,
         url: formData.get("url") as string,
         notes: formData.get("notes") as string,
+        tags: formData.get("tags") as string,
+        terminology: formData.get("terminology") as string,
       };
 
       try {
@@ -88,7 +90,7 @@ export function GlobalClipperWidget() {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed bottom-24 right-6 w-80 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-2xl z-50 overflow-hidden flex flex-col animate-in slide-in-from-bottom-5 fade-in duration-200">
+    <div className="fixed bottom-24 right-6 w-[320px] min-w-[300px] max-w-[90vw] max-h-[90vh] resize overflow-auto bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-2xl z-50 flex flex-col animate-in slide-in-from-bottom-5 fade-in duration-200">
       <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/50">
         <h3 className="font-medium text-sm text-zinc-900 dark:text-zinc-100">Quick Clip</h3>
         <button 
@@ -129,8 +131,29 @@ export function GlobalClipperWidget() {
           <textarea
             id="clipper-notes"
             name="notes"
-            rows={3}
+            rows={2}
             placeholder="Add your notes..."
+            className="w-full text-sm px-3 py-2 border border-zinc-200 dark:border-zinc-800 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 bg-transparent resize-none"
+          />
+        </div>
+
+        <div className="space-y-1">
+          <label htmlFor="clipper-tags" className="text-xs font-medium text-zinc-500">Tags</label>
+          <input
+            id="clipper-tags"
+            name="tags"
+            placeholder="e.g. react, chrome extension"
+            className="w-full text-sm px-3 py-2 border border-zinc-200 dark:border-zinc-800 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 bg-transparent"
+          />
+        </div>
+
+        <div className="space-y-1">
+          <label htmlFor="clipper-terminology" className="text-xs font-medium text-zinc-500">Terminology</label>
+          <textarea
+            id="clipper-terminology"
+            name="terminology"
+            rows={2}
+            placeholder="Term: Definition"
             className="w-full text-sm px-3 py-2 border border-zinc-200 dark:border-zinc-800 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 bg-transparent resize-none"
           />
         </div>

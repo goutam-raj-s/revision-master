@@ -3,6 +3,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   const titleInput = document.getElementById('title');
   const urlInput = document.getElementById('url');
   const notesInput = document.getElementById('notes');
+  const tagsInput = document.getElementById('tags');
+  const terminologyInput = document.getElementById('terminology');
   const statusMessage = document.getElementById('status-message');
   const submitBtn = document.getElementById('submit-btn');
   const closeBtn = document.getElementById('close-btn');
@@ -51,7 +53,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     const payload = {
       title: titleInput.value,
       url: urlInput.value,
-      notes: notesInput.value
+      notes: notesInput.value,
+      tags: tagsInput.value,
+      terminology: terminologyInput.value
     };
 
     try {
@@ -75,6 +79,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       
       // Clear notes after success
       notesInput.value = '';
+      tagsInput.value = '';
+      terminologyInput.value = '';
       
       // Auto close after 2 seconds if injected
       if (isInjected) {

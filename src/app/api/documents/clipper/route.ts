@@ -1,14 +1,16 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth/session";
 import { ObjectId } from "mongodb";
-import { getDocumentsCollection, getRepetitionsCollection, getNotesCollection } from "@/lib/db/collections";
+import { getDocumentsCollection, getRepetitionsCollection, getNotesCollection, getTermsCollection } from "@/lib/db/collections";
 import { getCustomNextReviewDate } from "@/lib/srs/engine";
 import { z } from "zod";
 
 const ClipperPayloadSchema = z.object({
   url: z.string().url(),
   title: z.string().min(1).max(500),
-  notes: z.string().optional()
+  notes: z.string().optional(),
+  tags: z.string().optional(),
+  terminology: z.string().optional()
 });
 
 
@@ -45,7 +47,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400, headers: corsHeaders });
     }
 
-    const { url, title, notes } = parsed.data;
+    const { url, title, notes, tags, terminology } = parsed.data;
     const userId = session.id;
 
     const docs = await getDocumentsCollection();
@@ -57,7 +59,12 @@ export async function POST(req: Request) {
       docId = existing._id;
       // Maybe update the title? We'll just leave it.
     } else {
-      const now = new Date();
+      const tagList = ["web-clip"];
+      if (tags && tags.trim()) {
+        const customTags = tags.split(',').map(t => t.trim()).filter(t => t.length > 0);
+        tagList.push(...customTags);
+      }
+
       const docResult = await docs.insertOne({
         _id: new ObjectId(),
         userId: new ObjectId(userId),
@@ -65,7 +72,7 @@ export async function POST(req: Request) {
         title,
         status: "first_visit",
         difficulty: "medium",
-        tags: ["web-clip"],
+        tags: tagList,
         isLinkBroken: false,
         mediaType: "document",
         createdAt: now,
@@ -99,6 +106,39 @@ export async function POST(req: Request) {
         createdAt: new Date(),
         updatedAt: new Date(),
       });
+    }
+
+    // Add terminology if provided
+    if (terminology && terminology.trim().length > 0) {
+      const termsCol = await getTermsCollection();
+      const lines = terminology.split('\n');
+      const termsToInsert = [];
+      const now = new Date();
+      
+      for (const line of lines) {
+        if (!line.trim() || !line.includes(':')) continue;
+        
+        const separatorIndex = line.indexOf(':');
+        const termStr = line.substring(0, separatorIndex).trim();
+        const definitionStr = line.substring(separatorIndex + 1).trim();
+        
+        if (termStr && definitionStr) {
+          termsToInsert.push({
+            _id: new ObjectId(),
+            userId: new ObjectId(userId),
+            docId: docId,
+            term: termStr,
+            definition: definitionStr,
+            isDone: false,
+            createdAt: now,
+            updatedAt: now,
+          });
+        }
+      }
+      
+      if (termsToInsert.length > 0) {
+        await termsCol.insertMany(termsToInsert);
+      }
     }
 
     return NextResponse.json({ success: true, docId: docId.toString() }, { headers: corsHeaders });

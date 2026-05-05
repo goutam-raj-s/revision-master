@@ -26,7 +26,13 @@
   bottom: 96px;
   right: 24px;
   width: 320px;
-  height: 400px;
+  height: 480px;
+  min-width: 300px;
+  min-height: 400px;
+  max-width: 90vw;
+  max-height: 90vh;
+  resize: both;
+  overflow: auto;
   border: none;
   border-radius: 12px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
