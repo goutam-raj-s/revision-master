@@ -45,25 +45,58 @@ document.addEventListener('DOMContentLoaded', async () => {
     statusMessage.classList.remove('hidden');
   }
 
+  // Helper to safely get storage
+  const getStorage = () => {
+    try {
+      if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+        return chrome.storage.local;
+      }
+    } catch (e) {}
+    return null;
+  };
+
   // Restore drafted values if any
   try {
-    const draft = await chrome.storage.local.get(['draft_notes', 'draft_tags', 'draft_terminology', 'draft_action']);
-    if (draft.draft_notes) notesInput.value = draft.draft_notes;
-    if (draft.draft_tags) tagsInput.value = draft.draft_tags;
-    if (draft.draft_terminology) terminologyInput.value = draft.draft_terminology;
-    if (draft.draft_action) actionIfExistsInput.value = draft.draft_action;
+    const storage = getStorage();
+    if (storage) {
+      const draft = await storage.get(['draft_notes', 'draft_tags', 'draft_terminology', 'draft_action']);
+      if (draft.draft_notes) notesInput.value = draft.draft_notes;
+      if (draft.draft_tags) tagsInput.value = draft.draft_tags;
+      if (draft.draft_terminology) terminologyInput.value = draft.draft_terminology;
+      if (draft.draft_action) actionIfExistsInput.value = draft.draft_action;
+    } else {
+      // Fallback to window.localStorage
+      const n = localStorage.getItem('draft_notes');
+      const t = localStorage.getItem('draft_tags');
+      const term = localStorage.getItem('draft_terminology');
+      const a = localStorage.getItem('draft_action');
+      if (n) notesInput.value = n;
+      if (t) tagsInput.value = t;
+      if (term) terminologyInput.value = term;
+      if (a) actionIfExistsInput.value = a;
+    }
   } catch (e) {
     console.error("Could not load drafts:", e);
   }
 
   // Live save inputs
   const saveDraft = () => {
-    chrome.storage.local.set({
-      draft_notes: notesInput.value,
-      draft_tags: tagsInput.value,
-      draft_terminology: terminologyInput.value,
-      draft_action: actionIfExistsInput.value
-    });
+    try {
+      const storage = getStorage();
+      if (storage) {
+        storage.set({
+          draft_notes: notesInput.value,
+          draft_tags: tagsInput.value,
+          draft_terminology: terminologyInput.value,
+          draft_action: actionIfExistsInput.value
+        });
+      } else {
+        localStorage.setItem('draft_notes', notesInput.value);
+        localStorage.setItem('draft_tags', tagsInput.value);
+        localStorage.setItem('draft_terminology', terminologyInput.value);
+        localStorage.setItem('draft_action', actionIfExistsInput.value);
+      }
+    } catch (e) {}
   };
 
   notesInput.addEventListener('input', saveDraft);
@@ -87,8 +120,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     try {
-      // Use production server
-      const apiUrl = 'https://lostbae.com/api/documents/clipper';
+      // IMPORTANT: Change this to 'https://lostbae.com/api/documents/clipper' before publishing to Chrome Store!
+      const apiUrl = 'http://localhost:3001/api/documents/clipper';
       
       const response = await fetch(apiUrl, {
         method: 'POST',
@@ -115,7 +148,19 @@ document.addEventListener('DOMContentLoaded', async () => {
       terminologyInput.value = '';
       
       // Clear drafts
-      await chrome.storage.local.remove(['draft_notes', 'draft_tags', 'draft_terminology', 'draft_action']);
+      try {
+        const storage = getStorage();
+        if (storage) {
+          await storage.remove(['draft_notes', 'draft_tags', 'draft_terminology', 'draft_action']);
+        } else {
+          localStorage.removeItem('draft_notes');
+          localStorage.removeItem('draft_tags');
+          localStorage.removeItem('draft_terminology');
+          localStorage.removeItem('draft_action');
+        }
+      } catch (e) {
+        console.error("Could not remove drafts:", e);
+      }
       
       // Auto close after 2 seconds if injected
       if (isInjected) {
