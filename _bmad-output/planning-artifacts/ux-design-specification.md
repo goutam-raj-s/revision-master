@@ -401,3 +401,18 @@ We will target **WCAG 2.1 Level AA** compliance.
 
 ---
 *End of UX Design Specification Document*
+---
+
+## Feature UX Patterns — Phase 1.7 Additions
+
+### 1. Hierarchical Navigation (The "Doc Tree")
+- **The Sidebar Strategy:** A "Contextual Sidebar" that appears only within the document view. It shows the parent document as a breadcrumb and sibling/sub-pages as a clean, nested list.
+- **Collapsible Layout:** The global navigation sidebar supports three states: **Expanded** (default), **Mini** (icons only), and **Hidden**. This allows the user to carve out up to 100% of the screen for reading and annotation.
+- **In-Place Creation:** New sub-pages are created via a "+" button within the sidebar, ensuring the user stays in their current mental context without navigating back to a main library.
+
+### 2. Collapsible Image Annotations (The "Peek" Interaction)
+- **The Zero-Disruption Principle:** Images no longer exist as blocks by default. They are converted into **inline symbols** ("Image" badges). This preserves the textual density and reading rhythm of the document.
+- **Hover-to-Peek:** Hovering over a badge triggers an instant, high-fidelity preview. This uses a `Radix Tooltip` with a 100ms delay to prevent accidental flickering while scrolling. The preview disappears immediately on unhover, leaving no footprint.
+- **Double-Click Engagement:** When the user needs to study a visual asset deeply, a double-click expands the annotation into a **Permanent Block**.
+- **Tactile Resizing:** Once expanded, images feature a bottom-right **Resize Handle**. Dragging this provides instant visual feedback (width tooltip) and saves the new layout state to the database.
+- **Control Overlay:** Expanded images feature a floating toolbar (Copy, Minimize, Delete) that only appears on hover, maintaining a clean aesthetic.

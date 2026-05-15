@@ -13,6 +13,8 @@ import { TableCell } from "@tiptap/extension-table-cell";
 import { TableHeader } from "@tiptap/extension-table-header";
 import Placeholder from "@tiptap/extension-placeholder";
 import TextAlign from "@tiptap/extension-text-align";
+import { CollapsibleImage } from "./extensions/CollapsibleImage";
+import { uploadImageAction } from "@/actions/upload";
 import { EditorToolbar } from "./EditorToolbar";
 import { Button } from "@/components/ui/button";
 import { Download, Save, Loader2 } from "lucide-react";
@@ -37,8 +39,11 @@ export function RichTextEditor({
   const [isSaving, setIsSaving] = React.useState(false);
 
   const saveTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
-  // Store editor ref so keyboard handler can access it
   const editorRef = React.useRef<ReturnType<typeof useEditor>>(null);
+  
+  // Sticky Highlight State
+  const [isStickyHighlight, setIsStickyHighlight] = React.useState(false);
+  const [activeHighlightColor, setActiveHighlightColor] = React.useState("#fef08a"); // Default yellow
 
   const handleSave = React.useCallback(async (contentToSave: string) => {
     if (!docId) return;
@@ -57,11 +62,53 @@ export function RichTextEditor({
   React.useEffect(() => {
     if (readOnly) return;
     const handleKeyDown = (e: KeyboardEvent) => {
+      // ⌘S / Ctrl+S → save
       if ((e.metaKey || e.ctrlKey) && e.key === "s") {
         e.preventDefault();
         const ed = editorRef.current;
         if (ed && docId) {
           handleSave(ed.getHTML());
+        }
+      }
+
+      // Highlight Shortcuts
+      const isH = e.key.toLowerCase() === "h";
+      const isP = e.key.toLowerCase() === "p";
+      const isO = e.key.toLowerCase() === "o";
+      const isI = e.key.toLowerCase() === "i";
+
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && (isH || isP || isO || isI)) {
+        e.preventDefault();
+        const ed = editorRef.current;
+        if (!ed) return;
+
+        if (isH) {
+          // Master Toggle
+          if (isStickyHighlight) {
+            setIsStickyHighlight(false);
+            ed.chain().focus().unsetHighlight().run();
+            toast("Sticky Highlight Off", { variant: "default" });
+          } else {
+            setIsStickyHighlight(true);
+            setActiveHighlightColor("#fef08a");
+            ed.chain().focus().setHighlight({ color: "#fef08a" }).run();
+            toast("Sticky Highlight On (Yellow)", { variant: "default" });
+          }
+        } else if (isP) {
+          setIsStickyHighlight(true);
+          setActiveHighlightColor("#fbcfe8"); // Pink
+          ed.chain().focus().setHighlight({ color: "#fbcfe8" }).run();
+          toast("Sticky Highlight On (Pink)", { variant: "default" });
+        } else if (isO) {
+          setIsStickyHighlight(true);
+          setActiveHighlightColor("#fed7aa"); // Orange
+          ed.chain().focus().setHighlight({ color: "#fed7aa" }).run();
+          toast("Sticky Highlight On (Orange)", { variant: "default" });
+        } else if (isI) {
+          setIsStickyHighlight(true);
+          setActiveHighlightColor("#fecaca"); // Red
+          ed.chain().focus().setHighlight({ color: "#fecaca" }).run();
+          toast("Sticky Highlight On (Red)", { variant: "default" });
         }
       }
     };
@@ -77,11 +124,7 @@ export function RichTextEditor({
       StarterKit,
       Underline,
       Highlight.configure({ multicolor: true }),
-      Image.configure({
-        HTMLAttributes: {
-          class: "rounded-lg border border-border max-w-full h-auto",
-        },
-      }),
+      CollapsibleImage,
       Link.configure({
         openOnClick: false,
         HTMLAttributes: {
@@ -123,6 +166,87 @@ export function RichTextEditor({
       saveTimeoutRef.current = setTimeout(() => {
         handleSave(editor.getHTML());
       }, 2000); // Auto-save after 2 seconds of inactivity
+    },
+    editorProps: {
+      handlePaste: (view: any, event: ClipboardEvent) => {
+        const items = Array.from(event.clipboardData?.items || []);
+        const imageItem = items.find((item) => item.type.startsWith("image"));
+
+        if (imageItem) {
+          event.preventDefault();
+          const file = imageItem.getAsFile();
+          if (file) {
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+              const base64 = e.target?.result as string;
+              toast("Uploading image...", { variant: "default" });
+              const result = await uploadImageAction(base64);
+              if (result.success) {
+                view.dispatch(
+                  view.state.tr.replaceSelectionWith(
+                    view.state.schema.nodes.collapsibleImage.create({ src: result.url })
+                  )
+                );
+                toast("Image uploaded", { variant: "default" });
+              } else {
+                toast(result.error || "Upload failed", { variant: "error" });
+              }
+            };
+            reader.readAsDataURL(file);
+          }
+          return true;
+        }
+        return false;
+      },
+      handleDrop: (view: any, event: DragEvent) => {
+        const items = Array.from(event.dataTransfer?.files || []);
+        const imageFile = items.find((file) => file.type.startsWith("image"));
+
+        if (imageFile) {
+          event.preventDefault();
+          const reader = new FileReader();
+          reader.onload = async (e) => {
+            const base64 = e.target?.result as string;
+            toast("Uploading image...", { variant: "default" });
+            const result = await uploadImageAction(base64);
+            if (result.success) {
+              const { schema } = view.state;
+              const coordinates = view.posAtCoords({ left: event.clientX, top: event.clientY });
+              if (coordinates) {
+                view.dispatch(
+                  view.state.tr.insert(
+                    coordinates.pos,
+                    schema.nodes.collapsibleImage.create({ src: result.url })
+                  )
+                );
+              }
+              toast("Image uploaded", { variant: "default" });
+            } else {
+              toast(result.error || "Upload failed", { variant: "error" });
+            }
+          };
+          reader.readAsDataURL(imageFile);
+          return true;
+        }
+        return false;
+      },
+      handleClick: (view: any, pos: number, event: MouseEvent) => {
+        if (isStickyHighlight) {
+          const { state, dispatch } = view;
+          const { tr } = state;
+          
+          // If there's a selection, use it. Otherwise, use a small range around the click.
+          const { from, to } = state.selection.empty 
+            ? { from: pos, to: pos + 1 } 
+            : state.selection;
+
+          dispatch(
+            tr.addMark(from, to, state.schema.marks.highlight.create({ color: activeHighlightColor }))
+          );
+          return true;
+        }
+        return false;
+      },
     },
   };
 

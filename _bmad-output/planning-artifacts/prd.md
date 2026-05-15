@@ -558,3 +558,33 @@ These are beyond the functional baseline but make the feature genuinely memorabl
 4. **Waveform Preview:** On hover of a track card, show a static SVG waveform generated from the audio file's peak data (computed once on upload, stored in DB). Gives instant visual identity to each track.
 5. **Continue Where You Left Off:** On page load (fresh session), if the user had a track paused, restore the last track + position from `localStorage` and show a "Continue listening?" prompt in the Mini-Player rather than auto-playing.
 6. **Drag Tracks to Playlist:** In the Music library, user can drag a track card directly onto a playlist name in the sidebar to add it without opening a menu.
+
+---
+
+### Phase 1.7: Advanced Document Management & Editor
+
+**Goal:** Transform the editor into a professional workspace by introducing document hierarchy, sophisticated highlighting, and advanced image handling.
+
+#### 1. Hierarchical Document Management
+- **The "Sub-page" Concept:** Users can nest documents inside one another, creating a parent-child tree structure.
+- **Contextual Sidebar:** A document-specific sidebar reveals the current tree (parent, siblings, children), allowing for fast navigation within a specific knowledge domain.
+- **In-place Creation:** Users can create a child document directly from the parent view.
+
+#### 2. Advanced Highlighting System
+- **Sticky Mode:** Toggle "Sticky Highlight" (`Cmd + Shift + H`). Once active, clicking on any text automatically applies the current highlight color without requiring manual selection first.
+- **Multi-color Pallete:** Support for 6 distinct highlight colors (Yellow, Pink, Orange, Red, Blue, Green) to allow for sophisticated categorization (e.g., Pink for definitions, Red for urgent questions).
+- **Shortcuts:**
+  - `Cmd + Shift + H`: Toggle Sticky Mode (Default Yellow)
+  - `Cmd + Shift + P`: Pink
+  - `Cmd + Shift + O`: Orange
+  - `Cmd + Shift + I`: Red
+
+#### 3. Collapsible Image Annotations
+- **Image-to-Badge Conversion:** To maintain reading flow, uploaded images are initially rendered as a compact "Image" badge inline with text.
+- **Hover-to-Preview:** Hovering over a badge reveals a high-fidelity image preview that automatically disappears on unhover.
+- **Double-Click Expansion:** Double-clicking a badge expands it into a full-width, permanent image block.
+- **Resizable Media:** Expanded images feature a resize handle to adjust width. The state (collapsed/expanded/width) is persisted.
+- **Clipboard Integration:** One-click "Copy" button in the image overlay to write the image back to the system clipboard.
+
+#### 4. Fluid Typography
+- **Window-Relative Scaling:** Use CSS `clamp()` logic to ensure typography scales gracefully based on the editor window size, maintaining readability across all devices.
