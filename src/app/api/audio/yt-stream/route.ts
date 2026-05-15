@@ -19,22 +19,22 @@ export async function GET(request: Request) {
     // play-dl is generally more reliable and faster for streaming metadata/urls
     const stream = await play.stream(url);
     
-    if (!stream || !stream.url) {
+    if (!stream || !(stream as any).url) {
       throw new Error("No stream URL returned from play-dl");
     }
 
-    return NextResponse.json({ streamUrl: stream.url });
+    return NextResponse.json({ streamUrl: (stream as any).url });
   } catch (error: any) {
     console.warn("play-dl error, falling back to youtube-dl-exec:", error.message || error);
     
     try {
       // Fallback to youtube-dl-exec which is slower but often more robust against YT changes
-      const output = await youtubedl(url, {
+      const output: unknown = await youtubedl(url, {
         getUrl: true,
         format: "bestaudio",
         noWarnings: true,
         callHome: false,
-        noCheckCertificate: true,
+        noCheckCertificates: true,
       });
       
       // youtubedl output might be a single string URL or multiple separated by newlines
