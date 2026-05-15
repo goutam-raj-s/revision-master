@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useRouter } from "next/navigation";
 import { Loader2, Pencil } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "@/components/ui/toast";
@@ -13,6 +14,7 @@ interface InlineTitleEditorProps {
 }
 
 export function InlineTitleEditor({ docId, title: initialTitle, className }: InlineTitleEditorProps) {
+  const router = useRouter();
   const [editing, setEditing] = React.useState(false);
   const [value, setValue] = React.useState(initialTitle);
   const [displayTitle, setDisplayTitle] = React.useState(initialTitle);
@@ -60,6 +62,7 @@ export function InlineTitleEditor({ docId, title: initialTitle, className }: Inl
       setEditing(false);
       setError(null);
       toast("Title updated", { variant: "success" });
+      router.refresh();
     } else {
       setError(result.error || "Failed to save title");
       inputRef.current?.focus();

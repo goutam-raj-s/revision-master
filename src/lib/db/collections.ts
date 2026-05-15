@@ -304,3 +304,8 @@ export async function getRepetitionByDocId(docId: string): Promise<DbRepetition 
   const col = await getRepetitionsCollection();
   return col.findOne({ docId: new ObjectId(docId) });
 }
+
+export async function getSubPages(docId: string, userId: string): Promise<DbDocument[]> {
+  const col = await getDocumentsCollection();
+  return col.find({ parentDocId: new ObjectId(docId), userId: new ObjectId(userId) }).sort({ createdAt: 1 }).toArray();
+}

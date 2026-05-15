@@ -474,6 +474,9 @@ export async function getUserDocuments(filter?: {
       { title: { $regex: filter.search, $options: "i" } },
       { tags: { $regex: filter.search, $options: "i" } },
     ];
+  } else {
+    // Only show top-level documents by default
+    query.parentDocId = { $exists: false };
   }
 
   const results = await docs.find(query).sort({ createdAt: -1 }).toArray();
