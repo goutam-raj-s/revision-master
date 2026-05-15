@@ -10,7 +10,9 @@ import {
   ArrowLeft,
   Loader2,
   Trash2,
-  Pencil
+  Pencil,
+  Search,
+  Layers3
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -34,6 +36,18 @@ export function DocumentTabsSidebar({ subPages, currentDocId, parentId }: Docume
   const router = useRouter();
   const [isCreating, setIsCreating] = React.useState(false);
   const [isCollapsed, setIsCollapsed] = React.useState(false);
+  const [query, setQuery] = React.useState("");
+  const filteredPages = query.trim()
+    ? subPages.filter((page) => page.title.toLowerCase().includes(query.trim().toLowerCase()))
+    : subPages;
+
+  React.useEffect(() => {
+    setIsCollapsed(window.localStorage.getItem("lostbae_doc_tabs_collapsed") === "1");
+  }, []);
+
+  React.useEffect(() => {
+    window.localStorage.setItem("lostbae_doc_tabs_collapsed", isCollapsed ? "1" : "0");
+  }, [isCollapsed]);
 
   async function handleAddSubPage() {
     setIsCreating(true);
@@ -68,7 +82,7 @@ export function DocumentTabsSidebar({ subPages, currentDocId, parentId }: Docume
   return (
     <div 
       className={cn(
-        "flex-shrink-0 border-r border-border h-[calc(100vh-4rem)] sticky top-16 bg-canvas flex flex-col transition-all duration-300 ease-in-out group/sidebar",
+        "hidden lg:flex flex-shrink-0 border-r border-border h-[calc(100vh-4rem)] sticky top-16 bg-canvas flex-col transition-all duration-300 ease-in-out group/sidebar",
         isCollapsed ? "w-12" : "w-64"
       )}
     >
@@ -97,7 +111,10 @@ export function DocumentTabsSidebar({ subPages, currentDocId, parentId }: Docume
             </Link>
 
             <div className="flex items-center justify-between mb-2">
-              <h3 className="text-sm font-semibold text-forest-slate tracking-tight">Document tabs</h3>
+              <div>
+                <h3 className="text-sm font-semibold text-forest-slate tracking-tight">Document tabs</h3>
+                <p className="text-[11px] text-mossy-gray">{subPages.length} page{subPages.length === 1 ? "" : "s"}</p>
+              </div>
               <Button 
                 variant="ghost" 
                 size="icon-sm" 
@@ -107,6 +124,15 @@ export function DocumentTabsSidebar({ subPages, currentDocId, parentId }: Docume
               >
                 {isCreating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-4 w-4" />}
               </Button>
+            </div>
+            <div className="relative mt-3">
+              <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-mossy-gray" />
+              <input
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Find page..."
+                className="h-8 w-full rounded-full border border-border bg-surface pl-8 pr-3 text-xs text-forest-slate outline-none transition-colors placeholder:text-mossy-gray/60 focus:border-state-today/40 focus:ring-2 focus:ring-state-today/10"
+              />
             </div>
           </>
         ) : (
@@ -128,7 +154,7 @@ export function DocumentTabsSidebar({ subPages, currentDocId, parentId }: Docume
 
       {/* Tabs List */}
       <div className={cn("flex-1 overflow-y-auto p-2 space-y-1 custom-scrollbar", isCollapsed && "px-1")}>
-        {subPages.map((page) => {
+        {filteredPages.map((page) => {
           const isActive = page.id === currentDocId;
           return (
             <div
@@ -178,6 +204,13 @@ export function DocumentTabsSidebar({ subPages, currentDocId, parentId }: Docume
             </div>
           );
         })}
+        {filteredPages.length === 0 && !isCollapsed && (
+          <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-surface/60 px-3 py-8 text-center">
+            <Layers3 className="mb-2 h-5 w-5 text-mossy-gray" />
+            <p className="text-xs font-medium text-forest-slate">No pages found</p>
+            <p className="mt-1 text-[11px] text-mossy-gray">Try a different search or add a new page.</p>
+          </div>
+        )}
       </div>
     </div>
   );

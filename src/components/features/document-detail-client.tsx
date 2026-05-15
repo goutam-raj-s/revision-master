@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2, Check, Loader2, BookText, FileText, Tag, X, Save } from "lucide-react";
+import { Plus, Trash2, Check, Loader2, BookText, FileText, Tag, X, Save, Search, Copy, CalendarDays } from "lucide-react";
 import { SimpleTooltip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -43,6 +43,7 @@ export function DocumentDetailClient({ doc, rep, initialNotes, initialTerms }: D
   const [tags, setTags] = React.useState<string[]>(doc.tags);
   const [savingTags, setSavingTags] = React.useState(false);
   const [activeSection, setActiveSection] = React.useState<"notes" | "terms">("notes");
+  const [query, setQuery] = React.useState("");
 
   async function handleSaveNote() {
     if (!newNote.trim()) return;
@@ -123,11 +124,72 @@ export function DocumentDetailClient({ doc, rep, initialNotes, initialTerms }: D
 
   const activeNotes = notes.filter((n) => !n.isDone);
   const doneNotes = notes.filter((n) => n.isDone);
+  const lowerQuery = query.trim().toLowerCase();
+  const visibleActiveNotes = lowerQuery
+    ? activeNotes.filter((note) => note.content.toLowerCase().includes(lowerQuery))
+    : activeNotes;
+  const visibleDoneNotes = lowerQuery
+    ? doneNotes.filter((note) => note.content.toLowerCase().includes(lowerQuery))
+    : doneNotes;
+  const visibleTerms = lowerQuery
+    ? terms.filter((term) =>
+        term.term.toLowerCase().includes(lowerQuery) ||
+        term.definition.toLowerCase().includes(lowerQuery)
+      )
+    : terms;
+
+  async function copyText(text: string, label: string) {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast(`${label} copied`, { variant: "success" });
+    } catch {
+      toast("Could not copy", { variant: "error" });
+    }
+  }
 
   return (
     <div className="grid lg:grid-cols-3 gap-6">
       {/* Left: Notes & Terms */}
       <div className="lg:col-span-2 space-y-6">
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div className="rounded-2xl border border-border bg-surface p-4 shadow-card">
+            <FileText className="mb-2 h-4 w-4 text-state-today" />
+            <div className="text-2xl font-semibold text-forest-slate">{activeNotes.length}</div>
+            <div className="text-xs text-mossy-gray">Open notes</div>
+          </div>
+          <div className="rounded-2xl border border-border bg-surface p-4 shadow-card">
+            <BookText className="mb-2 h-4 w-4 text-state-today" />
+            <div className="text-2xl font-semibold text-forest-slate">{terms.length}</div>
+            <div className="text-xs text-mossy-gray">Glossary terms</div>
+          </div>
+          <div className="rounded-2xl border border-border bg-surface p-4 shadow-card">
+            <CalendarDays className="mb-2 h-4 w-4 text-state-today" />
+            <div className="truncate text-sm font-semibold text-forest-slate">
+              {rep ? new Date(rep.nextReviewDate).toLocaleDateString() : "Not scheduled"}
+            </div>
+            <div className="text-xs text-mossy-gray">Next review</div>
+          </div>
+        </div>
+
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-mossy-gray" />
+          <Input
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Search notes and terms..."
+            className="h-10 rounded-full pl-9 pr-10"
+          />
+          {query && (
+            <button
+              onClick={() => setQuery("")}
+              className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1 text-mossy-gray hover:bg-canvas hover:text-forest-slate"
+              aria-label="Clear search"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          )}
+        </div>
+
         {/* Tabs */}
         <div className="flex border-b border-border gap-4">
           {(["notes", "terms"] as const).map((s) => (
@@ -173,10 +235,19 @@ export function DocumentDetailClient({ doc, rep, initialNotes, initialTerms }: D
             </div>
 
             {/* Active notes */}
-            {activeNotes.map((note) => (
+            {visibleActiveNotes.map((note) => (
               <div key={note.id} className="group relative bg-surface rounded-2xl border border-border p-4 shadow-card">
                 <p className="text-sm text-forest-slate leading-relaxed pr-16 whitespace-pre-wrap">{note.content}</p>
                 <div className="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <SimpleTooltip content="Copy note" side="left">
+                    <button
+                      onClick={() => copyText(note.content, "Note")}
+                      className="p-1.5 rounded-lg hover:bg-state-today/10 hover:text-state-today text-mossy-gray transition-colors"
+                      aria-label="Copy note"
+                    >
+                      <Copy className="h-3.5 w-3.5" />
+                    </button>
+                  </SimpleTooltip>
                   <SimpleTooltip content="Mark done" side="left">
                     <button
                       onClick={() => handleMarkNoteDone(note.id)}
@@ -203,7 +274,7 @@ export function DocumentDetailClient({ doc, rep, initialNotes, initialTerms }: D
             {doneNotes.length > 0 && (
               <div>
                 <p className="text-xs text-mossy-gray font-medium mb-2">Archived</p>
-                {doneNotes.map((note) => (
+                {visibleDoneNotes.map((note) => (
                   <div key={note.id} className="group relative bg-canvas rounded-xl border border-border/50 px-4 py-3 opacity-60">
                     <p className="text-sm text-mossy-gray line-through pr-10 whitespace-pre-wrap">{note.content}</p>
                     <button
@@ -217,9 +288,13 @@ export function DocumentDetailClient({ doc, rep, initialNotes, initialTerms }: D
               </div>
             )}
 
-            {activeNotes.length === 0 && doneNotes.length === 0 && (
+            {activeNotes.length === 0 && doneNotes.length === 0 ? (
               <div className="text-center py-8 text-sm text-mossy-gray">
                 No notes yet. Write one above!
+              </div>
+            ) : visibleActiveNotes.length === 0 && visibleDoneNotes.length === 0 && (
+              <div className="text-center py-8 text-sm text-mossy-gray">
+                No notes match your search.
               </div>
             )}
           </div>
@@ -255,10 +330,19 @@ export function DocumentDetailClient({ doc, rep, initialNotes, initialTerms }: D
             </div>
 
             {/* Terms list */}
-            {terms.map((term) => (
+            {visibleTerms.map((term) => (
               <div key={term.id} className="group relative bg-surface rounded-2xl border border-border p-4 shadow-card">
                 <div className="text-sm font-semibold text-forest-slate">{term.term}</div>
                 <div className="text-sm text-mossy-gray mt-1 leading-relaxed">{term.definition}</div>
+                <SimpleTooltip content="Copy term" side="left">
+                  <button
+                    onClick={() => copyText(`${term.term}: ${term.definition}`, "Term")}
+                    className="absolute top-3 right-10 opacity-0 group-hover:opacity-100 p-1.5 rounded-lg hover:bg-state-today/10 hover:text-state-today text-mossy-gray transition-all"
+                    aria-label="Copy term"
+                  >
+                    <Copy className="h-3.5 w-3.5" />
+                  </button>
+                </SimpleTooltip>
                 <SimpleTooltip content="Delete term" side="left">
                   <button
                     onClick={() => handleDeleteTerm(term.id)}
@@ -270,9 +354,13 @@ export function DocumentDetailClient({ doc, rep, initialNotes, initialTerms }: D
                 </SimpleTooltip>
               </div>
             ))}
-            {terms.length === 0 && (
+            {terms.length === 0 ? (
               <div className="text-center py-8 text-sm text-mossy-gray">
                 No terms yet. Build your glossary!
+              </div>
+            ) : visibleTerms.length === 0 && (
+              <div className="text-center py-8 text-sm text-mossy-gray">
+                No terms match your search.
               </div>
             )}
           </div>

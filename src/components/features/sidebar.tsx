@@ -130,7 +130,7 @@ export function Sidebar({ user }: SidebarProps) {
 
       {/* Mobile hamburger */}
       <button
-        className="md:hidden fixed top-4 left-4 z-50 p-2 rounded-xl bg-surface border border-border shadow-soft"
+        className="md:hidden fixed left-3 top-2.5 z-50 flex h-9 w-9 items-center justify-center rounded-xl border border-border bg-surface shadow-soft"
         onClick={() => setMobileOpen(!mobileOpen)}
         aria-label="Toggle navigation"
       >

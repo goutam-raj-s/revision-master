@@ -36,10 +36,10 @@ export function DashboardHeader({
   })();
 
   return (
-    <div className={cn("sticky top-0 z-40 flex h-14 shrink-0 items-center justify-between border-b border-border bg-canvas/80 px-4 shadow-sm backdrop-blur-md md:px-8", className)}>
-      <nav aria-label="Breadcrumb" className="flex items-center text-sm font-medium text-mossy-gray">
+    <div className={cn("sticky top-0 z-40 flex h-14 shrink-0 items-center justify-between gap-2 overflow-hidden border-b border-border bg-canvas/80 py-0 pl-14 pr-3 shadow-sm backdrop-blur-md sm:px-4 md:px-8", className)}>
+      <nav aria-label="Breadcrumb" className="flex min-w-0 flex-1 items-center overflow-hidden text-sm font-medium text-mossy-gray">
         {showLogo ? (
-          <Link href="/dashboard" className="flex items-center gap-2 hover:opacity-80 transition-opacity mr-2">
+          <Link href="/dashboard" className="mr-1 flex shrink-0 items-center gap-2 transition-opacity hover:opacity-80 sm:mr-2">
             <div className="h-6 w-6 rounded-lg bg-state-today flex items-center justify-center shrink-0">
               <HeartHandshake className="h-3.5 w-3.5 text-white" />
             </div>
@@ -48,7 +48,7 @@ export function DashboardHeader({
             </span>
           </Link>
         ) : (
-          <Link href="/dashboard" className="flex items-center gap-1 hover:text-forest-slate transition-colors">
+          <Link href="/dashboard" className="flex shrink-0 items-center gap-1 transition-colors hover:text-forest-slate">
             <div className="h-6 w-6 rounded-lg bg-state-today flex items-center justify-center shrink-0">
               <HeartHandshake className="h-3.5 w-3.5 text-white" />
             </div>
@@ -62,15 +62,15 @@ export function DashboardHeader({
           
           return (
             <React.Fragment key={crumb.href + index}>
-              <ChevronRight className="h-4 w-4 mx-1 opacity-50" />
+              <ChevronRight className={cn("mx-1 h-4 w-4 shrink-0 opacity-50", !isLast && "hidden sm:block")} />
               {isLast ? (
-                <span className="text-forest-slate font-semibold truncate max-w-[200px] md:max-w-[300px]" title={crumb.label}>
+                <span className="min-w-0 flex-1 truncate font-semibold text-forest-slate sm:max-w-[240px] md:max-w-[340px] lg:max-w-[520px]" title={crumb.label}>
                   {crumb.label}
                 </span>
               ) : (
                 <Link 
                   href={crumb.href} 
-                  className="hover:text-forest-slate transition-colors truncate max-w-[150px]"
+                  className="hidden max-w-[150px] truncate transition-colors hover:text-forest-slate sm:inline-block"
                   title={crumb.label}
                 >
                   {crumb.label}
@@ -82,7 +82,7 @@ export function DashboardHeader({
       </nav>
 
       {rightActions && (
-        <div className="flex items-center gap-3">
+        <div className="flex shrink-0 items-center gap-2 sm:gap-3">
           {rightActions}
         </div>
       )}

@@ -5,7 +5,6 @@ import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Underline from "@tiptap/extension-underline";
 import Highlight from "@tiptap/extension-highlight";
-import Image from "@tiptap/extension-image";
 import Link from "@tiptap/extension-link";
 import { Table } from "@tiptap/extension-table";
 import { TableRow } from "@tiptap/extension-table-row";
@@ -17,9 +16,10 @@ import { CollapsibleImage } from "./extensions/CollapsibleImage";
 import { uploadImageAction } from "@/actions/upload";
 import { EditorToolbar } from "./EditorToolbar";
 import { Button } from "@/components/ui/button";
-import { Download, Save, Loader2 } from "lucide-react";
+import { AlertCircle, CheckCircle2, Download, FileText, Loader2, Save, UploadCloud } from "lucide-react";
 import { updateDocumentContentAction } from "@/actions/documents";
 import { toast } from "@/components/ui/toast";
+import { cn } from "@/lib/utils";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 
@@ -30,13 +30,21 @@ interface RichTextEditorProps {
   onSave?: (content: string) => void;
 }
 
+type SaveState = "saved" | "saving" | "unsaved" | "error";
+
 export function RichTextEditor({
   initialContent = "",
   docId,
   readOnly = false,
   onSave,
 }: RichTextEditorProps) {
-  const [isSaving, setIsSaving] = React.useState(false);
+  const [saveState, setSaveState] = React.useState<SaveState>("saved");
+  const [lastSavedAt, setLastSavedAt] = React.useState<Date | null>(null);
+  const [wordCount, setWordCount] = React.useState(0);
+  const [characterCount, setCharacterCount] = React.useState(0);
+  const [isDragActive, setIsDragActive] = React.useState(false);
+  const [focusMode, setFocusMode] = React.useState(false);
+  const readingMinutes = Math.max(1, Math.ceil(wordCount / 220));
 
   const saveTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const editorRef = React.useRef<ReturnType<typeof useEditor>>(null);
@@ -45,20 +53,86 @@ export function RichTextEditor({
   const [isStickyHighlight, setIsStickyHighlight] = React.useState(false);
   const [activeHighlightColor, setActiveHighlightColor] = React.useState("#fef08a"); // Default yellow
 
-  const handleSave = React.useCallback(async (contentToSave: string) => {
+  const updateContentStats = React.useCallback((text: string) => {
+    const normalized = text.trim();
+    setCharacterCount(normalized.length);
+    setWordCount(normalized ? normalized.split(/\s+/).length : 0);
+  }, []);
+
+  React.useEffect(() => {
+    const stored = window.localStorage.getItem("lostbae_editor_focus_mode");
+    if (stored === "1") setFocusMode(true);
+  }, []);
+
+  React.useEffect(() => {
+    window.localStorage.setItem("lostbae_editor_focus_mode", focusMode ? "1" : "0");
+  }, [focusMode]);
+
+  React.useEffect(() => {
+    return () => {
+      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    };
+  }, []);
+
+  const handleSave = React.useCallback(async (
+    contentToSave: string,
+    options: { notify?: boolean } = {}
+  ) => {
     if (!docId) return;
-    setIsSaving(true);
+    setSaveState("saving");
     const result = await updateDocumentContentAction(docId, contentToSave);
     if (result.success) {
-      toast("Changes saved automatically", { variant: "default" });
+      setSaveState("saved");
+      setLastSavedAt(new Date());
       onSave?.(contentToSave);
+      if (options.notify) {
+        toast("Changes saved", { variant: "success" });
+      }
     } else {
+      setSaveState("error");
       toast(result.error || "Failed to save changes", { variant: "error" });
     }
-    setIsSaving(false);
   }, [docId, onSave]);
 
-  // ⌘S / Ctrl+S → save
+  const setHighlightColor = React.useCallback((color: string, name?: string) => {
+    setIsStickyHighlight(true);
+    setActiveHighlightColor(color);
+    editorRef.current?.chain().focus().setHighlight({ color }).run();
+    if (name) toast(`Sticky Highlight On (${name})`, { variant: "default" });
+  }, []);
+
+  const toggleStickyHighlight = React.useCallback(() => {
+    const ed = editorRef.current;
+    if (!ed) return;
+
+    if (isStickyHighlight) {
+      setIsStickyHighlight(false);
+      ed.chain().focus().unsetHighlight().run();
+      toast("Sticky Highlight Off", { variant: "default" });
+    } else {
+      setHighlightColor(activeHighlightColor, "Ready");
+    }
+  }, [activeHighlightColor, isStickyHighlight, setHighlightColor]);
+
+  const uploadImageFile = React.useCallback(async (
+    file: File,
+    insertImage: (src: string) => void
+  ) => {
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      const base64 = e.target?.result as string;
+      toast("Uploading image...", { variant: "default" });
+      const result = await uploadImageAction(base64);
+      if (result.success && result.url) {
+        insertImage(result.url);
+        toast("Image inserted", { variant: "success" });
+      } else {
+        toast(result.error || "Upload failed", { variant: "error" });
+      }
+    };
+    reader.readAsDataURL(file);
+  }, []);
+
   React.useEffect(() => {
     if (readOnly) return;
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -67,8 +141,13 @@ export function RichTextEditor({
         e.preventDefault();
         const ed = editorRef.current;
         if (ed && docId) {
-          handleSave(ed.getHTML());
+          handleSave(ed.getHTML(), { notify: true });
         }
+      }
+
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === "f") {
+        e.preventDefault();
+        setFocusMode((current) => !current);
       }
 
       // Highlight Shortcuts
@@ -83,40 +162,19 @@ export function RichTextEditor({
         if (!ed) return;
 
         if (isH) {
-          // Master Toggle
-          if (isStickyHighlight) {
-            setIsStickyHighlight(false);
-            ed.chain().focus().unsetHighlight().run();
-            toast("Sticky Highlight Off", { variant: "default" });
-          } else {
-            setIsStickyHighlight(true);
-            setActiveHighlightColor("#fef08a");
-            ed.chain().focus().setHighlight({ color: "#fef08a" }).run();
-            toast("Sticky Highlight On (Yellow)", { variant: "default" });
-          }
+          toggleStickyHighlight();
         } else if (isP) {
-          setIsStickyHighlight(true);
-          setActiveHighlightColor("#fbcfe8"); // Pink
-          ed.chain().focus().setHighlight({ color: "#fbcfe8" }).run();
-          toast("Sticky Highlight On (Pink)", { variant: "default" });
+          setHighlightColor("#fbcfe8", "Pink");
         } else if (isO) {
-          setIsStickyHighlight(true);
-          setActiveHighlightColor("#fed7aa"); // Orange
-          ed.chain().focus().setHighlight({ color: "#fed7aa" }).run();
-          toast("Sticky Highlight On (Orange)", { variant: "default" });
+          setHighlightColor("#fed7aa", "Orange");
         } else if (isI) {
-          setIsStickyHighlight(true);
-          setActiveHighlightColor("#fecaca"); // Red
-          ed.chain().focus().setHighlight({ color: "#fecaca" }).run();
-          toast("Sticky Highlight On (Red)", { variant: "default" });
+          setHighlightColor("#fecaca", "Red");
         }
       }
     };
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [readOnly, docId, handleSave]);
-
-
+  }, [readOnly, docId, handleSave, setHighlightColor, toggleStickyHighlight]);
 
   const editorConfig = {
     immediatelyRender: false,
@@ -159,15 +217,38 @@ export function RichTextEditor({
     editable: !readOnly,
     onUpdate: ({ editor }: any) => {
       if (readOnly) return;
+      updateContentStats(editor.getText());
       if (saveTimeoutRef.current) {
         clearTimeout(saveTimeoutRef.current);
       }
-      setIsSaving(true);
+      setSaveState("unsaved");
       saveTimeoutRef.current = setTimeout(() => {
         handleSave(editor.getHTML());
       }, 2000); // Auto-save after 2 seconds of inactivity
     },
+    onCreate: ({ editor }: any) => {
+      updateContentStats(editor.getText());
+    },
     editorProps: {
+      handleDOMEvents: {
+        dragenter: (_view: any, event: DragEvent) => {
+          const hasImage = Array.from(event.dataTransfer?.items || []).some((item) => item.type.startsWith("image"));
+          if (hasImage) setIsDragActive(true);
+          return false;
+        },
+        dragover: (_view: any, event: DragEvent) => {
+          const hasImage = Array.from(event.dataTransfer?.items || []).some((item) => item.type.startsWith("image"));
+          if (hasImage) {
+            setIsDragActive(true);
+            event.preventDefault();
+          }
+          return false;
+        },
+        dragleave: () => {
+          setIsDragActive(false);
+          return false;
+        },
+      },
       handlePaste: (view: any, event: ClipboardEvent) => {
         const items = Array.from(event.clipboardData?.items || []);
         const imageItem = items.find((item) => item.type.startsWith("image"));
@@ -176,23 +257,13 @@ export function RichTextEditor({
           event.preventDefault();
           const file = imageItem.getAsFile();
           if (file) {
-            const reader = new FileReader();
-            reader.onload = async (e) => {
-              const base64 = e.target?.result as string;
-              toast("Uploading image...", { variant: "default" });
-              const result = await uploadImageAction(base64);
-              if (result.success) {
+            uploadImageFile(file, (src) => {
                 view.dispatch(
                   view.state.tr.replaceSelectionWith(
-                    view.state.schema.nodes.collapsibleImage.create({ src: result.url })
+                    view.state.schema.nodes.collapsibleImage.create({ src })
                   )
                 );
-                toast("Image uploaded", { variant: "default" });
-              } else {
-                toast(result.error || "Upload failed", { variant: "error" });
-              }
-            };
-            reader.readAsDataURL(file);
+            });
           }
           return true;
         }
@@ -204,30 +275,22 @@ export function RichTextEditor({
 
         if (imageFile) {
           event.preventDefault();
-          const reader = new FileReader();
-          reader.onload = async (e) => {
-            const base64 = e.target?.result as string;
-            toast("Uploading image...", { variant: "default" });
-            const result = await uploadImageAction(base64);
-            if (result.success) {
+          setIsDragActive(false);
+          uploadImageFile(imageFile, (src) => {
               const { schema } = view.state;
               const coordinates = view.posAtCoords({ left: event.clientX, top: event.clientY });
               if (coordinates) {
                 view.dispatch(
                   view.state.tr.insert(
                     coordinates.pos,
-                    schema.nodes.collapsibleImage.create({ src: result.url })
+                    schema.nodes.collapsibleImage.create({ src })
                   )
                 );
               }
-              toast("Image uploaded", { variant: "default" });
-            } else {
-              toast(result.error || "Upload failed", { variant: "error" });
-            }
-          };
-          reader.readAsDataURL(imageFile);
+          });
           return true;
         }
+        setIsDragActive(false);
         return false;
       },
       handleClick: (view: any, pos: number, event: MouseEvent) => {
@@ -256,17 +319,9 @@ export function RichTextEditor({
 
   const handleManualSave = React.useCallback(async () => {
     if (!editor || !docId) return;
-    setIsSaving(true);
     const content = editor.getHTML();
-    const result = await updateDocumentContentAction(docId, content);
-    if (result.success) {
-      toast("Changes saved successfully", { variant: "success" });
-      onSave?.(content);
-    } else {
-      toast(result.error || "Failed to save changes", { variant: "error" });
-    }
-    setIsSaving(false);
-  }, [editor, docId, onSave]);
+    await handleSave(content, { notify: true });
+  }, [editor, docId, handleSave]);
 
   const handleExportPDF = async () => {
     if (!editor) return;
@@ -301,28 +356,110 @@ export function RichTextEditor({
     }
   };
 
+  const saveLabel =
+    saveState === "saving"
+      ? "Saving..."
+      : saveState === "unsaved"
+        ? "Unsaved changes"
+        : saveState === "error"
+          ? "Save failed"
+          : lastSavedAt
+            ? `Saved ${lastSavedAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
+            : "Saved";
+
   return (
-    <div className="flex flex-col h-full bg-surface rounded-2xl border border-border overflow-hidden shadow-card">
-      {!readOnly && <EditorToolbar editor={editor} />}
+    <div
+      className={cn(
+        "relative flex flex-col bg-surface border border-border overflow-hidden shadow-card transition-all duration-300",
+        focusMode ? "min-h-[calc(100vh-7rem)] rounded-none md:rounded-2xl" : "h-full rounded-2xl"
+      )}
+    >
+      {!readOnly && (
+        <EditorToolbar
+          editor={editor}
+          isStickyHighlight={isStickyHighlight}
+          activeHighlightColor={activeHighlightColor}
+          focusMode={focusMode}
+          onToggleStickyHighlight={toggleStickyHighlight}
+          onSelectHighlightColor={setHighlightColor}
+          onToggleFocusMode={() => setFocusMode((current) => !current)}
+        />
+      )}
       
-      <div className="flex-1 overflow-y-auto p-8 tiptap-content min-h-[500px]">
-        <EditorContent editor={editor} />
+      <div
+        className={cn(
+          "relative flex-1 overflow-y-auto tiptap-content transition-colors",
+          focusMode ? "bg-[#fbfcfb] px-4 py-8 md:px-10" : "bg-surface p-5 md:p-8"
+        )}
+      >
+        <div
+          className={cn(
+            "mx-auto transition-all duration-300",
+            focusMode ? "max-w-3xl" : "max-w-5xl"
+          )}
+        >
+          <EditorContent editor={editor} />
+        </div>
+        {isDragActive && (
+          <div className="pointer-events-none absolute inset-4 z-20 flex items-center justify-center rounded-2xl border-2 border-dashed border-state-today/60 bg-state-today/8 text-state-today shadow-inner">
+            <div className="flex items-center gap-2 rounded-full bg-white/90 px-4 py-2 text-sm font-medium shadow-soft">
+              <UploadCloud className="h-4 w-4" />
+              Drop image to insert it here
+            </div>
+          </div>
+        )}
       </div>
 
       {!readOnly && (
-        <div className="flex items-center justify-between p-4 border-t border-border bg-canvas/50">
-          <p className="text-xs text-mossy-gray italic">
-            {isSaving ? "Saving changes…" : "Last saved just now"}
-          </p>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={handleExportPDF} className="gap-2">
+        <div className={cn("flex items-center justify-between gap-2 border-t border-border bg-canvas/60 px-2 py-1.5 sm:gap-3 sm:p-3", focusMode && "bg-white/90")}>
+          <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-mossy-gray sm:gap-x-3 sm:text-xs">
+            <span className={cn("inline-flex items-center gap-1.5 font-medium", saveState === "error" && "text-destructive", saveState === "unsaved" && "text-state-stale")}>
+              {saveState === "saving" ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : saveState === "error" ? (
+                <AlertCircle className="h-3.5 w-3.5" />
+              ) : (
+                <CheckCircle2 className="h-3.5 w-3.5" />
+              )}
+              {saveLabel}
+            </span>
+            <span className="hidden h-3 w-px bg-border sm:block" />
+            <span className="inline-flex items-center gap-1.5">
+              <FileText className="h-3.5 w-3.5" />
+              {wordCount} words
+            </span>
+            <span className="hidden sm:inline">{characterCount} characters</span>
+            <span className="hidden sm:inline">{readingMinutes} min read</span>
+            {isStickyHighlight && (
+              <span className="hidden items-center gap-1.5 rounded-full bg-state-today/10 px-2 py-0.5 text-state-today sm:inline-flex">
+                <span className="h-2 w-2 rounded-full border border-forest-slate/20" style={{ backgroundColor: activeHighlightColor }} />
+                Sticky highlight
+              </span>
+            )}
+          </div>
+          <div className="flex shrink-0 gap-1.5 sm:gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExportPDF}
+              className="h-8 w-8 gap-0 rounded-full p-0 sm:w-auto sm:gap-2 sm:px-3"
+              title="Export PDF"
+              aria-label="Export PDF"
+            >
               <Download className="h-4 w-4" />
-              Export PDF
+              <span className="hidden sm:inline">Export PDF</span>
             </Button>
-            <Button size="sm" onClick={handleManualSave} disabled={isSaving} className="gap-2" title="Save (⌘S / Ctrl+S)">
-              {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-              Save
-              <kbd className="ml-1 px-1 py-0.5 rounded text-[10px] font-mono bg-white/20 text-white/60">⌘S</kbd>
+            <Button
+              size="sm"
+              onClick={handleManualSave}
+              disabled={saveState === "saving"}
+              className="h-8 w-8 gap-0 rounded-full p-0 sm:w-auto sm:gap-2 sm:px-3"
+              title="Save (Cmd/Ctrl+S)"
+              aria-label="Save"
+            >
+              {saveState === "saving" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+              <span className="hidden sm:inline">Save</span>
+              <kbd className="ml-1 hidden rounded bg-white/20 px-1 py-0.5 font-mono text-[10px] text-white/60 sm:inline">⌘S</kbd>
             </Button>
           </div>
         </div>

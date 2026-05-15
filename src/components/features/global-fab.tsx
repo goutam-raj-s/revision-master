@@ -15,6 +15,30 @@ const ACTIONS = [
 
 export function GlobalFAB() {
   const [open, setOpen] = React.useState(false);
+  const [position, setPosition] = React.useState({ x: 24, y: 24 });
+  const [dragging, setDragging] = React.useState(false);
+  const dragStartRef = React.useRef({ pointerX: 0, pointerY: 0, x: 24, y: 24, moved: false });
+
+  React.useEffect(() => {
+    const stored = window.localStorage.getItem("lostbae_global_fab_position");
+    if (!stored) return;
+
+    try {
+      const parsed = JSON.parse(stored) as { x?: number; y?: number };
+      if (typeof parsed.x === "number" && typeof parsed.y === "number") {
+        setPosition({
+          x: Math.max(8, Math.min(window.innerWidth - 56, parsed.x)),
+          y: Math.max(8, Math.min(window.innerHeight - 56, parsed.y)),
+        });
+      }
+    } catch {
+      // Ignore corrupt local preference.
+    }
+  }, []);
+
+  React.useEffect(() => {
+    window.localStorage.setItem("lostbae_global_fab_position", JSON.stringify(position));
+  }, [position]);
 
   // Escape closes it
   React.useEffect(() => {
@@ -24,6 +48,32 @@ export function GlobalFAB() {
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
   }, []);
+
+  React.useEffect(() => {
+    if (!dragging) return;
+
+    const handlePointerMove = (event: PointerEvent) => {
+      const deltaX = event.clientX - dragStartRef.current.pointerX;
+      const deltaY = event.clientY - dragStartRef.current.pointerY;
+      if (Math.abs(deltaX) > 3 || Math.abs(deltaY) > 3) dragStartRef.current.moved = true;
+
+      setPosition({
+        x: Math.max(8, Math.min(window.innerWidth - 56, dragStartRef.current.x - deltaX)),
+        y: Math.max(8, Math.min(window.innerHeight - 56, dragStartRef.current.y - deltaY)),
+      });
+    };
+
+    const handlePointerUp = () => {
+      setDragging(false);
+    };
+
+    window.addEventListener("pointermove", handlePointerMove);
+    window.addEventListener("pointerup", handlePointerUp);
+    return () => {
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", handlePointerUp);
+    };
+  }, [dragging]);
 
   return (
     <>
@@ -37,7 +87,10 @@ export function GlobalFAB() {
       )}
 
       {/* FAB group */}
-      <div className="fixed bottom-6 right-6 z-50 flex flex-col-reverse items-end gap-3">
+      <div
+        className="fixed z-50 flex touch-none flex-col-reverse items-end gap-2 sm:gap-3"
+        style={{ right: position.x, bottom: position.y }}
+      >
         {/* Action items — revealed when open */}
         {ACTIONS.map((action, i) => (
           <div
@@ -72,15 +125,29 @@ export function GlobalFAB() {
         {/* Main FAB toggle */}
         <SimpleTooltip content={open ? "Close" : "Quick Add"} side="left">
           <button
-            onClick={() => setOpen((o) => !o)}
+            onPointerDown={(event) => {
+              dragStartRef.current = {
+                pointerX: event.clientX,
+                pointerY: event.clientY,
+                x: position.x,
+                y: position.y,
+                moved: false,
+              };
+              setDragging(true);
+            }}
+            onClick={() => {
+              if (dragStartRef.current.moved) return;
+              setOpen((o) => !o);
+            }}
             aria-label={open ? "Close quick actions" : "Quick add"}
             className={cn(
-              "flex items-center justify-center h-14 w-14 rounded-full shadow-glass text-white transition-all duration-300",
+              "flex h-11 w-11 items-center justify-center rounded-full shadow-glass text-white transition-all duration-300 sm:h-14 sm:w-14",
               "bg-forest-slate hover:bg-forest-slate/90 active:scale-95",
-              open && "rotate-45"
+              open && !dragging && "rotate-45",
+              dragging && "scale-95 cursor-grabbing"
             )}
           >
-            <Plus className="h-6 w-6" />
+            <Plus className="h-5 w-5 sm:h-6 sm:w-6" />
           </button>
         </SimpleTooltip>
       </div>

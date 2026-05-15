@@ -3,6 +3,7 @@
 import * as React from "react";
 import {
   Plus, Trash2, Check, Loader2, BookText, X, RotateCcw, PanelRightClose,
+  Search, Copy, StickyNote, Tags, CalendarDays, LayoutList,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -40,6 +41,10 @@ export function StudySidebarPanel({
   onClose,
 }: StudySidebarPanelProps) {
   const [activeTab, setActiveTab] = React.useState<SidebarTab>("overview");
+  const [query, setQuery] = React.useState("");
+  const [compactMode, setCompactMode] = React.useState(false);
+  const noteInputRef = React.useRef<HTMLTextAreaElement>(null);
+  const termInputRef = React.useRef<HTMLInputElement>(null);
 
   // Overview state
   const [difficulty, setDifficulty] = React.useState<Difficulty>(doc.difficulty);
@@ -61,6 +66,57 @@ export function StudySidebarPanel({
   const [savingTerm, setSavingTerm] = React.useState(false);
 
   const activeNotes = notes.filter((n) => !n.isDone);
+  const doneNotes = notes.filter((n) => n.isDone);
+  const lowerQuery = query.trim().toLowerCase();
+  const visibleActiveNotes = lowerQuery
+    ? activeNotes.filter((note) => note.content.toLowerCase().includes(lowerQuery))
+    : activeNotes;
+  const visibleDoneNotes = lowerQuery
+    ? doneNotes.filter((note) => note.content.toLowerCase().includes(lowerQuery))
+    : doneNotes;
+  const visibleTerms = lowerQuery
+    ? terms.filter((term) =>
+        term.term.toLowerCase().includes(lowerQuery) ||
+        term.definition.toLowerCase().includes(lowerQuery)
+      )
+    : terms;
+  const visibleTags = lowerQuery ? tags.filter((tag) => tag.includes(lowerQuery)) : tags;
+  const completionPercent = notes.length ? Math.round((doneNotes.length / notes.length) * 100) : 0;
+  const nextReviewLabel = rep ? new Date(rep.nextReviewDate).toLocaleDateString() : "Not scheduled";
+
+  React.useEffect(() => {
+    const storedTab = window.localStorage.getItem("lostbae_study_sidebar_tab") as SidebarTab | null;
+    const storedCompact = window.localStorage.getItem("lostbae_study_sidebar_compact");
+    if (storedTab && ["overview", "notes", "terms"].includes(storedTab)) setActiveTab(storedTab);
+    if (storedCompact === "1") setCompactMode(true);
+  }, []);
+
+  React.useEffect(() => {
+    window.localStorage.setItem("lostbae_study_sidebar_tab", activeTab);
+  }, [activeTab]);
+
+  React.useEffect(() => {
+    window.localStorage.setItem("lostbae_study_sidebar_compact", compactMode ? "1" : "0");
+  }, [compactMode]);
+
+  async function copyText(text: string, label: string) {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast(`${label} copied`, { variant: "success" });
+    } catch {
+      toast("Could not copy", { variant: "error" });
+    }
+  }
+
+  function focusNoteComposer() {
+    setActiveTab("notes");
+    setTimeout(() => noteInputRef.current?.focus(), 50);
+  }
+
+  function focusTermComposer() {
+    setActiveTab("terms");
+    setTimeout(() => termInputRef.current?.focus(), 50);
+  }
 
   // ─── Overview handlers ──────────────────────────────────────────────────────
   async function handleDifficultyChange(val: string) {
@@ -151,7 +207,7 @@ export function StudySidebarPanel({
   const tagsChanged = JSON.stringify(tags) !== JSON.stringify(doc.tags);
 
   return (
-    <div className="flex flex-col h-full overflow-hidden bg-surface border-l border-border">
+    <div className={cn("flex h-full w-full flex-col overflow-hidden bg-surface border-l border-border", compactMode && "text-[12px]")}>
       {/* Sidebar header */}
       <div className="shrink-0 px-4 py-3 border-b border-border/60 flex items-start justify-between gap-2">
         <div className="min-w-0">
@@ -171,6 +227,41 @@ export function StudySidebarPanel({
             </button>
           </SimpleTooltip>
         )}
+      </div>
+
+      <div className="shrink-0 border-b border-border/60 px-3 py-2 space-y-2">
+        <div className="relative">
+          <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-mossy-gray" />
+          <Input
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Search notes, terms, tags..."
+            className="h-8 pl-8 pr-8 text-xs"
+          />
+          {query && (
+            <button
+              onClick={() => setQuery("")}
+              className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-1 text-mossy-gray hover:bg-canvas hover:text-forest-slate"
+              aria-label="Clear search"
+            >
+              <X className="h-3 w-3" />
+            </button>
+          )}
+        </div>
+        <div className="grid grid-cols-3 gap-1.5">
+          <button onClick={focusNoteComposer} className="rounded-lg border border-border bg-canvas/70 px-2 py-1.5 text-left transition-colors hover:border-state-today/30 hover:bg-state-today/5">
+            <StickyNote className="mb-1 h-3.5 w-3.5 text-state-today" />
+            <span className="block text-[10px] font-medium text-forest-slate">Note</span>
+          </button>
+          <button onClick={focusTermComposer} className="rounded-lg border border-border bg-canvas/70 px-2 py-1.5 text-left transition-colors hover:border-state-today/30 hover:bg-state-today/5">
+            <BookText className="mb-1 h-3.5 w-3.5 text-state-today" />
+            <span className="block text-[10px] font-medium text-forest-slate">Term</span>
+          </button>
+          <button onClick={() => setCompactMode((value) => !value)} className="rounded-lg border border-border bg-canvas/70 px-2 py-1.5 text-left transition-colors hover:border-state-today/30 hover:bg-state-today/5">
+            <LayoutList className="mb-1 h-3.5 w-3.5 text-state-today" />
+            <span className="block text-[10px] font-medium text-forest-slate">{compactMode ? "Roomy" : "Compact"}</span>
+          </button>
+        </div>
       </div>
 
       {/* Tabs */}
@@ -197,6 +288,39 @@ export function StudySidebarPanel({
         {/* ── Overview tab ─────────────────────────────────────────────── */}
         {activeTab === "overview" && (
           <>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="rounded-xl border border-border bg-canvas/70 p-3">
+                <StickyNote className="mb-1 h-3.5 w-3.5 text-state-today" />
+                <div className="text-lg font-semibold text-forest-slate">{activeNotes.length}</div>
+                <div className="text-[10px] uppercase tracking-wide text-mossy-gray">Open notes</div>
+              </div>
+              <div className="rounded-xl border border-border bg-canvas/70 p-3">
+                <BookText className="mb-1 h-3.5 w-3.5 text-state-today" />
+                <div className="text-lg font-semibold text-forest-slate">{terms.length}</div>
+                <div className="text-[10px] uppercase tracking-wide text-mossy-gray">Terms</div>
+              </div>
+              <div className="rounded-xl border border-border bg-canvas/70 p-3">
+                <Tags className="mb-1 h-3.5 w-3.5 text-state-today" />
+                <div className="text-lg font-semibold text-forest-slate">{tags.length}</div>
+                <div className="text-[10px] uppercase tracking-wide text-mossy-gray">Tags</div>
+              </div>
+              <div className="rounded-xl border border-border bg-canvas/70 p-3">
+                <CalendarDays className="mb-1 h-3.5 w-3.5 text-state-today" />
+                <div className="truncate text-xs font-semibold text-forest-slate">{nextReviewLabel}</div>
+                <div className="text-[10px] uppercase tracking-wide text-mossy-gray">Review</div>
+              </div>
+            </div>
+            {notes.length > 0 && (
+              <div className="rounded-xl border border-border bg-surface p-3">
+                <div className="mb-1 flex items-center justify-between text-xs">
+                  <span className="font-medium text-forest-slate">Note completion</span>
+                  <span className="font-mono text-mossy-gray">{completionPercent}%</span>
+                </div>
+                <div className="h-1.5 overflow-hidden rounded-full bg-canvas">
+                  <div className="h-full rounded-full bg-state-today transition-all" style={{ width: `${completionPercent}%` }} />
+                </div>
+              </div>
+            )}
             {/* Difficulty */}
             <div className="space-y-1.5">
               <Label className="text-xs uppercase tracking-wide text-mossy-gray">Difficulty</Label>
@@ -241,7 +365,7 @@ export function StudySidebarPanel({
                 </SimpleTooltip>
               </div>
               <div className="flex flex-wrap gap-1.5">
-                {tags.map((tag) => (
+                {visibleTags.map((tag) => (
                   <Badge key={tag} variant="tag" className="gap-1 cursor-default">
                     #{tag}
                     <button
@@ -254,6 +378,7 @@ export function StudySidebarPanel({
                   </Badge>
                 ))}
                 {tags.length === 0 && <span className="text-xs text-mossy-gray">No tags yet</span>}
+                {tags.length > 0 && visibleTags.length === 0 && <span className="text-xs text-mossy-gray">No matching tags</span>}
               </div>
               {tagsChanged && (
                 <Button
@@ -332,6 +457,7 @@ export function StudySidebarPanel({
             {/* New note */}
             <div className="space-y-1.5">
               <Textarea
+                ref={noteInputRef}
                 value={newNote}
                 onChange={(e) => setNewNote(e.target.value)}
                 placeholder="Add a note…"
@@ -353,10 +479,19 @@ export function StudySidebarPanel({
             </div>
 
             {/* Active notes */}
-            {activeNotes.map((note) => (
+            {visibleActiveNotes.map((note) => (
               <div key={note.id} className="group bg-canvas rounded-xl border border-border p-3 relative">
                 <p className="text-xs text-forest-slate leading-relaxed pr-12 whitespace-pre-wrap">{note.content}</p>
                 <div className="absolute top-2 right-2 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <SimpleTooltip content="Copy note" side="left">
+                    <button
+                      onClick={() => copyText(note.content, "Note")}
+                      className="p-1 rounded-lg hover:bg-state-today/10 hover:text-state-today text-mossy-gray transition-colors"
+                      aria-label="Copy note"
+                    >
+                      <Copy className="h-3 w-3" />
+                    </button>
+                  </SimpleTooltip>
                   <SimpleTooltip content="Mark done" side="left">
                     <button
                       onClick={() => handleMarkNoteDone(note.id)}
@@ -380,10 +515,10 @@ export function StudySidebarPanel({
             ))}
 
             {/* Done notes */}
-            {notes.filter((n) => n.isDone).length > 0 && (
+            {visibleDoneNotes.length > 0 && (
               <div>
                 <p className="text-xs text-mossy-gray font-medium mb-1.5">Archived</p>
-                {notes.filter((n) => n.isDone).map((note) => (
+                {visibleDoneNotes.map((note) => (
                   <div key={note.id} className="group relative bg-canvas/50 rounded-xl border border-border/50 px-3 py-2 opacity-60 mb-1.5">
                     <p className="text-xs text-mossy-gray line-through pr-8 whitespace-pre-wrap">{note.content}</p>
                     <button
@@ -398,8 +533,10 @@ export function StudySidebarPanel({
               </div>
             )}
 
-            {notes.length === 0 && (
+            {notes.length === 0 ? (
               <p className="text-xs text-mossy-gray text-center py-4">No notes yet. Add one above!</p>
+            ) : visibleActiveNotes.length === 0 && visibleDoneNotes.length === 0 && (
+              <p className="text-xs text-mossy-gray text-center py-4">No notes match your search.</p>
             )}
           </>
         )}
@@ -410,6 +547,7 @@ export function StudySidebarPanel({
             {/* New term */}
             <div className="space-y-1.5">
               <Input
+                ref={termInputRef}
                 value={newTerm}
                 onChange={(e) => setNewTerm(e.target.value)}
                 placeholder="Term (e.g. Cache Stampede)"
@@ -433,10 +571,19 @@ export function StudySidebarPanel({
             </div>
 
             {/* Terms list */}
-            {terms.map((term) => (
+            {visibleTerms.map((term) => (
               <div key={term.id} className="group relative bg-canvas rounded-xl border border-border p-3">
                 <div className="text-xs font-semibold text-forest-slate pr-7">{term.term}</div>
                 <div className="text-xs text-mossy-gray mt-1 leading-relaxed">{term.definition}</div>
+                <SimpleTooltip content="Copy definition" side="left">
+                  <button
+                    onClick={() => copyText(`${term.term}: ${term.definition}`, "Term")}
+                    className="absolute top-2 right-8 opacity-0 group-hover:opacity-100 p-1 rounded-lg hover:bg-state-today/10 hover:text-state-today text-mossy-gray transition-all"
+                    aria-label="Copy term"
+                  >
+                    <Copy className="h-3 w-3" />
+                  </button>
+                </SimpleTooltip>
                 <SimpleTooltip content="Delete term" side="left">
                   <button
                     onClick={() => handleDeleteTerm(term.id)}
@@ -449,8 +596,10 @@ export function StudySidebarPanel({
               </div>
             ))}
 
-            {terms.length === 0 && (
+            {terms.length === 0 ? (
               <p className="text-xs text-mossy-gray text-center py-4">No terms yet. Build your glossary!</p>
+            ) : visibleTerms.length === 0 && (
+              <p className="text-xs text-mossy-gray text-center py-4">No terms match your search.</p>
             )}
           </>
         )}
