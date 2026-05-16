@@ -213,16 +213,16 @@ export function DocumentListClient({
   }
 
   return (
-    <div className="space-y-4">
+    <div className="min-w-0 space-y-4">
       {/* Search + Tag filters */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
+      <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:gap-3">
+        <div className="relative min-w-0 flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-mossy-gray" />
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search titles and tags…"
-            className="pl-9"
+            className="h-9 pl-9 text-sm"
           />
           {search && (
             <button
@@ -236,7 +236,7 @@ export function DocumentListClient({
         <select
           value={mediaFilter || ""}
           onChange={(e) => setMediaFilter(e.target.value || null)}
-          className="text-sm border border-border rounded-xl px-3 py-2 bg-surface text-forest-slate focus:outline-none focus:ring-2 focus:ring-state-today/40 min-w-[140px]"
+          className="h-9 w-full rounded-xl border border-border bg-surface px-3 text-sm text-forest-slate focus:outline-none focus:ring-2 focus:ring-state-today/40 sm:w-auto sm:min-w-[140px]"
           aria-label="Filter Media Type"
         >
           <option value="">All Media Types</option>
@@ -249,7 +249,7 @@ export function DocumentListClient({
         <select
           value={sortOrder}
           onChange={(e) => setSortOrder(e.target.value as SortOrder)}
-          className="text-sm border border-border rounded-xl px-3 py-2 bg-surface text-forest-slate focus:outline-none focus:ring-2 focus:ring-state-today/40 min-w-[140px]"
+          className="h-9 w-full rounded-xl border border-border bg-surface px-3 text-sm text-forest-slate focus:outline-none focus:ring-2 focus:ring-state-today/40 sm:w-auto sm:min-w-[140px]"
           aria-label="Sort Order"
         >
           <option value="newest">Newest First</option>
@@ -262,11 +262,11 @@ export function DocumentListClient({
 
       {/* Tag chips */}
       {allTags.length > 0 && (
-        <div className="flex flex-wrap gap-2">
+        <div className="flex max-w-full flex-wrap gap-1.5 sm:gap-2">
           <button
             onClick={() => setTagFilter(null)}
             className={cn(
-              "text-xs px-3 py-1.5 rounded-full border transition-all duration-200",
+              "rounded-full border px-2.5 py-1 text-xs transition-all duration-200 sm:px-3 sm:py-1.5",
               !tagFilter
                 ? "border-state-today bg-state-today/10 text-state-today"
                 : "border-border bg-surface text-mossy-gray hover:border-state-today/40 hover:text-forest-slate"
@@ -279,7 +279,7 @@ export function DocumentListClient({
               key={tag}
               onClick={() => setTagFilter(tagFilter === tag ? null : tag)}
               className={cn(
-                "text-xs px-3 py-1.5 rounded-full border transition-all duration-200",
+                "max-w-full truncate rounded-full border px-2.5 py-1 text-xs transition-all duration-200 sm:px-3 sm:py-1.5",
                 tagFilter === tag
                   ? "border-state-today bg-state-today/10 text-state-today"
                   : "border-border bg-surface text-mossy-gray hover:border-state-today/40 hover:text-forest-slate"
@@ -338,8 +338,82 @@ export function DocumentListClient({
           </div>
         )
       ) : (
-        <div className="space-y-4">
-          <div className="bg-surface rounded-xl border border-border overflow-hidden">
+        <div className="space-y-3 sm:space-y-4">
+          <div className="space-y-2 sm:hidden">
+            {paginatedDocs.map((doc) => {
+              const status = STATUS_CONFIG[doc.status];
+              const isSelected = selectedIds.has(doc.id);
+              return (
+                <div
+                  key={doc.id}
+                  className={cn(
+                    "rounded-2xl border border-border bg-surface p-3 shadow-card",
+                    isSelected && "border-state-today/30 bg-state-today/5"
+                  )}
+                >
+                  <div className="flex items-start gap-2">
+                    <button
+                      onClick={() => toggleSelect(doc.id)}
+                      className="mt-0.5 shrink-0 rounded-lg p-1 text-mossy-gray hover:text-state-today"
+                      aria-label={isSelected ? "Deselect" : "Select"}
+                    >
+                      {isSelected ? (
+                        <CheckSquare className="h-4 w-4 text-state-today" />
+                      ) : (
+                        <Square className="h-4 w-4" />
+                      )}
+                    </button>
+                    <Link href={`/documents/${doc.id}`} className="min-w-0 flex-1">
+                      <div className="line-clamp-2 text-sm font-semibold leading-snug text-forest-slate">
+                        {doc.title}
+                      </div>
+                      <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                        <Badge variant={status.variant} className="px-1.5 py-0 text-[10px]">
+                          {status.label}
+                        </Badge>
+                        <span className="font-mono text-[11px] text-mossy-gray">
+                          {formatDate(doc.createdAt)}
+                        </span>
+                      </div>
+                      {doc.tags.length > 0 && (
+                        <div className="mt-2 flex flex-wrap gap-1">
+                          {doc.tags.slice(-2).map((tag) => (
+                            <Badge key={tag} variant="tag" className="max-w-[120px] truncate px-1.5 py-0 text-[10px]">
+                              #{tag}
+                            </Badge>
+                          ))}
+                          {doc.tags.length > 2 && (
+                            <Badge variant="outline" className="px-1.5 py-0 text-[10px]">
+                              +{doc.tags.length - 2}
+                            </Badge>
+                          )}
+                        </div>
+                      )}
+                    </Link>
+                    <div className="flex shrink-0 items-center gap-0.5">
+                      <SimpleTooltip content="Study Document">
+                        <Link
+                          href={`/study/${doc.id}`}
+                          className="rounded-lg p-1.5 text-mossy-gray transition-colors hover:bg-canvas hover:text-forest-slate"
+                        >
+                          <BookOpen className="h-3.5 w-3.5" />
+                        </Link>
+                      </SimpleTooltip>
+                      <button
+                        onClick={() => setDeleteId(doc.id)}
+                        className="rounded-lg p-1.5 text-mossy-gray transition-colors hover:bg-destructive/10 hover:text-destructive"
+                        aria-label={`Delete ${doc.title}`}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="hidden overflow-hidden rounded-xl border border-border bg-surface sm:block">
             <Table>
               <TableHeader>
                 <TableRow className="bg-canvas/50">
@@ -459,12 +533,12 @@ export function DocumentListClient({
           </div>
 
           {totalPages > 1 && (
-            <Pagination className="justify-end">
-              <PaginationContent>
+            <Pagination className="justify-center sm:justify-end">
+              <PaginationContent className="max-w-full overflow-x-auto pb-1 custom-scrollbar">
                 <PaginationItem>
                   <PaginationPrevious
                     onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                    className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                    className={cn("h-8 px-2 text-xs sm:h-9 sm:px-3 sm:text-sm", currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer")}
                   />
                 </PaginationItem>
 
@@ -479,7 +553,7 @@ export function DocumentListClient({
                       <PaginationLink
                         isActive={currentPage === pageNum}
                         onClick={() => setCurrentPage(pageNum)}
-                        className="cursor-pointer"
+                        className="h-8 w-8 cursor-pointer text-xs sm:h-9 sm:w-9 sm:text-sm"
                       >
                         {pageNum}
                       </PaginationLink>
@@ -496,7 +570,7 @@ export function DocumentListClient({
                 <PaginationItem>
                   <PaginationNext
                     onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                    className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                    className={cn("h-8 px-2 text-xs sm:h-9 sm:px-3 sm:text-sm", currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer")}
                   />
                 </PaginationItem>
               </PaginationContent>
@@ -509,8 +583,8 @@ export function DocumentListClient({
       {selectedIds.size > 0 && (
         <div
           className={cn(
-            "fixed bottom-6 left-1/2 -translate-x-1/2 z-50",
-            "flex items-center gap-3 px-5 py-3",
+            "fixed bottom-4 left-3 right-3 z-50 sm:bottom-6 sm:left-1/2 sm:right-auto sm:-translate-x-1/2",
+            "flex items-center gap-2 px-3 py-2.5 sm:gap-3 sm:px-5 sm:py-3",
             "bg-forest-slate/95 backdrop-blur-xl rounded-2xl shadow-glass border border-white/10",
             "animate-slide-up"
           )}
@@ -518,7 +592,7 @@ export function DocumentListClient({
           {/* Selection count */}
           <div className="flex items-center gap-2 pr-3 border-r border-white/20">
             <CheckSquare className="h-4 w-4 text-state-today" />
-            <span className="text-sm font-semibold text-white tabular-nums">
+            <span className="text-xs font-semibold text-white tabular-nums sm:text-sm">
               {selectedIds.size} selected
             </span>
           </div>
@@ -529,10 +603,10 @@ export function DocumentListClient({
               variant="ghost"
               size="sm"
               onClick={exportCSV}
-              className="gap-2 text-white/80 hover:text-white hover:bg-white/10 text-xs"
+              className="gap-1.5 text-xs text-white/80 hover:bg-white/10 hover:text-white"
             >
               <Download className="h-3.5 w-3.5" />
-              Export CSV
+              <span className="hidden min-[390px]:inline">Export CSV</span>
             </Button>
           </SimpleTooltip>
 
@@ -541,7 +615,7 @@ export function DocumentListClient({
             <Button
               size="sm"
               onClick={() => setShowBulkConfirm(true)}
-              className="gap-2 bg-destructive/90 hover:bg-destructive text-white text-xs"
+              className="gap-1.5 bg-destructive/90 text-xs text-white hover:bg-destructive"
             >
               <Trash2 className="h-3.5 w-3.5" />
               Delete {selectedIds.size}
