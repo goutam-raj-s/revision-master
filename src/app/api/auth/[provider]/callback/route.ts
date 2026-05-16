@@ -114,8 +114,7 @@ export async function GET(
   }
 
   const p = provider as Provider;
-  // Same origin source as the initiating route — must match what was sent to Google.
-  const appUrl = request.nextUrl.origin || process.env.NEXT_PUBLIC_APP_URL;
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || request.nextUrl.origin;
   if (!appUrl) {
     return new NextResponse("App URL could not be determined", { status: 500 });
   }
