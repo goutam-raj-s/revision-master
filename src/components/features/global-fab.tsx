@@ -13,6 +13,21 @@ const ACTIONS = [
   { label: "Music Library", icon: Music, href: "/music", color: "bg-state-stale hover:bg-state-stale/90" },
 ];
 
+function getFabMetrics() {
+  if (typeof window === "undefined") return { size: 56, edge: 24 };
+  return window.innerWidth < 640
+    ? { size: 34, edge: 2 }
+    : { size: 56, edge: 24 };
+}
+
+function clampFabPosition(position: { x: number; y: number }) {
+  const { size, edge } = getFabMetrics();
+  return {
+    x: Math.max(edge, Math.min(window.innerWidth - size - edge, position.x)),
+    y: Math.max(edge, Math.min(window.innerHeight - size - edge, position.y)),
+  };
+}
+
 export function GlobalFAB() {
   const [open, setOpen] = React.useState(false);
   const [position, setPosition] = React.useState({ x: 24, y: 24 });
@@ -26,14 +41,17 @@ export function GlobalFAB() {
     try {
       const parsed = JSON.parse(stored) as { x?: number; y?: number };
       if (typeof parsed.x === "number" && typeof parsed.y === "number") {
-        setPosition({
-          x: Math.max(8, Math.min(window.innerWidth - 56, parsed.x)),
-          y: Math.max(8, Math.min(window.innerHeight - 56, parsed.y)),
-        });
+        setPosition(clampFabPosition({ x: parsed.x, y: parsed.y }));
       }
     } catch {
       // Ignore corrupt local preference.
     }
+  }, []);
+
+  React.useEffect(() => {
+    const handleResize = () => setPosition((current) => clampFabPosition(current));
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
   }, []);
 
   React.useEffect(() => {
@@ -58,8 +76,10 @@ export function GlobalFAB() {
       if (Math.abs(deltaX) > 3 || Math.abs(deltaY) > 3) dragStartRef.current.moved = true;
 
       setPosition({
-        x: Math.max(8, Math.min(window.innerWidth - 56, dragStartRef.current.x - deltaX)),
-        y: Math.max(8, Math.min(window.innerHeight - 56, dragStartRef.current.y - deltaY)),
+        ...clampFabPosition({
+          x: dragStartRef.current.x - deltaX,
+          y: dragStartRef.current.y - deltaY,
+        }),
       });
     };
 
@@ -113,6 +133,7 @@ export function GlobalFAB() {
               onClick={() => setOpen(false)}
               className={cn(
                 "flex items-center justify-center h-10 w-10 rounded-full shadow-soft text-white transition-transform hover:scale-105 active:scale-95",
+                "max-sm:h-8 max-sm:w-8",
                 action.color
               )}
               aria-label={action.label}
@@ -141,13 +162,13 @@ export function GlobalFAB() {
             }}
             aria-label={open ? "Close quick actions" : "Quick add"}
             className={cn(
-              "flex h-11 w-11 items-center justify-center rounded-full shadow-glass text-white transition-all duration-300 sm:h-14 sm:w-14",
+                "flex h-[34px] w-[34px] items-center justify-center rounded-full shadow-glass text-white transition-all duration-300 sm:h-14 sm:w-14",
               "bg-forest-slate hover:bg-forest-slate/90 active:scale-95",
               open && !dragging && "rotate-45",
               dragging && "scale-95 cursor-grabbing"
             )}
           >
-            <Plus className="h-5 w-5 sm:h-6 sm:w-6" />
+            <Plus className="h-4 w-4 sm:h-6 sm:w-6" />
           </button>
         </SimpleTooltip>
       </div>

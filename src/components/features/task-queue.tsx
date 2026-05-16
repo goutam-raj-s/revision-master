@@ -96,12 +96,12 @@ export function TaskQueue({ initialTasks, filter }: TaskQueueProps) {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3 sm:space-y-4">
       <div className="flex justify-end gap-3">
         <select
           value={sortOrder}
           onChange={(e) => setSortOrder(e.target.value as SortOrder)}
-          className="text-sm border border-border rounded-xl px-3 py-2 bg-surface text-forest-slate focus:outline-none focus:ring-2 focus:ring-state-today/40 min-w-[140px]"
+          className="min-w-[128px] rounded-xl border border-border bg-surface px-3 py-1.5 text-xs text-forest-slate focus:outline-none focus:ring-2 focus:ring-state-today/40 sm:min-w-[140px] sm:py-2 sm:text-sm"
           aria-label="Sort Order"
         >
           <option value="newest">Newest First</option>

@@ -1,6 +1,6 @@
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, ExternalLink, Calendar, BookOpen, FileText } from "lucide-react";
+import { Calendar, BookOpen, FileText } from "lucide-react";
 import { requireAuth } from "@/lib/auth/session";
 import { getDocById, getRepetitionByDocId, getSubPages } from "@/lib/db/collections";
 import { getDocNotes, getDocTerms } from "@/actions/notes";
@@ -54,6 +54,8 @@ export default async function DocumentDetailPage({ params }: DocumentDetailPageP
   ]);
 
   const status = STATUS_CONFIG[doc.status];
+  const recentTags = doc.tags.slice(-3);
+  const hiddenTagCount = Math.max(0, doc.tags.length - recentTags.length);
 
   return (
     <div className="flex -mt-6 md:-mt-8 -mx-4 md:-mx-8 h-[calc(100vh-4rem)] overflow-hidden">
@@ -106,11 +108,20 @@ export default async function DocumentDetailPage({ params }: DocumentDetailPageP
               <Badge variant={doc.difficulty === "easy" ? "easy" : doc.difficulty === "medium" ? "medium" : "hard"}>
                 {doc.difficulty}
               </Badge>
-              {doc.tags.map((tag) => (
+              {recentTags.map((tag) => (
                 <Link key={tag} href={`/documents?tag=${tag}`}>
                   <Badge variant="tag" className="cursor-pointer">#{tag}</Badge>
                 </Link>
               ))}
+              {hiddenTagCount > 0 && (
+                <Badge
+                  variant="outline"
+                  className="cursor-default"
+                  title={doc.tags.slice(0, -3).map((tag) => `#${tag}`).join(", ")}
+                >
+                  +{hiddenTagCount}
+                </Badge>
+              )}
             </div>
             <div className="flex items-center gap-4 mt-3 text-xs font-mono text-mossy-gray">
               <span className="flex items-center gap-1">

@@ -43,21 +43,21 @@ export function StatsCards({ stats }: StatsCardsProps) {
   ];
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
       {cards.map((card) => (
         <Card key={card.label} className="shadow-card hover:shadow-soft transition-shadow duration-200">
-          <CardContent className="p-5">
-            <div className="flex items-start justify-between mb-3">
-              <div className={`p-2 rounded-xl ${card.bg}`}>
-                <card.icon className={`h-4 w-4 ${card.color}`} />
+          <CardContent className="p-3 sm:p-5">
+            <div className="mb-2 flex items-start justify-between sm:mb-3">
+              <div className={`rounded-lg p-1.5 sm:rounded-xl sm:p-2 ${card.bg}`}>
+                <card.icon className={`h-3.5 w-3.5 sm:h-4 sm:w-4 ${card.color}`} />
               </div>
             </div>
-            <div className="font-mono text-3xl font-bold text-forest-slate tabular-nums">
+            <div className="font-mono text-2xl font-bold leading-none text-forest-slate tabular-nums sm:text-3xl">
               {card.value}
             </div>
             <div className="mt-1">
-              <div className="text-xs font-medium text-forest-slate">{card.label}</div>
-              <div className="text-xs text-mossy-gray">{card.description}</div>
+              <div className="text-[11px] font-medium leading-tight text-forest-slate sm:text-xs">{card.label}</div>
+              <div className="text-[11px] leading-tight text-mossy-gray sm:text-xs">{card.description}</div>
             </div>
           </CardContent>
         </Card>

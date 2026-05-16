@@ -230,7 +230,7 @@ export function serializeNote(n: DbNote): Note {
 export function serializeTerm(t: DbTerm): Term {
   return {
     id: t._id.toString(),
-    docId: t.docId.toString(),
+    docId: t.docId?.toString(),
     term: t.term,
     definition: t.definition,
     isDone: t.isDone,

@@ -80,7 +80,8 @@ export function StudySidebarPanel({
         term.definition.toLowerCase().includes(lowerQuery)
       )
     : terms;
-  const visibleTags = lowerQuery ? tags.filter((tag) => tag.includes(lowerQuery)) : tags;
+  const visibleTags = lowerQuery ? tags.filter((tag) => tag.includes(lowerQuery)) : tags.slice(-3);
+  const hiddenTagCount = lowerQuery ? 0 : Math.max(0, tags.length - visibleTags.length);
   const completionPercent = notes.length ? Math.round((doneNotes.length / notes.length) * 100) : 0;
   const nextReviewLabel = rep ? new Date(rep.nextReviewDate).toLocaleDateString() : "Not scheduled";
 
@@ -379,6 +380,15 @@ export function StudySidebarPanel({
                 ))}
                 {tags.length === 0 && <span className="text-xs text-mossy-gray">No tags yet</span>}
                 {tags.length > 0 && visibleTags.length === 0 && <span className="text-xs text-mossy-gray">No matching tags</span>}
+                {hiddenTagCount > 0 && (
+                  <Badge
+                    variant="outline"
+                    className="cursor-default"
+                    title={tags.slice(0, -3).map((tag) => `#${tag}`).join(", ")}
+                  >
+                    +{hiddenTagCount}
+                  </Badge>
+                )}
               </div>
               {tagsChanged && (
                 <Button

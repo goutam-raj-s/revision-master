@@ -104,7 +104,7 @@ export interface DbNote {
 export interface DbTerm {
   _id: ObjectId;
   userId: ObjectId;
-  docId: ObjectId;
+  docId?: ObjectId;
   term: string;
   definition: string;
   isDone: boolean;
@@ -175,7 +175,7 @@ export interface Note {
 
 export interface Term {
   id: string;
-  docId: string;
+  docId?: string;
   term: string;
   definition: string;
   isDone: boolean;

@@ -109,6 +109,11 @@ const TermSchema = z.object({
   definition: z.string().min(1).max(5000),
 });
 
+const StandaloneTermSchema = z.object({
+  term: z.string().min(1).max(200),
+  definition: z.string().min(1).max(5000),
+});
+
 export async function createTermAction(
   _prev: ActionResult<Term>,
   formData: FormData
@@ -137,6 +142,37 @@ export async function createTermAction(
   });
 
   revalidatePath(`/documents/${docId}`);
+  revalidatePath("/terminology");
+
+  const created = await terms.findOne({ _id: result.insertedId });
+  return { success: true, data: serializeTerm(created!) };
+}
+
+export async function createStandaloneTermAction(
+  _prev: ActionResult<Term>,
+  formData: FormData
+): Promise<ActionResult<Term>> {
+  const user = await requireAuth();
+  const parsed = StandaloneTermSchema.safeParse({
+    term: formData.get("term"),
+    definition: formData.get("definition"),
+  });
+  if (!parsed.success) return { success: false, error: parsed.error.issues[0].message };
+
+  const { term, definition } = parsed.data;
+  const terms = await getTermsCollection();
+  const now = new Date();
+
+  const result = await terms.insertOne({
+    _id: new ObjectId(),
+    userId: new ObjectId(user.id),
+    term: term.trim(),
+    definition: definition.trim(),
+    isDone: false,
+    createdAt: now,
+    updatedAt: now,
+  });
+
   revalidatePath("/terminology");
 
   const created = await terms.findOne({ _id: result.insertedId });

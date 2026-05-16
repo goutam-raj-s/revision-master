@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2, Check, Loader2, BookText, FileText, Tag, X, Save, Search, Copy, CalendarDays } from "lucide-react";
+import { Plus, Trash2, Check, Loader2, BookText, FileText, X, Save, Search, Copy, CalendarDays } from "lucide-react";
 import { SimpleTooltip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -13,13 +13,12 @@ import { Label } from "@/components/ui/label";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Separator } from "@/components/ui/separator";
 import { toast } from "@/components/ui/toast";
 import {
   createNoteAction, createTermAction, deleteNoteAction,
-  markNoteDoneAction, updateNoteAction, deleteTermAction,
+  markNoteDoneAction, deleteTermAction,
 } from "@/actions/notes";
-import { updateDocumentAction, rescheduleDocAction } from "@/actions/documents";
+import { updateDocumentAction } from "@/actions/documents";
 import type { Document, Repetition, Note, Term, Difficulty } from "@/types";
 
 interface DocumentDetailClientProps {
@@ -44,6 +43,8 @@ export function DocumentDetailClient({ doc, rep, initialNotes, initialTerms }: D
   const [savingTags, setSavingTags] = React.useState(false);
   const [activeSection, setActiveSection] = React.useState<"notes" | "terms">("notes");
   const [query, setQuery] = React.useState("");
+  const recentTags = tags.slice(-3);
+  const hiddenTagCount = Math.max(0, tags.length - recentTags.length);
 
   async function handleSaveNote() {
     if (!newNote.trim()) return;
@@ -402,7 +403,7 @@ export function DocumentDetailClient({ doc, rep, initialNotes, initialTerms }: D
             </SimpleTooltip>
           </div>
           <div className="flex flex-wrap gap-1.5">
-            {tags.map((tag) => (
+            {recentTags.map((tag) => (
               <Badge key={tag} variant="tag" className="gap-1 cursor-default">
                 #{tag}
                 <button
@@ -413,6 +414,15 @@ export function DocumentDetailClient({ doc, rep, initialNotes, initialTerms }: D
                 </button>
               </Badge>
             ))}
+            {hiddenTagCount > 0 && (
+              <Badge
+                variant="outline"
+                className="cursor-default"
+                title={tags.slice(0, -3).map((tag) => `#${tag}`).join(", ")}
+              >
+                +{hiddenTagCount}
+              </Badge>
+            )}
             {tags.length === 0 && <span className="text-xs text-mossy-gray">No tags yet</span>}
           </div>
           {JSON.stringify(tags) !== JSON.stringify(doc.tags) && (
