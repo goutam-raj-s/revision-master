@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useActionState } from "react";
-import { Key, User, Eye, EyeOff, Loader2, Trash2, Check } from "lucide-react";
+import { DatabaseZap, Key, User, Eye, EyeOff, Loader2, Trash2, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Separator } from "@/components/ui/separator";
 import { toast } from "@/components/ui/toast";
 import { updateProfileAction, saveGeminiKeyAction, deleteGeminiKeyAction } from "@/actions/auth";
+import { manualDatabaseSyncAction } from "@/actions/sync";
 import type { User as UserType, ActionResult } from "@/types";
 
 interface SettingsClientProps {
@@ -24,6 +25,8 @@ export function SettingsClient({ user, maskedGeminiKey: initialMaskedKey }: Sett
   const [showApiKey, setShowApiKey] = React.useState(false);
   const [maskedKey, setMaskedKey] = React.useState(initialMaskedKey);
   const [deletingKey, setDeletingKey] = React.useState(false);
+  const [syncingDb, setSyncingDb] = React.useState(false);
+  const [lastSyncSummary, setLastSyncSummary] = React.useState<string | null>(null);
 
   const [profileState, profileAction, profilePending] = useActionState(updateProfileAction, profileInitial);
   const [geminiState, geminiAction, geminiPending] = useActionState(saveGeminiKeyAction, geminiInitial);
@@ -47,6 +50,22 @@ export function SettingsClient({ user, maskedGeminiKey: initialMaskedKey }: Sett
     setMaskedKey(null);
     toast("Gemini API key removed");
     setDeletingKey(false);
+  }
+
+  async function handleDatabaseSync() {
+    setSyncingDb(true);
+    setLastSyncSummary(null);
+
+    const result = await manualDatabaseSyncAction();
+    if (result.success && result.data) {
+      const summary = `${result.data.copiedToBackup} to backup, ${result.data.copiedToPrimary} to primary, ${result.data.conflictsResolved} newer-version updates`;
+      setLastSyncSummary(summary);
+      toast("Backup database synced", { variant: "success" });
+    } else {
+      toast(result.error || "Backup database sync failed", { variant: "error" });
+    }
+
+    setSyncingDb(false);
   }
 
   return (
@@ -87,6 +106,44 @@ export function SettingsClient({ user, maskedGeminiKey: initialMaskedKey }: Sett
               </Button>
             </div>
           </form>
+        </CardContent>
+      </Card>
+
+      {/* Backup Database */}
+      <Card className="shadow-card">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <div className="p-1.5 rounded-lg bg-state-today/10">
+              <DatabaseZap className="h-4 w-4 text-state-today" />
+            </div>
+            Backup Database
+          </CardTitle>
+          <CardDescription>
+            Manually sync your main MongoDB database with the backup configured in backup_db.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="text-sm text-mossy-gray">
+              <p>Runs a two-way sync for missing and newer records.</p>
+              <p className="mt-1 text-xs">Deletes are not mirrored yet.</p>
+              {lastSyncSummary && (
+                <p className="mt-2 text-xs font-medium text-state-today">
+                  Last sync: {lastSyncSummary}
+                </p>
+              )}
+            </div>
+            <Button
+              type="button"
+              size="sm"
+              onClick={handleDatabaseSync}
+              disabled={syncingDb}
+              className="shrink-0 gap-1.5 self-start sm:self-auto"
+            >
+              {syncingDb ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <DatabaseZap className="h-3.5 w-3.5" />}
+              {syncingDb ? "Syncing…" : "Sync Now"}
+            </Button>
+          </div>
         </CardContent>
       </Card>
 
