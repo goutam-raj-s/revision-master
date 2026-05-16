@@ -108,6 +108,25 @@ export default async function StudyPage({ params }: StudyPageProps) {
                   readOnly={false} // Allow editing during study
                 />
               </div>
+            ) : doc.mediaType === "document" && !doc.fileUrl ? (
+              <div className="absolute inset-0 overflow-hidden flex flex-col items-center justify-center bg-canvas p-8 text-center">
+                <div className="w-16 h-16 bg-surface rounded-full flex items-center justify-center mb-4 shadow-sm border border-border">
+                  <ExternalLink className="h-8 w-8 text-mossy-gray" />
+                </div>
+                <h3 className="text-xl font-medium text-forest-slate mb-2">Web Clip</h3>
+                <p className="text-sm text-mossy-gray max-w-md mb-6">
+                  This is a web clip. The original website cannot be embedded securely. You can study your notes and terminology in the sidebar, or open the actual webpage.
+                </p>
+                <a
+                  href={doc.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-6 py-2.5 bg-forest-slate text-white rounded-lg text-sm font-medium hover:bg-forest-slate/90 transition-colors shadow-sm inline-flex items-center gap-2"
+                >
+                  <ExternalLink className="h-4 w-4" />
+                  Open Original Website
+                </a>
+              </div>
             ) : (
               <iframe
                 src={embedUrl}

@@ -7,6 +7,7 @@ import { removeFromPlaylist, reorderPlaylist, deletePlaylist } from "@/actions/a
 import { TrackAvatar } from "./mini-player";
 import { toAudioTrack } from "./track-card";
 import { toast } from "@/components/ui/toast";
+import { getYoutubeThumbnail } from "@/lib/youtube-utils";
 import type { Playlist, Document } from "@/types";
 
 interface PlaylistPanelProps {
@@ -137,7 +138,11 @@ export function PlaylistPanel({
             >
               <GripVertical className="h-4 w-4 text-mossy-gray shrink-0 cursor-grab" />
               <span className="text-xs text-mossy-gray w-5 shrink-0">{idx + 1}</span>
-              <TrackAvatar title={track.title} size={28} />
+              <TrackAvatar 
+                title={track.title} 
+                thumbnailUrl={getYoutubeThumbnail(track.fileUrl || track.url)} 
+                size={28} 
+              />
               <span className="flex-1 text-sm text-forest-slate truncate">{track.title}</span>
               <button
                 onClick={(e) => { e.stopPropagation(); handleRemove(track.id); }}

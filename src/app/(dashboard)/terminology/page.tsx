@@ -1,8 +1,5 @@
-import Link from "next/link";
-import { BookText, Search, ExternalLink } from "lucide-react";
 import { getAllTerms } from "@/actions/notes";
 import { getUserDocuments } from "@/actions/documents";
-import { Card, CardContent } from "@/components/ui/card";
 import { TerminologyClient } from "@/components/features/terminology-client";
 
 export const metadata = { title: "Terminology — lostbae" };

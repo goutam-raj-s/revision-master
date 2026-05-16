@@ -6,6 +6,7 @@ export interface AudioTrack {
   id: string;
   title: string;
   url: string;
+  thumbnailUrl?: string;
   duration?: number;
   isFavourite: boolean;
   playCount: number;

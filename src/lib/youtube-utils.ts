@@ -43,3 +43,9 @@ export function extractYoutubePlaylistId(url: string): string | null {
 export function isYoutubeUrl(url: string): boolean {
   return extractYoutubeVideoId(url) !== null || extractYoutubePlaylistId(url) !== null;
 }
+
+export function getYoutubeThumbnail(idOrUrl: string): string | undefined {
+  const id = idOrUrl.length === 11 ? idOrUrl : extractYoutubeVideoId(idOrUrl);
+  if (!id) return undefined;
+  return `https://img.youtube.com/vi/${id}/mqdefault.jpg`;
+}

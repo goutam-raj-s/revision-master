@@ -474,6 +474,9 @@ export async function getUserDocuments(filter?: {
       { title: { $regex: filter.search, $options: "i" } },
       { tags: { $regex: filter.search, $options: "i" } },
     ];
+  } else {
+    // Only show top-level documents by default
+    query.parentDocId = { $exists: false };
   }
 
   const results = await docs.find(query).sort({ createdAt: -1 }).toArray();
@@ -541,6 +544,59 @@ export async function createNativeDocumentAction(data: {
   revalidatePath("/documents");
 
   return { success: true, data: { docId: docResult.insertedId.toString() } };
+}
+
+export async function createSubPageAction(
+  parentDocId: string,
+  title: string
+): Promise<ActionResult<{ docId: string }>> {
+  const user = await requireAuth();
+  const docs = await getDocumentsCollection();
+
+  const parent = await docs.findOne({
+    _id: new ObjectId(parentDocId),
+    userId: new ObjectId(user.id),
+  });
+  if (!parent) return { success: false, error: "Parent document not found." };
+
+  const now = new Date();
+  const childId = new ObjectId();
+  const delayDays = 2;
+  const nextReviewDate = getCustomNextReviewDate(delayDays);
+
+  await docs.insertOne({
+    _id: childId,
+    userId: new ObjectId(user.id),
+    url: `native://${childId.toString()}`,
+    title: title.trim() || "Untitled Page",
+    status: "first_visit",
+    difficulty: parent.difficulty,
+    tags: parent.tags,
+    isLinkBroken: false,
+    parentDocId: parent._id,
+    mediaType: "native-doc",
+    content: "",
+    createdAt: now,
+    updatedAt: now,
+  });
+
+  const reps = await getRepetitionsCollection();
+  await reps.insertOne({
+    _id: new ObjectId(),
+    userId: new ObjectId(user.id),
+    docId: childId,
+    nextReviewDate,
+    intervalDays: delayDays,
+    reviewCount: 0,
+    createdAt: now,
+    updatedAt: now,
+  });
+
+  revalidatePath("/documents");
+  revalidatePath(`/documents/${parentDocId}`);
+  revalidatePath("/dashboard");
+
+  return { success: true, data: { docId: childId.toString() } };
 }
 
 export async function updateDocumentContentAction(

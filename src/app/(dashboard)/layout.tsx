@@ -7,6 +7,7 @@ import { MiniPlayer } from "@/components/features/mini-player";
 import { ExpandedPlayer } from "@/components/features/expanded-player";
 import { DashboardHeader } from "@/components/features/dashboard-header";
 import { GlobalFAB } from "@/components/features/global-fab";
+import { GlobalClipperWidget } from "@/components/features/global-clipper-widget";
 import { getUserDocuments, getAllUserTags } from "@/actions/documents";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
@@ -31,12 +32,13 @@ export default async function DashboardLayout({
         <Sidebar user={user} />
         <main className="flex-1 overflow-y-auto bg-canvas pb-16 flex flex-col">
           <DashboardHeader showLogo={true} />
-          <div className="max-w-screen-2xl mx-auto px-4 md:px-8 py-6 md:py-8 w-full flex-1">
+          <div className="max-w-screen-2xl mx-auto px-3 py-3 sm:px-4 sm:py-5 md:px-8 md:py-8 w-full flex-1">
             {children}
           </div>
         </main>
         <CommandPalette documents={docs} tags={tags} />
         <GlobalFAB />
+        <GlobalClipperWidget />
         <AudioEngine />
         <MiniPlayer />
         <ExpandedPlayer />

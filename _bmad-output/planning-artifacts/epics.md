@@ -748,3 +748,28 @@ So that I can maintain structured focus without leaving the application.
 **Then** a countdown timer (default 25 minutes) starts and is displayed on screen
 **And** an alarm/visual cue triggers when the time expires
 **And** the timer persists correctly even if the user switches documents during a session
+---
+
+## Epic 9: Advanced Editor & Hierarchical Workspace
+
+Evolves the document editor into a powerful hierarchical workspace with professional-grade editing and media handling.
+
+### Story 9.1: Hierarchical Document Management (Sub-pages) [COMPLETED]
+**Status:** ✅ COMPLETED
+**Description:** Implement parent-child relationships in the database, a contextual sidebar for sub-page navigation, and in-place sub-page creation.
+
+### Story 9.2: Collapsible Navigation & Fluid Typography [COMPLETED]
+**Status:** ✅ COMPLETED
+**Description:** Build a collapsible global sidebar (Mini/Expanded/Hidden) and implement CSS `clamp()` logic for responsive, window-relative text sizing in the editor.
+
+### Story 9.3: Sticky Highlighter & Keyboard Shortcuts [COMPLETED]
+**Status:** ✅ COMPLETED
+**Description:** Create a "sticky" highlighter mode triggered by `Cmd+Shift+H` with support for 6 distinct colors and specific keyboard shortcuts for each.
+
+### Story 9.4: Collapsible Image Annotations [COMPLETED]
+**Status:** ✅ COMPLETED
+**Description:** Implement a custom Tiptap extension that converts images into inline "Image" badges. Includes hover-to-preview and double-click to expand.
+
+### Story 9.5: Resizable Media & Clipboard Copy [COMPLETED]
+**Status:** ✅ COMPLETED
+**Description:** Add a drag-to-resize handle for expanded images and a one-click "Copy" button to the image overlay to write media back to the system clipboard.

@@ -65,10 +65,30 @@ npx create-next-app@latest . --typescript --tailwind --eslint --app --src-dir --
 ### 1. Database & Data Modeling (MongoDB)
 - **Decision:** Use the native raw `mongodb` Node.js driver over Mongoose. 
 - **Rationale:** Mongoose carries a heavy initialization cost in serverless architectures. The native driver ensures blazing fast cold starts on Vercel. We will implement a strict Singleton pattern for pooling connections across Serverless Function invocations.
-- **Data Collections Needed:** 
-  - `Users` (Profile, Roles, Settings)
-  - `Documents` (Metadata, Google Doc URIs, Tags)
-  - `Repetitions` (The individual SRS intervals, Ease Factors, Next Review Dates, mapped to Users + Documents)
+- **Data Model:**
+  ### 1. Documents
+  The core knowledge node.
+  - `_id`: ObjectId
+  - `userId`: ObjectId
+  - `parentDocId`: ObjectId (Optional, for hierarchy/sub-pages)
+  - `title`: String (Cached from Google Doc or User-defined)
+  - `url`: String (The Google Doc source URL)
+  - `content`: String (Last known snippet/cached text)
+  - `difficulty`: Enum ["Easy", "Medium", "Hard"]
+  - `status`: Enum ["First Visit", "Revision", "Updated", "Completed"]
+  - `tags`: Array<String>
+  - `lastFetched`: Date
+
+  ### 2. Media
+  A collection to track user-uploaded assets.
+  - `_id`: ObjectId
+  - `docId`: ObjectId (Source document)
+  - `userId`: ObjectId
+  - `type`: Enum ["image", "pdf"]
+  - `url`: String (Cloudinary URL or Base64 Data URI)
+  - `publicId`: String (Optional, for Cloudinary management)
+  - `width`: String (Persisted width, e.g. "800px")
+  - `isCollapsed`: Boolean
 
 ### 2. Authentication Protocol
 - **Decision:** Utilize `better-auth` for session management and RBAC (Role-Based Access Control).

@@ -1,0 +1,55 @@
+#rm-clipper-fab {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background-color: #000000;
+  color: white;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  cursor: pointer;
+  z-index: 2147483646; /* High z-index to be on top of everything */
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+#rm-clipper-fab:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+}
+
+#rm-clipper-iframe {
+  position: fixed;
+  bottom: 96px;
+  right: 24px;
+  width: 420px;
+  height: 600px;
+  min-width: 320px;
+  min-height: 400px;
+  max-width: 90vw;
+  max-height: 90vh;
+  resize: both;
+  overflow: auto;
+  border: none;
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+  z-index: 2147483647; /* Just above FAB */
+  display: none;
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+  background: white;
+}
+
+#rm-clipper-iframe.rm-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+#rm-clipper-iframe.rm-hidden {
+  opacity: 0;
+  transform: translateY(10px);
+}

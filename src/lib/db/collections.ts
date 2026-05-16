@@ -230,7 +230,7 @@ export function serializeNote(n: DbNote): Note {
 export function serializeTerm(t: DbTerm): Term {
   return {
     id: t._id.toString(),
-    docId: t.docId.toString(),
+    docId: t.docId?.toString(),
     term: t.term,
     definition: t.definition,
     isDone: t.isDone,
@@ -303,4 +303,9 @@ export async function getDocById(id: string, userId: string): Promise<DbDocument
 export async function getRepetitionByDocId(docId: string): Promise<DbRepetition | null> {
   const col = await getRepetitionsCollection();
   return col.findOne({ docId: new ObjectId(docId) });
+}
+
+export async function getSubPages(docId: string, userId: string): Promise<DbDocument[]> {
+  const col = await getDocumentsCollection();
+  return col.find({ parentDocId: new ObjectId(docId), userId: new ObjectId(userId) }).sort({ createdAt: 1 }).toArray();
 }

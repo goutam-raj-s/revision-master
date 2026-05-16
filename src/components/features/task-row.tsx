@@ -141,6 +141,8 @@ export function TaskRow({
   const [completing, setCompleting] = React.useState(false);
   const [sweeping, setSweeping] = React.useState(false);
   const urgency = urgencyConfig[task.urgency];
+  const recentTags = task.doc.tags.slice(-3);
+  const hiddenTagCount = Math.max(0, task.doc.tags.length - recentTags.length);
 
   async function handleReschedule(days: number) {
     setRescheduling(true);
@@ -163,7 +165,7 @@ export function TaskRow({
       )}
     >
       {/* Main row */}
-      <div className="flex items-center gap-3 px-4 py-3">
+      <div className="flex items-center gap-2 px-3 py-2.5 sm:gap-3 sm:px-4 sm:py-3">
         {/* Urgency indicator */}
         <div className="flex items-center gap-1.5 shrink-0">
           <SimpleTooltip content={urgency.label}>
@@ -207,7 +209,7 @@ export function TaskRow({
         )}
 
         {/* Next review date */}
-        <div className="shrink-0 flex items-center gap-1 text-xs font-mono text-mossy-gray">
+        <div className="shrink-0 flex items-center gap-1 text-[11px] font-mono text-mossy-gray sm:text-xs">
           <Calendar className="h-3 w-3" />
           <span>{formatRelativeDate(task.repetition.nextReviewDate)}</span>
         </div>
@@ -265,9 +267,14 @@ export function TaskRow({
             <Badge variant="outline">
               #{task.repetition.reviewCount} reviews
             </Badge>
-            {task.doc.tags.map((tag) => (
+            {recentTags.map((tag) => (
               <Badge key={tag} variant="tag">#{tag}</Badge>
             ))}
+            {hiddenTagCount > 0 && (
+              <SimpleTooltip content={task.doc.tags.slice(0, -3).map((tag) => `#${tag}`).join(", ")}>
+                <Badge variant="outline" className="cursor-default">+{hiddenTagCount}</Badge>
+              </SimpleTooltip>
+            )}
           </div>
 
           {/* Notes preview */}

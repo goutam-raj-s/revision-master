@@ -1,4 +1,3 @@
-import { Suspense } from "react";
 import { Plus } from "lucide-react";
 import Link from "next/link";
 import { getTaskQueue } from "@/actions/queue";
@@ -24,37 +23,39 @@ function FilterTabs({ active, pendingCount }: { active: TaskFilter; pendingCount
   ];
 
   return (
-    <div className="flex items-center gap-1 bg-surface border border-border rounded-xl p-1 w-fit">
-      {tabs.map((tab) => {
-        const isPendingTab = tab.key === "pending";
-        const hasPending = pendingCount > 0;
-        let className = "px-4 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 ";
-        
-        if (active === tab.key) {
-          if (isPendingTab && hasPending) {
-            className += "bg-red-500/10 text-red-600 shadow-soft";
-          } else {
-            className += "bg-state-today text-white shadow-soft";
-          }
-        } else {
-          if (isPendingTab && hasPending) {
-             className += "text-red-500/80 hover:text-red-600 hover:bg-red-500/5";
-          } else {
-             className += "text-mossy-gray hover:text-forest-slate hover:bg-canvas";
-          }
-        }
+    <div className="w-full overflow-x-auto custom-scrollbar sm:w-fit">
+      <div className="flex min-w-max items-center gap-1 rounded-xl border border-border bg-surface p-1">
+        {tabs.map((tab) => {
+          const isPendingTab = tab.key === "pending";
+          const hasPending = pendingCount > 0;
+          let className = "px-3 py-1 rounded-lg text-xs font-medium transition-all duration-200 sm:px-4 sm:py-1.5 sm:text-sm ";
 
-        return (
-          <Link
-            key={tab.key}
-            href={`/dashboard?filter=${tab.key}`}
-            className={className}
-            aria-current={active === tab.key ? "page" : undefined}
-          >
-            {tab.label} {isPendingTab && hasPending ? `(${pendingCount})` : ""}
-          </Link>
-        )
-      })}
+          if (active === tab.key) {
+            if (isPendingTab && hasPending) {
+              className += "bg-red-500/10 text-red-600 shadow-soft";
+            } else {
+              className += "bg-state-today text-white shadow-soft";
+            }
+          } else {
+            if (isPendingTab && hasPending) {
+              className += "text-red-500/80 hover:text-red-600 hover:bg-red-500/5";
+            } else {
+              className += "text-mossy-gray hover:text-forest-slate hover:bg-canvas";
+            }
+          }
+
+          return (
+            <Link
+              key={tab.key}
+              href={`/dashboard?filter=${tab.key}`}
+              className={className}
+              aria-current={active === tab.key ? "page" : undefined}
+            >
+              {tab.label} {isPendingTab && hasPending ? `(${pendingCount})` : ""}
+            </Link>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -70,20 +71,20 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   ]);
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-4 sm:space-y-6 md:space-y-8">
       {/* Page header */}
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-forest-slate">Dashboard</h1>
-          <p className="text-sm text-mossy-gray mt-0.5">
+          <h1 className="text-xl font-bold text-forest-slate sm:text-2xl">Dashboard</h1>
+          <p className="mt-0.5 text-xs text-mossy-gray sm:text-sm">
             Your learning queue for today
-            <kbd className="ml-2 px-1.5 py-0.5 rounded bg-border text-xs font-mono text-mossy-gray">⌘K</kbd>
+            <kbd className="ml-2 hidden rounded bg-border px-1.5 py-0.5 font-mono text-xs text-mossy-gray sm:inline">⌘K</kbd>
           </p>
         </div>
         <Link href="/documents/new" prefetch={true}>
-          <Button className="gap-2 bouncy-hover">
+          <Button className="h-8 gap-1.5 px-3 text-xs bouncy-hover sm:h-9 sm:gap-2 sm:px-4 sm:text-sm" aria-label="Add document">
             <Plus className="h-4 w-4" />
-            Add Document
+            <span className="hidden sm:inline">Add Document</span>
           </Button>
         </Link>
       </div>
@@ -96,8 +97,8 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
 
       {/* Task Queue */}
       <div>
-        <div className="flex items-center justify-between gap-4 mb-4">
-          <h2 className="text-base font-semibold text-forest-slate">Revision Queue</h2>
+        <div className="mb-3 flex flex-col items-start gap-2 sm:mb-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+          <h2 className="text-sm font-semibold text-forest-slate sm:text-base">Revision Queue</h2>
           <FilterTabs active={filter} pendingCount={stats.pendingRevisions} />
         </div>
         <TaskQueue initialTasks={tasks} filter={filter} />
@@ -105,9 +106,9 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
 
       {/* Analytics */}
       <div>
-        <h2 className="text-base font-semibold text-forest-slate mb-4">Learning Insights</h2>
+        <h2 className="mb-3 text-sm font-semibold text-forest-slate sm:mb-4 sm:text-base">Learning Insights</h2>
         <AnalyticsInsights stats={stats} />
-        <div className="mt-4 bg-surface rounded-xl border border-border p-4">
+        <div className="mt-3 rounded-xl border border-border bg-surface p-3 sm:mt-4 sm:p-4">
           <p className="text-xs font-medium text-mossy-gray mb-2">Reviews this week</p>
           <ReviewTrendChart data={trend} />
         </div>

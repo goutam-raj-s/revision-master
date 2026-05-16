@@ -307,7 +307,7 @@ export function GlassModal({ task, onClose, onComplete }: GlassModalProps) {
                 {/* Existing notes */}
                 {notes.filter((n) => !n.isDone).map((note) => (
                   <div key={note.id} className="group bg-surface rounded-xl border border-border p-3 relative">
-                    <p className="text-xs text-forest-slate leading-relaxed pr-6">{note.content}</p>
+                    <p className="text-xs text-forest-slate leading-relaxed pr-6 whitespace-pre-wrap">{note.content}</p>
                     <SimpleTooltip content="Delete note" side="left">
                       <button
                         onClick={() => handleDeleteNote(note.id)}
