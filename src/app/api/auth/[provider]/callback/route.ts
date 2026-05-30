@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { ObjectId } from "mongodb";
 import { createSession } from "@/lib/auth/session";
+import { getOAuthAppUrl } from "@/lib/auth/oauth-url";
 import { getUsersCollection } from "@/lib/db/collections";
 
 const VALID_PROVIDERS = ["google", "github", "discord"] as const;
@@ -18,9 +19,6 @@ async function exchangeCodeForToken(
   code: string,
   redirectUri: string
 ): Promise<string> {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL!;
-  void appUrl;
-
   if (provider === "google") {
     const res = await fetch("https://oauth2.googleapis.com/token", {
       method: "POST",
@@ -114,7 +112,7 @@ export async function GET(
   }
 
   const p = provider as Provider;
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || request.nextUrl.origin;
+  const appUrl = getOAuthAppUrl(request);
   if (!appUrl) {
     return new NextResponse("App URL could not be determined", { status: 500 });
   }

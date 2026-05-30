@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { randomBytes } from "crypto";
+import { getOAuthAppUrl } from "@/lib/auth/oauth-url";
 
 const VALID_PROVIDERS = ["google", "github", "discord"] as const;
 type Provider = (typeof VALID_PROVIDERS)[number];
@@ -16,7 +17,7 @@ export async function GET(
   }
 
   const p = provider as Provider;
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || request.nextUrl.origin;
+  const appUrl = getOAuthAppUrl(request);
   if (!appUrl) {
     return new NextResponse("App URL could not be determined", { status: 500 });
   }
