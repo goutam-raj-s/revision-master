@@ -10,7 +10,6 @@ import {
   getNotesCollection,
   getTermsCollection,
   serializeDoc,
-  serializeRepetition,
 } from "@/lib/db/collections";
 import { getCustomNextReviewDate, getNextReviewDate } from "@/lib/srs/engine";
 import {
@@ -18,8 +17,60 @@ import {
   computeTitleSimilarity,
   computeTagOverlap,
 } from "@/lib/utils";
-import type { ActionResult, Document, SimilarityMatch, MediaType, Difficulty } from "@/types";
+import type { ActionResult, DbDocument, Document, SimilarityMatch, MediaType, Difficulty } from "@/types";
 import { deleteCloudinaryAsset } from "@/lib/cloudinary";
+
+function topLevelDocumentQuery(userId: ObjectId) {
+  return {
+    userId,
+    $and: [
+      { parentDocId: { $exists: false } },
+    ],
+  };
+}
+
+async function resolveRootDocId(docId: string, userId: ObjectId): Promise<ObjectId | null> {
+  const docs = await getDocumentsCollection();
+  let doc: DbDocument | null = await docs.findOne({ _id: new ObjectId(docId), userId });
+  if (!doc) return null;
+  while (doc?.parentDocId) {
+    const parent: DbDocument | null = await docs.findOne({ _id: doc.parentDocId, userId });
+    if (!parent) break;
+    doc = parent;
+  }
+  return doc._id;
+}
+
+async function getDescendantDocIds(rootIds: ObjectId[], userId: ObjectId): Promise<ObjectId[]> {
+  const docs = await getDocumentsCollection();
+  const allDocs = await docs
+    .find({ userId })
+    .project<{ _id: ObjectId; parentDocId?: ObjectId }>({ _id: 1, parentDocId: 1 })
+    .toArray();
+  const childrenByParent = new Map<string, ObjectId[]>();
+
+  allDocs.forEach((doc) => {
+    const parentId = doc.parentDocId?.toString();
+    if (!parentId) return;
+    const children = childrenByParent.get(parentId) ?? [];
+    children.push(doc._id);
+    childrenByParent.set(parentId, children);
+  });
+
+  const result = new Map(rootIds.map((id) => [id.toString(), id]));
+  const queue = [...rootIds];
+  while (queue.length > 0) {
+    const current = queue.shift()!;
+    const children = childrenByParent.get(current.toString()) ?? [];
+    children.forEach((childId) => {
+      if (result.has(childId.toString())) return;
+      result.set(childId.toString(), childId);
+      queue.push(childId);
+    });
+  }
+
+  return Array.from(result.values());
+}
 
 const AddDocSchema = z.object({
   url: z.string().url(),
@@ -273,31 +324,67 @@ export async function addFileDocumentAction(data: {
 
 export async function deleteDocumentAction(docId: string): Promise<ActionResult> {
   const user = await requireAuth();
+  const userId = new ObjectId(user.id);
 
   const docs = await getDocumentsCollection();
-  const doc = await docs.findOne({ _id: new ObjectId(docId), userId: new ObjectId(user.id) });
+  const targetId = new ObjectId(docId);
+  const doc = await docs.findOne({ _id: targetId, userId });
+  if (!doc) return { success: false, error: "Document not found." };
+
+  const docIdsToDelete = await getDescendantDocIds([targetId], userId);
+  const docsToDelete = await docs.find({ _id: { $in: docIdsToDelete }, userId }).toArray();
 
   // Delete Cloudinary asset if present (before removing MongoDB record)
-  if (doc?.cloudinaryPublicId) {
+  for (const docToDelete of docsToDelete) {
+    if (!docToDelete.cloudinaryPublicId) continue;
     try {
-      await deleteCloudinaryAsset(doc.cloudinaryPublicId);
+      await deleteCloudinaryAsset(docToDelete.cloudinaryPublicId);
     } catch (err) {
       console.error("[deleteDocumentAction] Cloudinary deletion error (continuing):", err);
     }
   }
 
-  await docs.deleteOne({ _id: new ObjectId(docId), userId: new ObjectId(user.id) });
+  await docs.deleteMany({ _id: { $in: docIdsToDelete }, userId });
 
   // Cascade delete
   const reps = await getRepetitionsCollection();
-  await reps.deleteOne({ docId: new ObjectId(docId) });
+  await reps.deleteMany({ docId: { $in: docIdsToDelete } });
 
   const notes = await getNotesCollection();
-  await notes.deleteMany({ docId: new ObjectId(docId) });
+  await notes.deleteMany({ docId: { $in: docIdsToDelete } });
 
   const terms = await getTermsCollection();
-  await terms.deleteMany({ docId: new ObjectId(docId) });
+  await terms.deleteMany({ docId: { $in: docIdsToDelete } });
 
+  revalidatePath("/documents");
+  revalidatePath("/dashboard");
+  return { success: true };
+}
+
+export async function updateDocumentThumbnailAction(
+  docId: string,
+  thumbnailUrl: string
+): Promise<ActionResult> {
+  const user = await requireAuth();
+  const trimmedUrl = thumbnailUrl.trim();
+
+  if (trimmedUrl && !z.string().url().safeParse(trimmedUrl).success && !trimmedUrl.startsWith("data:image/")) {
+    return { success: false, error: "Please use a valid image URL." };
+  }
+
+  const docs = await getDocumentsCollection();
+  const result = await docs.updateOne(
+    { _id: new ObjectId(docId), userId: new ObjectId(user.id) },
+    trimmedUrl
+      ? { $set: { thumbnailUrl: trimmedUrl, updatedAt: new Date() } }
+      : { $unset: { thumbnailUrl: "" }, $set: { updatedAt: new Date() } }
+  );
+
+  if (result.matchedCount === 0) {
+    return { success: false, error: "Document not found." };
+  }
+
+  revalidatePath(`/documents/${docId}`);
   revalidatePath("/documents");
   revalidatePath("/dashboard");
   return { success: true };
@@ -306,6 +393,7 @@ export async function deleteDocumentAction(docId: string): Promise<ActionResult>
 export async function bulkDeleteDocumentsAction(docIds: string[]): Promise<ActionResult> {
   const user = await requireAuth();
   if (!docIds.length) return { success: false, error: "No documents selected." };
+  const userId = new ObjectId(user.id);
 
   const docs = await getDocumentsCollection();
   const reps = await getRepetitionsCollection();
@@ -313,10 +401,11 @@ export async function bulkDeleteDocumentsAction(docIds: string[]): Promise<Actio
   const terms = await getTermsCollection();
 
   const objectIds = docIds.map((id) => new ObjectId(id));
+  const allObjectIds = await getDescendantDocIds(objectIds, userId);
 
   // Delete Cloudinary assets for any file-backed docs
   const docsToDelete = await docs
-    .find({ _id: { $in: objectIds }, userId: new ObjectId(user.id) })
+    .find({ _id: { $in: allObjectIds }, userId })
     .toArray();
 
   for (const doc of docsToDelete) {
@@ -329,10 +418,10 @@ export async function bulkDeleteDocumentsAction(docIds: string[]): Promise<Actio
     }
   }
 
-  await docs.deleteMany({ _id: { $in: objectIds }, userId: new ObjectId(user.id) });
-  await reps.deleteMany({ docId: { $in: objectIds } });
-  await notes.deleteMany({ docId: { $in: objectIds } });
-  await terms.deleteMany({ docId: { $in: objectIds } });
+  await docs.deleteMany({ _id: { $in: allObjectIds }, userId });
+  await reps.deleteMany({ docId: { $in: allObjectIds } });
+  await notes.deleteMany({ docId: { $in: allObjectIds } });
+  await terms.deleteMany({ docId: { $in: allObjectIds } });
 
   revalidatePath("/documents");
   revalidatePath("/dashboard");
@@ -344,11 +433,15 @@ export async function rescheduleDocAction(
   daysFromNow: number
 ): Promise<ActionResult> {
   const user = await requireAuth();
+  const userId = new ObjectId(user.id);
+  const rootDocId = await resolveRootDocId(docId, userId);
+  if (!rootDocId) return { success: false, error: "Document not found." };
+
   const nextReviewDate = getCustomNextReviewDate(daysFromNow);
 
   const reps = await getRepetitionsCollection();
   await reps.updateOne(
-    { docId: new ObjectId(docId), userId: new ObjectId(user.id) },
+    { docId: rootDocId, userId },
     {
       $set: {
         nextReviewDate,
@@ -366,20 +459,25 @@ export async function completeReviewAction(
   docId: string
 ): Promise<ActionResult> {
   const user = await requireAuth();
+  const userId = new ObjectId(user.id);
 
   const docs = await getDocumentsCollection();
-  const doc = await docs.findOne({ _id: new ObjectId(docId), userId: new ObjectId(user.id) });
+  const doc = await docs.findOne({ _id: new ObjectId(docId), userId });
   if (!doc) return { success: false, error: "Document not found." };
+  const rootDocId = await resolveRootDocId(docId, userId);
+  if (!rootDocId) return { success: false, error: "Document not found." };
+  const rootDoc = await docs.findOne({ _id: rootDocId, userId });
+  if (!rootDoc) return { success: false, error: "Parent document not found." };
 
   const reps = await getRepetitionsCollection();
-  const rep = await reps.findOne({ docId: new ObjectId(docId) });
+  const rep = await reps.findOne({ docId: rootDocId, userId });
   if (!rep) return { success: false, error: "Repetition record not found." };
 
   const newReviewCount = rep.reviewCount + 1;
-  const nextReviewDate = getNextReviewDate(doc.difficulty, newReviewCount);
+  const nextReviewDate = getNextReviewDate(rootDoc.difficulty, newReviewCount);
 
   await reps.updateOne(
-    { docId: new ObjectId(docId) },
+    { docId: rootDocId, userId },
     {
       $set: {
         nextReviewDate,
@@ -391,7 +489,7 @@ export async function completeReviewAction(
   );
 
   await docs.updateOne(
-    { _id: new ObjectId(docId) },
+    { _id: rootDocId, userId },
     { $set: { status: "revision", updatedAt: new Date() } }
   );
 
@@ -401,10 +499,13 @@ export async function completeReviewAction(
 
 export async function markDocCompletedAction(docId: string): Promise<ActionResult> {
   const user = await requireAuth();
+  const userId = new ObjectId(user.id);
+  const rootDocId = await resolveRootDocId(docId, userId);
+  if (!rootDocId) return { success: false, error: "Document not found." };
 
   const docs = await getDocumentsCollection();
   await docs.updateOne(
-    { _id: new ObjectId(docId), userId: new ObjectId(user.id) },
+    { _id: rootDocId, userId },
     { $set: { status: "completed", updatedAt: new Date() } }
   );
 
@@ -447,6 +548,9 @@ export async function mergeDocumentsAction(
     { $set: { tags: combinedTags, updatedAt: new Date() } }
   );
 
+  const reps = await getRepetitionsCollection();
+  await reps.deleteOne({ docId: new ObjectId(childDocId), userId: new ObjectId(user.id) });
+
   revalidatePath("/documents");
   revalidatePath("/dashboard");
   return { success: true };
@@ -461,7 +565,7 @@ export async function getUserDocuments(filter?: {
   const docs = await getDocumentsCollection();
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const query: Record<string, any> = { userId: new ObjectId(user.id) };
+  const query: Record<string, any> = topLevelDocumentQuery(new ObjectId(user.id));
 
   if (filter?.tags && filter.tags.length > 0) {
     query.tags = { $in: filter.tags };
@@ -470,13 +574,12 @@ export async function getUserDocuments(filter?: {
     query.status = filter.status;
   }
   if (filter?.search) {
-    query.$or = [
-      { title: { $regex: filter.search, $options: "i" } },
-      { tags: { $regex: filter.search, $options: "i" } },
-    ];
-  } else {
-    // Only show top-level documents by default
-    query.parentDocId = { $exists: false };
+    query.$and.push({
+      $or: [
+        { title: { $regex: filter.search, $options: "i" } },
+        { tags: { $regex: filter.search, $options: "i" } },
+      ],
+    });
   }
 
   const results = await docs.find(query).sort({ createdAt: -1 }).toArray();
@@ -488,7 +591,7 @@ export async function getAllUserTags(): Promise<{ tag: string; count: number }[]
   const docs = await getDocumentsCollection();
 
   const pipeline = [
-    { $match: { userId: new ObjectId(user.id) } },
+    { $match: topLevelDocumentQuery(new ObjectId(user.id)) },
     { $unwind: "$tags" },
     { $group: { _id: "$tags", count: { $sum: 1 } } },
     { $sort: { count: -1 } },
@@ -561,9 +664,6 @@ export async function createSubPageAction(
 
   const now = new Date();
   const childId = new ObjectId();
-  const delayDays = 2;
-  const nextReviewDate = getCustomNextReviewDate(delayDays);
-
   await docs.insertOne({
     _id: childId,
     userId: new ObjectId(user.id),
@@ -576,18 +676,6 @@ export async function createSubPageAction(
     parentDocId: parent._id,
     mediaType: "native-doc",
     content: "",
-    createdAt: now,
-    updatedAt: now,
-  });
-
-  const reps = await getRepetitionsCollection();
-  await reps.insertOne({
-    _id: new ObjectId(),
-    userId: new ObjectId(user.id),
-    docId: childId,
-    nextReviewDate,
-    intervalDays: delayDays,
-    reviewCount: 0,
     createdAt: now,
     updatedAt: now,
   });

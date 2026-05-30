@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2, Check, Loader2, BookText, FileText, X, Save, Search, Copy, CalendarDays } from "lucide-react";
+import { Plus, Trash2, Check, Loader2, BookText, FileText, X, Save, Search, Copy, CalendarDays, ImagePlus } from "lucide-react";
 import { SimpleTooltip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,8 @@ import {
   createNoteAction, createTermAction, deleteNoteAction,
   markNoteDoneAction, deleteTermAction,
 } from "@/actions/notes";
+import { uploadImageAction } from "@/actions/upload";
+import { ImagePreviewThumbnail } from "@/components/features/image-preview-thumbnail";
 import { updateDocumentAction } from "@/actions/documents";
 import type { Document, Repetition, Note, Term, Difficulty } from "@/types";
 
@@ -36,7 +38,9 @@ export function DocumentDetailClient({ doc, rep, initialNotes, initialTerms }: D
   const [savingNote, setSavingNote] = React.useState(false);
   const [newTerm, setNewTerm] = React.useState("");
   const [newDef, setNewDef] = React.useState("");
+  const [newTermImageUrl, setNewTermImageUrl] = React.useState("");
   const [savingTerm, setSavingTerm] = React.useState(false);
+  const [uploadingTermImage, setUploadingTermImage] = React.useState(false);
   const [difficulty, setDifficulty] = React.useState<Difficulty>(doc.difficulty);
   const [tagInput, setTagInput] = React.useState("");
   const [tags, setTags] = React.useState<string[]>(doc.tags);
@@ -75,20 +79,50 @@ export function DocumentDetailClient({ doc, rep, initialNotes, initialTerms }: D
   }
 
   async function handleSaveTerm() {
-    if (!newTerm.trim() || !newDef.trim()) return;
+    if (!newTerm.trim()) return;
     setSavingTerm(true);
     const fd = new FormData();
     fd.set("docId", doc.id);
     fd.set("term", newTerm.trim());
     fd.set("definition", newDef.trim());
+    if (newTermImageUrl) fd.set("imageUrl", newTermImageUrl);
     const result = await createTermAction({ success: false }, fd);
     if (result.success && result.data) {
       setTerms((prev) => [...prev, result.data!].sort((a, b) => a.term.localeCompare(b.term)));
       setNewTerm("");
       setNewDef("");
+      setNewTermImageUrl("");
       toast("Term saved to glossary", { variant: "success" });
     }
     setSavingTerm(false);
+  }
+
+  async function uploadTermImage(file: File) {
+    setUploadingTermImage(true);
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      const result = await uploadImageAction(event.target?.result as string);
+      setUploadingTermImage(false);
+      if (result.success && result.url) {
+        setNewTermImageUrl(result.url);
+        toast("Image attached", { variant: "success" });
+      } else {
+        toast(result.error || "Could not upload image", { variant: "error" });
+      }
+    };
+    reader.onerror = () => {
+      setUploadingTermImage(false);
+      toast("Could not read image", { variant: "error" });
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function handleTermDefinitionPaste(event: React.ClipboardEvent<HTMLTextAreaElement>) {
+    const imageItem = Array.from(event.clipboardData.items).find((item) => item.type.startsWith("image"));
+    const file = imageItem?.getAsFile();
+    if (!file) return;
+    event.preventDefault();
+    uploadTermImage(file);
   }
 
   async function handleDeleteTerm(termId: string) {
@@ -314,14 +348,39 @@ export function DocumentDetailClient({ doc, rep, initialNotes, initialTerms }: D
               <Textarea
                 value={newDef}
                 onChange={(e) => setNewDef(e.target.value)}
+                onPaste={handleTermDefinitionPaste}
                 placeholder="Definition…"
                 className="min-h-[80px]"
               />
-              <div className="flex justify-end">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="gap-1.5"
+                    disabled={uploadingTermImage}
+                    onClick={() => {
+                      const url = window.prompt("Paste image URL");
+                      if (url) setNewTermImageUrl(url.trim());
+                    }}
+                  >
+                    {uploadingTermImage ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ImagePlus className="h-3.5 w-3.5" />}
+                    Image
+                  </Button>
+                  {newTermImageUrl && (
+                    <div className="flex items-center gap-1 rounded-xl border border-border bg-canvas p-1">
+                      <img src={newTermImageUrl} alt="" className="h-8 w-8 rounded-lg object-cover" />
+                      <button type="button" onClick={() => setNewTermImageUrl("")} className="rounded-lg p-1 text-mossy-gray hover:text-destructive">
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  )}
+                </div>
                 <Button
                   size="sm"
                   onClick={handleSaveTerm}
-                  disabled={!newTerm.trim() || !newDef.trim() || savingTerm}
+                  disabled={!newTerm.trim() || savingTerm}
                   className="gap-1.5"
                 >
                   {savingTerm ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <BookText className="h-3.5 w-3.5" />}
@@ -333,11 +392,20 @@ export function DocumentDetailClient({ doc, rep, initialNotes, initialTerms }: D
             {/* Terms list */}
             {visibleTerms.map((term) => (
               <div key={term.id} className="group relative bg-surface rounded-2xl border border-border p-4 shadow-card">
-                <div className="text-sm font-semibold text-forest-slate">{term.term}</div>
-                <div className="text-sm text-mossy-gray mt-1 leading-relaxed">{term.definition}</div>
+                <div className="flex items-start gap-3 pr-16">
+                  {term.thumbnailUrl && (
+                    <ImagePreviewThumbnail src={term.thumbnailUrl} alt={term.term} />
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm font-semibold text-forest-slate">{term.term}</div>
+                    {term.definition && (
+                      <div className="text-sm text-mossy-gray mt-1 leading-relaxed">{term.definition}</div>
+                    )}
+                  </div>
+                </div>
                 <SimpleTooltip content="Copy term" side="left">
                   <button
-                    onClick={() => copyText(`${term.term}: ${term.definition}`, "Term")}
+                    onClick={() => copyText(term.definition ? `${term.term}: ${term.definition}` : term.term, "Term")}
                     className="absolute top-3 right-10 opacity-0 group-hover:opacity-100 p-1.5 rounded-lg hover:bg-state-today/10 hover:text-state-today text-mossy-gray transition-all"
                     aria-label="Copy term"
                   >

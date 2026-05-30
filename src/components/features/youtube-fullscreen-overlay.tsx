@@ -11,6 +11,7 @@ interface YoutubeFullscreenOverlayProps {
   videoTitle: string;
   thumbnailUrl: string;
   playerRef: React.RefObject<YoutubePlayerHandle | null>;
+  localStorageKey?: string;
 }
 
 /**
@@ -24,6 +25,7 @@ export function YoutubeFullscreenOverlay({
   videoTitle,
   thumbnailUrl,
   playerRef,
+  localStorageKey,
 }: YoutubeFullscreenOverlayProps) {
   const [isFullscreen, setIsFullscreen] = React.useState(false);
   const [notesOpen, setNotesOpen] = React.useState(false);
@@ -147,6 +149,7 @@ export function YoutubeFullscreenOverlay({
               videoTitle={videoTitle}
               thumbnailUrl={thumbnailUrl}
               playerRef={playerRef}
+              localStorageKey={localStorageKey}
             />
           </div>
         </div>

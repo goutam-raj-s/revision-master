@@ -2,12 +2,15 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { BookText, ChevronDown, ChevronRight, ExternalLink, Loader2, Plus, Search, Trash2, X } from "lucide-react";
+import { BookText, ChevronDown, ChevronRight, ExternalLink, ImagePlus, Loader2, Plus, Search, Trash2, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/toast";
 import { createStandaloneTermAction, deleteTermAction } from "@/actions/notes";
+import { uploadImageAction } from "@/actions/upload";
+import { ImagePreviewThumbnail } from "@/components/features/image-preview-thumbnail";
+import { ShareButton } from "@/components/features/share-button";
 import type { Term, Document } from "@/types";
 
 interface TerminologyClientProps {
@@ -21,7 +24,9 @@ export function TerminologyClient({ terms: initialTerms, docs }: TerminologyClie
   const [showComposer, setShowComposer] = React.useState(false);
   const [newTerm, setNewTerm] = React.useState("");
   const [newDefinition, setNewDefinition] = React.useState("");
+  const [newImageUrl, setNewImageUrl] = React.useState("");
   const [saving, setSaving] = React.useState(false);
+  const [uploadingImage, setUploadingImage] = React.useState(false);
   const [expandedIds, setExpandedIds] = React.useState<Set<string>>(() => new Set());
 
   const docMap = React.useMemo(() => {
@@ -63,12 +68,13 @@ export function TerminologyClient({ terms: initialTerms, docs }: TerminologyClie
   }
 
   async function handleAddTerm() {
-    if (!newTerm.trim() || !newDefinition.trim()) return;
+    if (!newTerm.trim()) return;
 
     setSaving(true);
     const fd = new FormData();
     fd.set("term", newTerm.trim());
     fd.set("definition", newDefinition.trim());
+    if (newImageUrl) fd.set("imageUrl", newImageUrl);
 
     const result = await createStandaloneTermAction({ success: false }, fd);
     if (result.success && result.data) {
@@ -76,12 +82,42 @@ export function TerminologyClient({ terms: initialTerms, docs }: TerminologyClie
       setExpandedIds((prev) => new Set(prev).add(result.data!.id));
       setNewTerm("");
       setNewDefinition("");
+      setNewImageUrl("");
       setShowComposer(false);
       toast("Term added", { variant: "success" });
     } else {
       toast(result.error || "Could not add term", { variant: "error" });
     }
     setSaving(false);
+  }
+
+  async function uploadPastedImage(file: File) {
+    setUploadingImage(true);
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      const result = await uploadImageAction(event.target?.result as string);
+      setUploadingImage(false);
+      if (result.success && result.url) {
+        setNewImageUrl(result.url);
+        toast("Image attached", { variant: "success" });
+      } else {
+        toast(result.error || "Could not upload image", { variant: "error" });
+      }
+    };
+    reader.onerror = () => {
+      setUploadingImage(false);
+      toast("Could not read image", { variant: "error" });
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function handleDefinitionPaste(event: React.ClipboardEvent<HTMLTextAreaElement>) {
+    const imageItem = Array.from(event.clipboardData.items).find((item) => item.type.startsWith("image"));
+    if (!imageItem) return;
+    const file = imageItem.getAsFile();
+    if (!file) return;
+    event.preventDefault();
+    uploadPastedImage(file);
   }
 
   function toggleExpanded(termId: string) {
@@ -149,9 +185,39 @@ export function TerminologyClient({ terms: initialTerms, docs }: TerminologyClie
             <Textarea
               value={newDefinition}
               onChange={(e) => setNewDefinition(e.target.value)}
+              onPaste={handleDefinitionPaste}
               placeholder="Short explanation"
               className="min-h-[88px] resize-none text-sm"
             />
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="gap-1.5"
+                disabled={uploadingImage}
+                onClick={() => {
+                  const url = window.prompt("Paste image URL");
+                  if (url) setNewImageUrl(url.trim());
+                }}
+              >
+                {uploadingImage ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ImagePlus className="h-3.5 w-3.5" />}
+                Image
+              </Button>
+              {newImageUrl && (
+                <div className="flex items-center gap-2 rounded-xl border border-border bg-canvas px-2 py-1">
+                  <img src={newImageUrl} alt="" className="h-9 w-9 rounded-lg object-cover" />
+                  <button
+                    type="button"
+                    onClick={() => setNewImageUrl("")}
+                    className="rounded-lg p-1 text-mossy-gray hover:bg-surface hover:text-destructive"
+                    aria-label="Remove image"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              )}
+            </div>
             <div className="flex justify-end gap-2">
               <Button
                 type="button"
@@ -166,7 +232,7 @@ export function TerminologyClient({ terms: initialTerms, docs }: TerminologyClie
                 type="button"
                 size="sm"
                 onClick={handleAddTerm}
-                disabled={saving || !newTerm.trim() || !newDefinition.trim()}
+                disabled={saving || !newTerm.trim()}
               >
                 {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
                 Save Term
@@ -220,6 +286,9 @@ export function TerminologyClient({ terms: initialTerms, docs }: TerminologyClie
                 return (
                   <div key={term.id} className="group rounded-2xl border border-border bg-surface shadow-card task-row-hover">
                     <div className="flex items-center justify-between gap-2 p-3 sm:p-4">
+                      {term.thumbnailUrl && (
+                        <ImagePreviewThumbnail src={term.thumbnailUrl} alt={term.term} />
+                      )}
                       <button
                         type="button"
                         onClick={() => toggleExpanded(term.id)}
@@ -245,6 +314,11 @@ export function TerminologyClient({ terms: initialTerms, docs }: TerminologyClie
                           <span className="truncate">{sourceDoc.title}</span>
                         </Link>
                       )}
+                      <ShareButton
+                        title={term.term}
+                        text={term.definition ? `${term.term}: ${term.definition}` : term.term}
+                        url={sourceDoc ? `/documents/${sourceDoc.id}` : "/terminology"}
+                      />
                       <button
                         onClick={() => handleDelete(term.id)}
                         className="p-1.5 text-mossy-gray opacity-100 transition-all hover:bg-destructive/10 hover:text-destructive sm:opacity-0 sm:group-hover:opacity-100"
@@ -255,7 +329,9 @@ export function TerminologyClient({ terms: initialTerms, docs }: TerminologyClie
                     </div>
                     {isExpanded && (
                       <div className="border-t border-border/60 px-3 pb-3 pt-2 sm:px-4 sm:pb-4">
-                        <p className="text-sm leading-relaxed text-mossy-gray">{term.definition}</p>
+                        {term.definition && (
+                          <p className="text-sm leading-relaxed text-mossy-gray">{term.definition}</p>
+                        )}
                         {sourceDoc && (
                           <Link
                             href={`/documents/${sourceDoc.id}`}

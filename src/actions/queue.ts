@@ -62,6 +62,7 @@ export async function getTaskQueue(filter: TaskFilter = "today"): Promise<AnyTas
       status: { $ne: "completed" },
     });
     if (!doc) continue;
+    if (doc.parentDocId) continue;
 
     const docNotes = await notes
       .find({ docId: rep.docId, isDone: false })
@@ -118,14 +119,18 @@ export async function getTaskQueueStats(): Promise<{
   const todayEnd = new Date(now);
   todayEnd.setHours(23, 59, 59, 999);
 
-  const completedDocIds = await docs
-    .find({ userId, status: "completed" })
+  const activeTopLevelDocIds = await docs
+    .find({
+      userId,
+      status: { $ne: "completed" },
+      parentDocId: { $exists: false },
+    })
     .project({ _id: 1 })
     .toArray()
     .then((ds) => ds.map((d) => d._id));
 
   const allDocReps = await reps
-    .find({ userId, docId: { $nin: completedDocIds } })
+    .find({ userId, docId: { $in: activeTopLevelDocIds } })
     .toArray();
   const allYtReps = await ytReps.find({ userId }).toArray();
   const allReps = [...allDocReps, ...allYtReps];

@@ -13,6 +13,7 @@ import { TableHeader } from "@tiptap/extension-table-header";
 import Placeholder from "@tiptap/extension-placeholder";
 import TextAlign from "@tiptap/extension-text-align";
 import { CollapsibleImage } from "./extensions/CollapsibleImage";
+import { FontSize } from "./extensions/FontSize";
 import { uploadImageAction } from "@/actions/upload";
 import { EditorToolbar } from "./EditorToolbar";
 import { Button } from "@/components/ui/button";
@@ -182,6 +183,7 @@ export function RichTextEditor({
       StarterKit,
       Underline,
       Highlight.configure({ multicolor: true }),
+      FontSize,
       CollapsibleImage,
       Link.configure({
         openOnClick: false,

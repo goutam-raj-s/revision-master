@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { CirclePlay as Youtube, ArrowRight } from "lucide-react";
+import { CirclePlay as Youtube, ArrowRight, Link2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,8 +20,11 @@ export function YoutubeUrlForm() {
     const playlistId = extractYoutubePlaylistId(trimmedUrl);
     const videoId = extractYoutubeVideoId(trimmedUrl);
 
-    if (!playlistId && !videoId) {
-      setError("Please enter a valid YouTube URL");
+    let parsedUrl: URL;
+    try {
+      parsedUrl = new URL(trimmedUrl);
+    } catch {
+      setError("Please enter a valid URL");
       return;
     }
 
@@ -31,6 +34,8 @@ export function YoutubeUrlForm() {
       router.push(`/study/youtube?list=${playlistId}`);
     } else if (videoId) {
       router.push(`/study/youtube?v=${videoId}`);
+    } else {
+      router.push(`/study/youtube?u=${encodeURIComponent(parsedUrl.toString())}`);
     }
   }
 
@@ -42,19 +47,19 @@ export function YoutubeUrlForm() {
         </div>
         <h2 className="text-xl font-bold text-forest-slate">Watch &amp; Annotate</h2>
         <p className="text-sm text-mossy-gray">
-          Paste a YouTube URL to start a study session with timestamped notes.
+          Paste a YouTube or course video URL to start a study session with timestamped notes.
         </p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-1.5">
-          <Label htmlFor="yt-url">YouTube URL</Label>
+          <Label htmlFor="yt-url">Video URL</Label>
           <Input
             id="yt-url"
             type="url"
             value={url}
             onChange={(e) => { setUrl(e.target.value); setError(""); }}
-            placeholder="https://youtu.be/... or https://www.youtube.com/watch?v=..."
+            placeholder="https://youtu.be/... or https://www.airtribe.live/..."
             autoFocus
           />
           {error && <p className="text-xs text-destructive">{error}</p>}
@@ -66,7 +71,7 @@ export function YoutubeUrlForm() {
       </form>
 
       <p className="text-xs text-mossy-gray text-center">
-        Supports youtube.com, youtu.be, and embed URLs
+        <Link2 className="inline h-3.5 w-3.5 align-[-2px]" /> Supports YouTube links, direct video files, and course pages
       </p>
     </div>
   );

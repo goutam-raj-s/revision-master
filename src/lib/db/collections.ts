@@ -11,15 +11,18 @@ import type {
   DbPasswordResetToken,
   DbYoutubeSession,
   DbYoutubeBookmark,
+  DbYoutubePlaylist,
   DbUdemySession,
   DbPlaylist,
   Document,
+  DocumentTreeNode,
   Note,
   Repetition,
   Term,
   User,
   YoutubeSession,
   YoutubeBookmark,
+  YoutubePlaylist,
   UdemySession,
   Playlist,
   DbLoginRecord,
@@ -75,6 +78,11 @@ export async function getYoutubeSessionsCollection(): Promise<Collection<DbYoutu
 export async function getYoutubeBookmarksCollection(): Promise<Collection<DbYoutubeBookmark>> {
   const db = await getDb();
   return db.collection<DbYoutubeBookmark>("youtube_bookmarks");
+}
+
+export async function getYoutubePlaylistsCollection(): Promise<Collection<DbYoutubePlaylist>> {
+  const db = await getDb();
+  return db.collection<DbYoutubePlaylist>("youtube_playlists");
 }
 
 export async function getYoutubeRepetitionsCollection(): Promise<Collection<DbRepetition>> {
@@ -147,6 +155,10 @@ export async function ensureIndexes(): Promise<void> {
     { key: { userId: 1, youtubeId: 1 }, unique: true },
   ]);
 
+  await db.collection("youtube_playlists").createIndexes([
+    { key: { userId: 1, createdAt: -1 } },
+  ]);
+
   await db.collection("youtube_repetitions").createIndexes([
     { key: { userId: 1, nextReviewDate: 1 } },
     { key: { docId: 1 }, unique: true },
@@ -185,6 +197,7 @@ export function serializeDoc(d: DbDocument): Document {
     fileUrl: d.fileUrl,
     fileSize: d.fileSize,
     mimeType: d.mimeType,
+    thumbnailUrl: d.thumbnailUrl,
     isFavourite: d.isFavourite ?? false,
     playCount: d.playCount ?? 0,
     lastPlayedAt: d.lastPlayedAt?.toISOString(),
@@ -233,6 +246,8 @@ export function serializeTerm(t: DbTerm): Term {
     docId: t.docId?.toString(),
     term: t.term,
     definition: t.definition,
+    imageUrl: t.imageUrl,
+    thumbnailUrl: t.thumbnailUrl,
     isDone: t.isDone,
     nextReviewDate: t.nextReviewDate?.toISOString(),
     createdAt: t.createdAt.toISOString(),
@@ -247,6 +262,8 @@ export function serializeYoutubeSession(s: DbYoutubeSession): YoutubeSession {
     videoTitle: s.videoTitle,
     thumbnailUrl: s.thumbnailUrl,
     videoUrl: s.videoUrl,
+    sourceType: s.sourceType ?? "youtube",
+    playerType: s.playerType ?? "youtube",
     notes: s.notes,
     tags: s.tags,
     difficulty: s.difficulty,
@@ -264,6 +281,17 @@ export function serializeYoutubeBookmark(b: DbYoutubeBookmark): YoutubeBookmark 
     thumbnailUrl: b.thumbnailUrl,
     createdAt: b.createdAt.toISOString(),
     updatedAt: b.updatedAt.toISOString(),
+  };
+}
+
+export function serializeYoutubePlaylist(p: DbYoutubePlaylist, items: YoutubePlaylist["items"] = []): YoutubePlaylist {
+  return {
+    id: p._id.toString(),
+    name: p.name,
+    sessionIds: p.sessionIds.map((id) => id.toString()),
+    items,
+    createdAt: p.createdAt.toISOString(),
+    updatedAt: p.updatedAt.toISOString(),
   };
 }
 
@@ -300,6 +328,21 @@ export async function getDocById(id: string, userId: string): Promise<DbDocument
   return col.findOne({ _id: new ObjectId(id), userId: new ObjectId(userId) });
 }
 
+export async function getRootDocForDoc(id: string, userId: string): Promise<DbDocument | null> {
+  const col = await getDocumentsCollection();
+  const userObjectId = new ObjectId(userId);
+  let doc: DbDocument | null = await col.findOne({ _id: new ObjectId(id), userId: userObjectId });
+  if (!doc) return null;
+
+  while (doc?.parentDocId) {
+    const parent: DbDocument | null = await col.findOne({ _id: doc.parentDocId, userId: userObjectId });
+    if (!parent) break;
+    doc = parent;
+  }
+
+  return doc;
+}
+
 export async function getRepetitionByDocId(docId: string): Promise<DbRepetition | null> {
   const col = await getRepetitionsCollection();
   return col.findOne({ docId: new ObjectId(docId) });
@@ -308,4 +351,29 @@ export async function getRepetitionByDocId(docId: string): Promise<DbRepetition 
 export async function getSubPages(docId: string, userId: string): Promise<DbDocument[]> {
   const col = await getDocumentsCollection();
   return col.find({ parentDocId: new ObjectId(docId), userId: new ObjectId(userId) }).sort({ createdAt: 1 }).toArray();
+}
+
+export async function getDocumentTree(rootDocId: string, userId: string): Promise<DocumentTreeNode[]> {
+  const col = await getDocumentsCollection();
+  const userObjectId = new ObjectId(userId);
+  const rootObjectId = new ObjectId(rootDocId);
+  const docs = await col.find({ userId: userObjectId }).sort({ createdAt: 1 }).toArray();
+  const nodes = new Map<string, DocumentTreeNode>();
+
+  docs.forEach((doc) => {
+    nodes.set(doc._id.toString(), { ...serializeDoc(doc), children: [] });
+  });
+
+  const root = nodes.get(rootObjectId.toString());
+  if (!root) return [];
+
+  docs.forEach((doc) => {
+    const parentId = doc.parentDocId?.toString();
+    if (!parentId) return;
+    const parent = nodes.get(parentId);
+    const child = nodes.get(doc._id.toString());
+    if (parent && child) parent.children.push(child);
+  });
+
+  return [root];
 }

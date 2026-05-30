@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { ChevronDown, ChevronRight, Calendar, CheckCircle2, BookOpen, StickyNote, FileAudio, FileVideo, FileText, ImageIcon, Link as LinkIcon, CirclePlay as Youtube } from "lucide-react";
+import { ChevronDown, ChevronRight, Calendar, CheckCircle2, BookOpen, StickyNote, FileAudio, FileVideo, FileText, ImageIcon, Link as LinkIcon, CirclePlay as Youtube, Trash2 } from "lucide-react";
 import { cn, formatRelativeDate, truncate } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,7 @@ interface TaskRowProps {
   onReview: (task: TaskItem) => void;
   onReschedule: (docId: string, days: number) => Promise<void>;
   onComplete: (docId: string) => Promise<void>;
+  onDelete: (docId: string) => Promise<void>;
 }
 
 const difficultyVariant: Record<Difficulty, "easy" | "medium" | "hard"> = {
@@ -136,9 +137,11 @@ export function TaskRow({
   onReview,
   onReschedule,
   onComplete,
+  onDelete,
 }: TaskRowProps) {
   const [rescheduling, setRescheduling] = React.useState(false);
   const [completing, setCompleting] = React.useState(false);
+  const [deleting, setDeleting] = React.useState(false);
   const [sweeping, setSweeping] = React.useState(false);
   const urgency = urgencyConfig[task.urgency];
   const recentTags = task.doc.tags.slice(-3);
@@ -154,6 +157,13 @@ export function TaskRow({
     setCompleting(true);
     setSweeping(true);
     await onComplete(task.doc.id);
+  }
+
+  async function handleDelete() {
+    if (!window.confirm(`Delete "${task.doc.title}"?`)) return;
+    setDeleting(true);
+    await onDelete(task.doc.id);
+    setDeleting(false);
   }
 
   return (
@@ -180,7 +190,11 @@ export function TaskRow({
           aria-label={`Open ${task.doc.title}`}
         >
           <div className="flex items-center gap-1.5 font-serif font-medium text-forest-slate text-sm leading-snug hover:text-state-today transition-colors">
-            <MediaIcon mediaType={task.doc.mediaType} />
+            {task.doc.thumbnailUrl ? (
+              <img src={task.doc.thumbnailUrl} alt="" className="h-7 w-7 shrink-0 rounded-lg border border-border object-cover" />
+            ) : (
+              <MediaIcon mediaType={task.doc.mediaType} />
+            )}
             <span className="line-clamp-1">{task.doc.title}</span>
           </div>
           {task.notes[0] && !isExpanded && (
@@ -214,8 +228,8 @@ export function TaskRow({
           <span>{formatRelativeDate(task.repetition.nextReviewDate)}</span>
         </div>
 
-        {/* Actions (visible on hover) */}
-        <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+        {/* Actions */}
+        <div className="flex items-center gap-1 shrink-0">
           <SimpleTooltip content="Quick notes">
             <Button
               variant="ghost"
@@ -236,6 +250,18 @@ export function TaskRow({
               aria-label="Mark as complete"
             >
               <CheckCircle2 className="h-3.5 w-3.5" />
+            </Button>
+          </SimpleTooltip>
+          <SimpleTooltip content="Delete document">
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              onClick={(e) => { e.preventDefault(); handleDelete(); }}
+              disabled={deleting}
+              className="hover:text-destructive hover:bg-destructive/10"
+              aria-label="Delete document"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
             </Button>
           </SimpleTooltip>
         </div>

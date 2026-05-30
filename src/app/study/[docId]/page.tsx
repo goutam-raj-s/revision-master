@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { requireAuth } from "@/lib/auth/session";
-import { getDocById, serializeDoc, getRepetitionByDocId, serializeRepetition } from "@/lib/db/collections";
+import { getDocById, serializeDoc, getRepetitionByDocId, serializeRepetition, getDocumentTree, getRootDocForDoc } from "@/lib/db/collections";
 import { getGoogleDocEmbedUrl } from "@/lib/utils";
 import { ExternalLink } from "lucide-react";
 import { StudyPageWrapper } from "@/components/features/study-page-wrapper";
@@ -11,9 +11,15 @@ import { AudioPlayer, VideoPlayer, DocumentDownload } from "@/components/feature
 import { getDocNotes, getDocTerms } from "@/actions/notes";
 import { DashboardHeader } from "@/components/features/dashboard-header";
 import { RichTextEditorDynamic as RichTextEditor } from "@/components/features/editor/RichTextEditorDynamic";
+import { DocumentTabsSidebar } from "@/components/features/document-tabs-sidebar";
+import type { DocumentTreeNode } from "@/types";
 
 interface StudyPageProps {
   params: Promise<{ docId: string }>;
+}
+
+function flattenPages(pages: DocumentTreeNode[]): DocumentTreeNode[] {
+  return pages.flatMap((page) => [page, ...flattenPages(page.children)]);
 }
 
 export default async function StudyPage({ params }: StudyPageProps) {
@@ -23,12 +29,17 @@ export default async function StudyPage({ params }: StudyPageProps) {
   const dbDoc = await getDocById(docId, user.id);
   if (!dbDoc) notFound();
 
+  const dbRootDoc = await getRootDocForDoc(docId, user.id);
+  if (!dbRootDoc) notFound();
+  const parentId = dbRootDoc._id.toString();
+  const subPages = await getDocumentTree(parentId, user.id);
+  const flatSubPages = flattenPages(subPages);
   const doc = serializeDoc(dbDoc);
   const embedUrl = getGoogleDocEmbedUrl(doc.url);
 
   // Fetch all sidebar data in parallel
   const [dbRep, initialNotes, initialTerms] = await Promise.all([
-    getRepetitionByDocId(docId),
+    getRepetitionByDocId(parentId),
     getDocNotes(docId),
     getDocTerms(docId),
   ]);
@@ -65,13 +76,23 @@ export default async function StudyPage({ params }: StudyPageProps) {
           }
         />
 
-        {/* Split-pane body — resizable */}
-        <StudySplitPane
-          doc={doc}
-          rep={rep}
-          initialNotes={initialNotes}
-          initialTerms={initialTerms}
-          leftContent={
+        <div className="flex flex-1 min-h-0">
+          {(flatSubPages.length > 1 || doc.mediaType === "native-doc") && (
+            <DocumentTabsSidebar
+              subPages={subPages}
+              currentDocId={doc.id}
+              parentId={parentId}
+              routeBase="/study"
+            />
+          )}
+
+          {/* Split-pane body — resizable */}
+          <StudySplitPane
+            doc={doc}
+            rep={rep}
+            initialNotes={initialNotes}
+            initialTerms={initialTerms}
+            leftContent={
             doc.mediaType === "audio" && doc.fileUrl ? (
               <div className="absolute inset-0 overflow-auto">
                 <AudioPlayer src={doc.fileUrl} title={doc.title} />
@@ -136,8 +157,9 @@ export default async function StudyPage({ params }: StudyPageProps) {
                 loading="eager"
               />
             )
-          }
-        />
+            }
+          />
+        </div>
 
         {/* Mobile FAB — opens sidebar as overlay (hidden on lg+) */}
         <MobileSidebarButton

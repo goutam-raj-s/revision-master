@@ -8,6 +8,15 @@ import {
 } from "@/lib/db/collections";
 import type { DashboardStats } from "@/types";
 
+function topLevelDocumentMatch(userId: ObjectId) {
+  return {
+    userId,
+    $and: [
+      { parentDocId: { $exists: false } },
+    ],
+  };
+}
+
 export async function getDashboardStats(): Promise<DashboardStats> {
   const user = await requireAuth();
   const userId = new ObjectId(user.id);
@@ -15,15 +24,15 @@ export async function getDashboardStats(): Promise<DashboardStats> {
   const reps = await getRepetitionsCollection();
 
   const [totalDocs, totalCompleted] = await Promise.all([
-    docs.countDocuments({ userId }),
-    docs.countDocuments({ userId, status: "completed" }),
+    docs.countDocuments(topLevelDocumentMatch(userId)),
+    docs.countDocuments({ ...topLevelDocumentMatch(userId), status: "completed" }),
   ]);
 
   const todayEnd = new Date();
   todayEnd.setHours(23, 59, 59, 999);
 
-  const completedDocIds = await docs
-    .find({ userId, status: "completed" })
+  const activeTopLevelDocIds = await docs
+    .find({ ...topLevelDocumentMatch(userId), status: { $ne: "completed" } })
     .project({ _id: 1 })
     .toArray()
     .then((ds) => ds.map((d) => d._id));
@@ -31,13 +40,13 @@ export async function getDashboardStats(): Promise<DashboardStats> {
   const pendingRevisions = await reps.countDocuments({
     userId,
     nextReviewDate: { $lte: todayEnd },
-    docId: { $nin: completedDocIds },
+    docId: { $in: activeTopLevelDocIds },
   });
 
   // Most repeated topics: tags ranked by total revision count
   const mostRepeatedTopics = await docs
     .aggregate<{ tag: string; count: number }>([
-      { $match: { userId } },
+      { $match: topLevelDocumentMatch(userId) },
       { $unwind: "$tags" },
       {
         $lookup: {
@@ -63,7 +72,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
   // Least revised areas: tags with longest gap since last revision
   const leastRevisedAreas = await docs
     .aggregate<{ tag: string; daysSinceLastRevision: number }>([
-      { $match: { userId } },
+      { $match: topLevelDocumentMatch(userId) },
       { $unwind: "$tags" },
       {
         $lookup: {
@@ -115,6 +124,7 @@ export async function getReviewTrendAction(): Promise<{ day: string; count: numb
   const user = await requireAuth();
   const userId = new ObjectId(user.id);
   const reps = await getRepetitionsCollection();
+  const docs = await getDocumentsCollection();
 
   // Build a 7-day window starting from 6 days ago (inclusive of today)
   const days: { day: string; date: Date }[] = [];
@@ -130,9 +140,16 @@ export async function getReviewTrendAction(): Promise<{ day: string; count: numb
   const windowEnd = new Date();
   windowEnd.setHours(23, 59, 59, 999);
 
+  const topLevelDocIds = await docs
+    .find(topLevelDocumentMatch(userId))
+    .project({ _id: 1 })
+    .toArray()
+    .then((ds) => ds.map((d) => d._id));
+
   const reviewed = await reps
     .find({
       userId,
+      docId: { $in: topLevelDocIds },
       lastReviewedAt: { $gte: windowStart, $lte: windowEnd },
     })
     .project({ lastReviewedAt: 1 })

@@ -1,5 +1,6 @@
 "use server";
 
+import { createHash } from "crypto";
 import { ObjectId } from "mongodb";
 import { requireAuth } from "@/lib/auth/session";
 import {
@@ -14,6 +15,29 @@ import { extractYoutubeVideoId } from "@/lib/youtube-utils";
 import play from "play-dl";
 
 // ── Server actions ────────────────────────────────────────────────────────────
+
+const DIRECT_VIDEO_EXTENSIONS = [".mp4", ".webm", ".ogg", ".ogv", ".mov", ".m4v"];
+
+function normalizeExternalUrl(url: string): string {
+  const parsed = new URL(url.trim());
+  parsed.hash = "";
+  return parsed.toString();
+}
+
+function getExternalVideoId(url: string): string {
+  return `external-${createHash("sha256").update(url).digest("hex").slice(0, 24)}`;
+}
+
+function inferExternalPlayerType(url: string): "direct" | "iframe" {
+  const pathname = new URL(url).pathname.toLowerCase();
+  return DIRECT_VIDEO_EXTENSIONS.some((ext) => pathname.endsWith(ext)) ? "direct" : "iframe";
+}
+
+function getExternalTitle(url: string): string {
+  const parsed = new URL(url);
+  const lastPathPart = decodeURIComponent(parsed.pathname.split("/").filter(Boolean).at(-1) ?? "");
+  return lastPathPart || parsed.hostname.replace(/^www\./, "");
+}
 
 export async function fetchYoutubeMetadata(
   url: string
@@ -92,6 +116,8 @@ export async function createOrGetYoutubeSession(
       videoTitle: metadata.title,
       thumbnailUrl: metadata.thumbnailUrl,
       videoUrl,
+      sourceType: "youtube",
+      playerType: "youtube",
       notes: "",
       tags,
       difficulty,
@@ -100,6 +126,70 @@ export async function createOrGetYoutubeSession(
     });
 
     // Create repetition record — docId field holds the sessionId
+    const nextReviewDate = getCustomNextReviewDate(delayDays);
+    await reps.insertOne({
+      _id: new ObjectId(),
+      userId,
+      docId: sessionId,
+      nextReviewDate,
+      intervalDays: delayDays,
+      reviewCount: 0,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    const created = await col.findOne({ _id: sessionId });
+    if (!created) return { success: false, error: "Failed to retrieve created session" };
+
+    return { success: true, data: serializeYoutubeSession(created) };
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : "Unknown error" };
+  }
+}
+
+export async function createOrGetExternalVideoSession(
+  url: string,
+  metadata: { title?: string; thumbnailUrl?: string } = {},
+  options: { tags?: string[]; difficulty?: Difficulty; delayDays?: number } = {}
+): Promise<ActionResult<YoutubeSession>> {
+  try {
+    const user = await requireAuth();
+    const userId = new ObjectId(user.id);
+    const { tags = [], difficulty = "medium", delayDays = 2 } = options;
+    const videoUrl = normalizeExternalUrl(url);
+    const videoId = getExternalVideoId(videoUrl);
+    const playerType = inferExternalPlayerType(videoUrl);
+
+    const col = await getYoutubeSessionsCollection();
+    const reps = await getYoutubeRepetitionsCollection();
+
+    const existing = await col.findOne(
+      { userId, videoId, sourceType: "external" },
+      { sort: { createdAt: -1 } }
+    );
+
+    if (existing) {
+      return { success: true, data: serializeYoutubeSession(existing) };
+    }
+
+    const now = new Date();
+    const sessionId = new ObjectId();
+    await col.insertOne({
+      _id: sessionId,
+      userId,
+      videoId,
+      videoTitle: metadata.title?.trim() || getExternalTitle(videoUrl),
+      thumbnailUrl: metadata.thumbnailUrl || "",
+      videoUrl,
+      sourceType: "external",
+      playerType,
+      notes: "",
+      tags: Array.from(new Set(["external-video", ...tags])),
+      difficulty,
+      createdAt: now,
+      updatedAt: now,
+    });
+
     const nextReviewDate = getCustomNextReviewDate(delayDays);
     await reps.insertOne({
       _id: new ObjectId(),

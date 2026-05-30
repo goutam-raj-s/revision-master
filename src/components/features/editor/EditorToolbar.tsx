@@ -22,6 +22,7 @@ import {
   ChevronDown,
   Check,
   Focus,
+  Type,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -55,6 +56,13 @@ const HIGHLIGHT_PRESETS = [
   { name: "Red", color: "#fecaca", shortcut: "I" },
   { name: "Blue", color: "#bfdbfe" },
   { name: "Green", color: "#bbf7d0" },
+];
+
+const FONT_SIZE_PRESETS = [
+  { label: "Small", value: "14px" },
+  { label: "Normal", value: "16px" },
+  { label: "Large", value: "20px" },
+  { label: "Title", value: "28px" },
 ];
 
 export function EditorToolbar({
@@ -154,6 +162,45 @@ export function EditorToolbar({
               <ListOrdered className="h-4 w-4" />
             </ToolbarButton>
           </div>
+
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant={editor.isActive("fontSize") ? "secondary" : "ghost"}
+                size="sm"
+                className={cn("h-8 shrink-0 gap-1.5 px-2", editor.isActive("fontSize") && "bg-state-today/10 text-state-today")}
+              >
+                <Type className="h-4 w-4" />
+                <ChevronDown className="h-3 w-3 opacity-50" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-44 p-2" align="start">
+              <div className="space-y-1">
+                {FONT_SIZE_PRESETS.map((preset) => (
+                  <Button
+                    key={preset.value}
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="w-full justify-start text-xs"
+                    onClick={() => editor.chain().focus().setFontSize(preset.value).run()}
+                  >
+                    <span style={{ fontSize: preset.value }}>{preset.label}</span>
+                  </Button>
+                ))}
+                <Separator className="my-1" />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="w-full justify-start text-xs"
+                  onClick={() => editor.chain().focus().unsetFontSize().run()}
+                >
+                  Reset size
+                </Button>
+              </div>
+            </PopoverContent>
+          </Popover>
 
           <Separator orientation="vertical" className="mx-1 h-7" />
 

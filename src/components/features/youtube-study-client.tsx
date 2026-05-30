@@ -4,6 +4,7 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 import { ResizablePanelGroup } from "@/components/ui/resizable-panel";
 import YoutubePlayer, { type YoutubePlayerHandle } from "./youtube-player";
+import { ExternalVideoPlayer } from "./external-video-player";
 import { YoutubeNotesPanel } from "./youtube-notes-panel";
 import { YoutubeFullscreenOverlay, FullscreenButton } from "./youtube-fullscreen-overlay";
 import type { YoutubeSession } from "@/types";
@@ -17,6 +18,9 @@ export function YoutubeStudyClient({ session }: YoutubeStudyClientProps) {
   const containerRef = React.useRef<HTMLDivElement | null>(null);
   const [isMobile, setIsMobile] = React.useState(false);
   const [isFullscreen, setIsFullscreen] = React.useState(false);
+  const localNotesKey = session.id.startsWith("external-preview-")
+    ? `rm:${session.id}:notes`
+    : undefined;
 
   React.useEffect(() => {
     const mq = window.matchMedia("(max-width: 767px)");
@@ -51,11 +55,21 @@ export function YoutubeStudyClient({ session }: YoutubeStudyClientProps) {
 
   const playerEl = (
     <div className={cn("w-full bg-black flex items-center justify-center", isFullscreen ? "h-full" : "aspect-video")}>
-      <YoutubePlayer
-        ref={playerRef}
-        videoId={session.videoId}
-        className="w-full h-full"
-      />
+      {session.sourceType === "external" ? (
+        <ExternalVideoPlayer
+          ref={playerRef}
+          url={session.videoUrl}
+          title={session.videoTitle}
+          playerType={session.playerType === "direct" ? "direct" : "iframe"}
+          className="relative w-full h-full object-contain"
+        />
+      ) : (
+        <YoutubePlayer
+          ref={playerRef}
+          videoId={session.videoId}
+          className="w-full h-full"
+        />
+      )}
     </div>
   );
 
@@ -66,6 +80,7 @@ export function YoutubeStudyClient({ session }: YoutubeStudyClientProps) {
       videoTitle={session.videoTitle}
       thumbnailUrl={session.thumbnailUrl}
       playerRef={playerRef}
+      localStorageKey={localNotesKey}
     />
   );
 
@@ -81,6 +96,7 @@ export function YoutubeStudyClient({ session }: YoutubeStudyClientProps) {
           videoTitle={session.videoTitle}
           thumbnailUrl={session.thumbnailUrl}
           playerRef={playerRef}
+          localStorageKey={localNotesKey}
         />
       </div>
     );
@@ -125,6 +141,7 @@ export function YoutubeStudyClient({ session }: YoutubeStudyClientProps) {
         videoTitle={session.videoTitle}
         thumbnailUrl={session.thumbnailUrl}
         playerRef={playerRef}
+        localStorageKey={localNotesKey}
       />
     </div>
   );

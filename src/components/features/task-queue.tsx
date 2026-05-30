@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { TaskRow, YoutubeTaskRow } from "./task-row";
 import { GlassModal } from "./glass-modal";
 import { InboxZero } from "./inbox-zero";
-import { completeReviewAction, rescheduleDocAction } from "@/actions/documents";
+import { completeReviewAction, deleteDocumentAction, rescheduleDocAction } from "@/actions/documents";
 import { toast } from "@/components/ui/toast";
 import type { TaskItem, TaskFilter } from "@/types";
 import type { AnyTaskItem } from "@/actions/queue";
@@ -91,6 +91,17 @@ export function TaskQueue({ initialTasks, filter }: TaskQueueProps) {
     router.refresh();
   }
 
+  async function handleDelete(docId: string) {
+    const result = await deleteDocumentAction(docId);
+    if (result.success) {
+      setTasks((prev) => prev.filter((t) => "source" in t || (t as TaskItem).doc.id !== docId));
+      toast("Document deleted", { variant: "success" });
+      router.refresh();
+    } else {
+      toast(result.error || "Could not delete document", { variant: "error" });
+    }
+  }
+
   function handleToggleExpand(id: string) {
     setExpandedId((prev) => (prev === id ? null : id));
   }
@@ -144,6 +155,7 @@ export function TaskQueue({ initialTasks, filter }: TaskQueueProps) {
                 onReview={setActiveTask}
                 onReschedule={handleReschedule}
                 onComplete={handleComplete}
+                onDelete={handleDelete}
               />
             );
           })

@@ -12,6 +12,7 @@ interface YoutubeNotesPanelProps {
   videoTitle: string;
   thumbnailUrl: string;
   playerRef: React.RefObject<YoutubePlayerHandle | null>;
+  localStorageKey?: string;
 }
 
 type SaveStatus = "idle" | "saving" | "saved" | "error";
@@ -38,11 +39,18 @@ export function YoutubeNotesPanel({
   videoTitle,
   thumbnailUrl,
   playerRef,
+  localStorageKey,
 }: YoutubeNotesPanelProps) {
   const [notes, setNotes] = React.useState(initialNotes);
   const [saveStatus, setSaveStatus] = React.useState<SaveStatus>("idle");
   const debounceRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const textareaRef = React.useRef<HTMLTextAreaElement>(null);
+
+  React.useEffect(() => {
+    if (!localStorageKey) return;
+    const saved = window.localStorage.getItem(localStorageKey);
+    if (saved !== null) setNotes(saved);
+  }, [localStorageKey]);
 
   // Listen for global timestamp event (triggered by T key from parent)
   React.useEffect(() => {
@@ -58,6 +66,13 @@ export function YoutubeNotesPanel({
     if (debounceRef.current) clearTimeout(debounceRef.current);
     setSaveStatus("saving");
     debounceRef.current = setTimeout(async () => {
+      if (localStorageKey) {
+        window.localStorage.setItem(localStorageKey, notes);
+        setSaveStatus("saved");
+        setTimeout(() => setSaveStatus("idle"), 2000);
+        return;
+      }
+
       const result = await updateYoutubeSessionNotes(sessionId, notes);
       if (result.success) {
         setSaveStatus("saved");
@@ -69,8 +84,7 @@ export function YoutubeNotesPanel({
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [notes, sessionId]);
+  }, [initialNotes, localStorageKey, notes, sessionId]);
 
   function insertTimestamp() {
     const currentTime = playerRef.current?.getCurrentTime() ?? 0;

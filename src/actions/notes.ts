@@ -106,12 +106,14 @@ export async function getDocNotes(docId: string): Promise<Note[]> {
 const TermSchema = z.object({
   docId: z.string(),
   term: z.string().min(1).max(200),
-  definition: z.string().min(1).max(5000),
+  definition: z.string().max(5000).optional(),
+  imageUrl: z.string().optional(),
 });
 
 const StandaloneTermSchema = z.object({
   term: z.string().min(1).max(200),
-  definition: z.string().min(1).max(5000),
+  definition: z.string().max(5000).optional(),
+  imageUrl: z.string().optional(),
 });
 
 export async function createTermAction(
@@ -123,10 +125,11 @@ export async function createTermAction(
     docId: formData.get("docId"),
     term: formData.get("term"),
     definition: formData.get("definition"),
+    imageUrl: formData.get("imageUrl") || undefined,
   });
   if (!parsed.success) return { success: false, error: parsed.error.issues[0].message };
 
-  const { docId, term, definition } = parsed.data;
+  const { docId, term, definition, imageUrl } = parsed.data;
   const terms = await getTermsCollection();
   const now = new Date();
 
@@ -135,7 +138,9 @@ export async function createTermAction(
     userId: new ObjectId(user.id),
     docId: new ObjectId(docId),
     term,
-    definition,
+    definition: definition?.trim() || "",
+    imageUrl,
+    thumbnailUrl: imageUrl,
     isDone: false,
     createdAt: now,
     updatedAt: now,
@@ -156,10 +161,11 @@ export async function createStandaloneTermAction(
   const parsed = StandaloneTermSchema.safeParse({
     term: formData.get("term"),
     definition: formData.get("definition"),
+    imageUrl: formData.get("imageUrl") || undefined,
   });
   if (!parsed.success) return { success: false, error: parsed.error.issues[0].message };
 
-  const { term, definition } = parsed.data;
+  const { term, definition, imageUrl } = parsed.data;
   const terms = await getTermsCollection();
   const now = new Date();
 
@@ -167,7 +173,9 @@ export async function createStandaloneTermAction(
     _id: new ObjectId(),
     userId: new ObjectId(user.id),
     term: term.trim(),
-    definition: definition.trim(),
+    definition: definition?.trim() || "",
+    imageUrl,
+    thumbnailUrl: imageUrl,
     isDone: false,
     createdAt: now,
     updatedAt: now,
@@ -182,17 +190,27 @@ export async function createStandaloneTermAction(
 export async function updateTermAction(
   termId: string,
   term: string,
-  definition: string
+  definition: string,
+  imageUrl?: string
 ): Promise<ActionResult> {
   const user = await requireAuth();
-  if (!term.trim() || !definition.trim()) {
-    return { success: false, error: "Term and definition cannot be empty." };
+  if (!term.trim()) {
+    return { success: false, error: "Term cannot be empty." };
   }
 
   const terms = await getTermsCollection();
+  const trimmedImageUrl = imageUrl?.trim();
   await terms.updateOne(
     { _id: new ObjectId(termId), userId: new ObjectId(user.id) },
-    { $set: { term: term.trim(), definition: definition.trim(), updatedAt: new Date() } }
+    {
+      $set: {
+        term: term.trim(),
+        definition: definition.trim(),
+        imageUrl: trimmedImageUrl || undefined,
+        thumbnailUrl: trimmedImageUrl || undefined,
+        updatedAt: new Date(),
+      },
+    }
   );
   return { success: true };
 }

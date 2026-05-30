@@ -61,6 +61,7 @@ export interface DbDocument {
   fileUrl?: string;
   fileSize?: number;
   mimeType?: string;
+  thumbnailUrl?: string;
   isFavourite?: boolean;
   playCount?: number;
   lastPlayedAt?: Date;
@@ -74,6 +75,15 @@ export interface DbPlaylist {
   userId: ObjectId;
   name: string;
   trackIds: ObjectId[];
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface DbYoutubePlaylist {
+  _id: ObjectId;
+  userId: ObjectId;
+  name: string;
+  sessionIds: ObjectId[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -107,6 +117,8 @@ export interface DbTerm {
   docId?: ObjectId;
   term: string;
   definition: string;
+  imageUrl?: string;
+  thumbnailUrl?: string;
   isDone: boolean;
   nextReviewDate?: Date;
   createdAt: Date;
@@ -137,6 +149,7 @@ export interface Document {
   fileUrl?: string;
   fileSize?: number;
   mimeType?: string;
+  thumbnailUrl?: string;
   isFavourite?: boolean;
   playCount?: number;
   lastPlayedAt?: string;
@@ -146,10 +159,32 @@ export interface Document {
   nextReviewDate?: string;
 }
 
+export interface DocumentTreeNode extends Document {
+  children: DocumentTreeNode[];
+}
+
 export interface Playlist {
   id: string;
   name: string;
   trackIds: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface YoutubePlaylistItem {
+  sessionId: string;
+  videoId: string;
+  title: string;
+  thumbnailUrl: string;
+  videoUrl: string;
+  sourceType: "youtube" | "external";
+}
+
+export interface YoutubePlaylist {
+  id: string;
+  name: string;
+  sessionIds: string[];
+  items: YoutubePlaylistItem[];
   createdAt: string;
   updatedAt: string;
 }
@@ -178,6 +213,8 @@ export interface Term {
   docId?: string;
   term: string;
   definition: string;
+  imageUrl?: string;
+  thumbnailUrl?: string;
   isDone: boolean;
   nextReviewDate?: string;
   createdAt: string;
@@ -193,6 +230,8 @@ export interface DbYoutubeSession {
   videoTitle: string;
   thumbnailUrl: string;
   videoUrl: string;
+  sourceType?: "youtube" | "external";
+  playerType?: "youtube" | "direct" | "iframe";
   notes: string;
   tags: string[];
   difficulty: Difficulty;
@@ -206,6 +245,8 @@ export interface YoutubeSession {
   videoTitle: string;
   thumbnailUrl: string;
   videoUrl: string;
+  sourceType: "youtube" | "external";
+  playerType: "youtube" | "direct" | "iframe";
   notes: string;
   tags: string[];
   difficulty: Difficulty;

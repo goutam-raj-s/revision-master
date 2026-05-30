@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { SimpleTooltip } from "@/components/ui/tooltip";
+import { ShareButton } from "@/components/features/share-button";
 import {
   Dialog,
   DialogContent,
@@ -363,10 +364,14 @@ export function DocumentListClient({
                         <Square className="h-4 w-4" />
                       )}
                     </button>
-                    <Link href={`/documents/${doc.id}`} className="min-w-0 flex-1">
-                      <div className="line-clamp-2 text-sm font-semibold leading-snug text-forest-slate">
-                        {doc.title}
-                      </div>
+                    <Link href={`/documents/${doc.id}`} className="flex min-w-0 flex-1 items-start gap-2">
+                      {doc.thumbnailUrl && (
+                        <img src={doc.thumbnailUrl} alt="" className="h-12 w-12 shrink-0 rounded-lg border border-border object-cover" />
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <div className="line-clamp-2 text-sm font-semibold leading-snug text-forest-slate">
+                          {doc.title}
+                        </div>
                       <div className="mt-1 flex flex-wrap items-center gap-1.5">
                         <Badge variant={status.variant} className="px-1.5 py-0 text-[10px]">
                           {status.label}
@@ -389,8 +394,10 @@ export function DocumentListClient({
                           )}
                         </div>
                       )}
+                      </div>
                     </Link>
                     <div className="flex shrink-0 items-center gap-0.5">
+                      <ShareButton title={doc.title} url={`/documents/${doc.id}`} />
                       <SimpleTooltip content="Study Document">
                         <Link
                           href={`/study/${doc.id}`}
@@ -462,23 +469,28 @@ export function DocumentListClient({
                           {isSelected ? (
                             <CheckSquare className="h-4 w-4 text-state-today" />
                           ) : (
-                            <Square className="h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity" />
+                            <Square className="h-4 w-4" />
                           )}
                         </button>
                       </TableCell>
 
                       <TableCell>
-                        <Link href={`/documents/${doc.id}`} className="block">
-                          <div className="font-serif font-medium text-forest-slate text-sm line-clamp-1 group-hover:text-state-today transition-colors">
-                            {doc.title}
-                          </div>
-                          <div className="flex items-center gap-2 mt-0.5">
-                            <span className="text-xs text-mossy-gray font-mono">
-                              {formatDate(doc.createdAt)}
-                            </span>
-                            {doc.parentDocId && (
-                              <span className="text-xs text-mossy-gray">· merged</span>
-                            )}
+                        <Link href={`/documents/${doc.id}`} className="flex min-w-0 items-center gap-2">
+                          {doc.thumbnailUrl && (
+                            <img src={doc.thumbnailUrl} alt="" className="h-9 w-9 shrink-0 rounded-lg border border-border object-cover" />
+                          )}
+                          <div className="min-w-0">
+                            <div className="font-serif font-medium text-forest-slate text-sm line-clamp-1 group-hover:text-state-today transition-colors">
+                              {doc.title}
+                            </div>
+                            <div className="flex items-center gap-2 mt-0.5">
+                              <span className="text-xs text-mossy-gray font-mono">
+                                {formatDate(doc.createdAt)}
+                              </span>
+                              {doc.parentDocId && (
+                                <span className="text-xs text-mossy-gray">· merged</span>
+                              )}
+                            </div>
                           </div>
                         </Link>
                       </TableCell>
@@ -503,7 +515,8 @@ export function DocumentListClient({
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="flex items-center justify-end gap-1">
+                          <ShareButton title={doc.title} url={`/documents/${doc.id}`} />
                           <SimpleTooltip content="Study Document">
                             <Link
                               href={`/study/${doc.id}`}

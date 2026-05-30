@@ -24,22 +24,26 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { createSubPageAction, deleteDocumentAction } from "@/actions/documents";
 import { toast } from "@/components/ui/toast";
-import type { Document } from "@/types";
+import type { DocumentTreeNode } from "@/types";
 
 interface DocumentTabsSidebarProps {
-  subPages: Document[];
+  subPages: DocumentTreeNode[];
   currentDocId: string;
   parentId: string;
+  routeBase?: "/documents" | "/study";
 }
 
-export function DocumentTabsSidebar({ subPages, currentDocId, parentId }: DocumentTabsSidebarProps) {
+export function DocumentTabsSidebar({ subPages, currentDocId, parentId, routeBase = "/documents" }: DocumentTabsSidebarProps) {
   const router = useRouter();
   const [isCreating, setIsCreating] = React.useState(false);
   const [isCollapsed, setIsCollapsed] = React.useState(false);
   const [query, setQuery] = React.useState("");
-  const filteredPages = query.trim()
-    ? subPages.filter((page) => page.title.toLowerCase().includes(query.trim().toLowerCase()))
-    : subPages;
+  const pageCount = React.useMemo(() => flattenPages(subPages).length, [subPages]);
+  const filteredPages = React.useMemo(() => {
+    const term = query.trim().toLowerCase();
+    if (!term) return subPages;
+    return filterTree(subPages, term);
+  }, [query, subPages]);
 
   React.useEffect(() => {
     setIsCollapsed(window.localStorage.getItem("lostbae_doc_tabs_collapsed") === "1");
@@ -49,12 +53,12 @@ export function DocumentTabsSidebar({ subPages, currentDocId, parentId }: Docume
     window.localStorage.setItem("lostbae_doc_tabs_collapsed", isCollapsed ? "1" : "0");
   }, [isCollapsed]);
 
-  async function handleAddSubPage() {
+  async function handleAddSubPage(targetParentId = parentId) {
     setIsCreating(true);
-    const result = await createSubPageAction(parentId, "Untitled Page");
+    const result = await createSubPageAction(targetParentId, "Untitled Page");
     if (result.success && result.data) {
       toast("New page created", { variant: "success" });
-      router.push(`/documents/${result.data.docId}`);
+      router.push(`${routeBase}/${result.data.docId}`);
     } else {
       toast(result.error || "Failed to create page", { variant: "error" });
     }
@@ -63,15 +67,16 @@ export function DocumentTabsSidebar({ subPages, currentDocId, parentId }: Docume
 
   async function handleDelete(id: string) {
     if (!confirm("Are you sure you want to delete this page?")) return;
+    const deletedIds = getSubtreeIds(subPages, id);
     const result = await deleteDocumentAction(id);
     if (result.success) {
       toast("Page deleted");
-      if (id === currentDocId) {
-        const remaining = subPages.filter(p => p.id !== id);
+      if (deletedIds.includes(currentDocId)) {
+        const remaining = flattenPages(subPages).filter(p => !deletedIds.includes(p.id));
         if (remaining.length > 0) {
-          router.push(`/documents/${remaining[0].id}`);
+          router.push(`${routeBase}/${remaining[0].id}`);
         } else {
-          router.push("/documents");
+          router.push(routeBase === "/study" ? `/study/${parentId}` : "/documents");
         }
       } else {
         router.refresh();
@@ -103,7 +108,7 @@ export function DocumentTabsSidebar({ subPages, currentDocId, parentId }: Docume
         {!isCollapsed ? (
           <>
             <Link
-              href="/documents"
+              href={routeBase === "/study" ? `/documents/${parentId}` : "/documents"}
               className="inline-flex items-center gap-2 text-sm text-mossy-gray hover:text-forest-slate transition-colors font-medium mb-6"
             >
               <ArrowLeft className="h-4 w-4" />
@@ -113,14 +118,15 @@ export function DocumentTabsSidebar({ subPages, currentDocId, parentId }: Docume
             <div className="flex items-center justify-between mb-2">
               <div>
                 <h3 className="text-sm font-semibold text-forest-slate tracking-tight">Document tabs</h3>
-                <p className="text-[11px] text-mossy-gray">{subPages.length} page{subPages.length === 1 ? "" : "s"}</p>
+                <p className="text-[11px] text-mossy-gray">{pageCount} page{pageCount === 1 ? "" : "s"}</p>
               </div>
               <Button 
                 variant="ghost" 
                 size="icon-sm" 
-                onClick={handleAddSubPage}
+                onClick={() => handleAddSubPage(currentDocId)}
                 disabled={isCreating}
                 className="h-7 w-7 hover:bg-forest-slate/5"
+                title="Add subpage to current page"
               >
                 {isCreating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-4 w-4" />}
               </Button>
@@ -137,14 +143,14 @@ export function DocumentTabsSidebar({ subPages, currentDocId, parentId }: Docume
           </>
         ) : (
           <div className="flex flex-col items-center gap-4 py-2">
-            <Link href="/documents" title="Back to Documents">
+            <Link href={routeBase === "/study" ? `/documents/${parentId}` : "/documents"} title={routeBase === "/study" ? "Back to document" : "Back to Documents"}>
               <ArrowLeft className="h-5 w-5 text-mossy-gray" />
             </Link>
             <button 
-              onClick={handleAddSubPage}
+              onClick={() => handleAddSubPage(currentDocId)}
               disabled={isCreating}
               className="p-1 hover:bg-forest-slate/5 rounded-md"
-              title="Add new page"
+              title="Add subpage to current page"
             >
               <Plus className="h-5 w-5 text-mossy-gray" />
             </button>
@@ -154,57 +160,21 @@ export function DocumentTabsSidebar({ subPages, currentDocId, parentId }: Docume
 
       {/* Tabs List */}
       <div className={cn("flex-1 overflow-y-auto p-2 space-y-1 custom-scrollbar", isCollapsed && "px-1")}>
-        {filteredPages.map((page) => {
-          const isActive = page.id === currentDocId;
-          return (
-            <div
-              key={page.id}
-              className={cn(
-                "group flex items-center gap-2 rounded-xl text-sm transition-all relative",
-                isActive 
-                  ? "bg-state-today/10 text-state-today font-medium shadow-sm border border-state-today/20" 
-                  : "text-mossy-gray hover:bg-forest-slate/5 hover:text-forest-slate border border-transparent",
-                isCollapsed ? "justify-center px-1 py-2" : "px-3 py-2"
-              )}
-            >
-              <Link 
-                href={`/documents/${page.id}`}
-                className={cn("flex items-center gap-2 min-w-0", isCollapsed ? "justify-center" : "flex-1")}
-                title={isCollapsed ? page.title : undefined}
-              >
-                <FileText className={cn("h-4 w-4 shrink-0", isActive ? "text-state-today" : "text-mossy-gray/70")} />
-                {!isCollapsed && <span className="truncate">{page.title}</span>}
-              </Link>
-
-              {!isCollapsed && (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <button className={cn(
-                      "p-1 rounded-md hover:bg-black/5 transition-opacity opacity-0 group-hover:opacity-100",
-                      isActive && "opacity-100"
-                    )}>
-                      <MoreVertical className="h-3.5 w-3.5" />
-                    </button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-40">
-                    <DropdownMenuItem onClick={() => router.push(`/documents/${page.id}`)}>
-                      <Pencil className="h-3.5 w-3.5 mr-2" />
-                      Open Page
-                    </DropdownMenuItem>
-                    <DropdownMenuItem 
-                      className="text-destructive focus:text-destructive"
-                      onClick={() => handleDelete(page.id)}
-                    >
-                      <Trash2 className="h-3.5 w-3.5 mr-2" />
-                      Delete Page
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              )}
-            </div>
-          );
-        })}
-        {filteredPages.length === 0 && !isCollapsed && (
+        {filteredPages.map((page) => (
+          <PageTreeRow
+            key={page.id}
+            page={page}
+            depth={0}
+            currentDocId={currentDocId}
+            routeBase={routeBase}
+            isCollapsed={isCollapsed}
+            isCreating={isCreating}
+            onOpen={(id) => router.push(`${routeBase}/${id}`)}
+            onAdd={handleAddSubPage}
+            onDelete={handleDelete}
+          />
+        ))}
+        {flattenPages(filteredPages).length === 0 && !isCollapsed && (
           <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-surface/60 px-3 py-8 text-center">
             <Layers3 className="mb-2 h-5 w-5 text-mossy-gray" />
             <p className="text-xs font-medium text-forest-slate">No pages found</p>
@@ -212,6 +182,125 @@ export function DocumentTabsSidebar({ subPages, currentDocId, parentId }: Docume
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+function flattenPages(pages: DocumentTreeNode[]): DocumentTreeNode[] {
+  return pages.flatMap((page) => [page, ...flattenPages(page.children)]);
+}
+
+function getSubtreeIds(pages: DocumentTreeNode[], targetId: string): string[] {
+  for (const page of pages) {
+    if (page.id === targetId) return flattenPages([page]).map((item) => item.id);
+    const childIds = getSubtreeIds(page.children, targetId);
+    if (childIds.length > 0) return childIds;
+  }
+  return [];
+}
+
+function filterTree(pages: DocumentTreeNode[], term: string): DocumentTreeNode[] {
+  return pages.flatMap((page) => {
+    const children = filterTree(page.children, term);
+    if (page.title.toLowerCase().includes(term) || children.length > 0) {
+      return [{ ...page, children }];
+    }
+    return [];
+  });
+}
+
+function PageTreeRow({
+  page,
+  depth,
+  currentDocId,
+  routeBase,
+  isCollapsed,
+  isCreating,
+  onOpen,
+  onAdd,
+  onDelete,
+}: {
+  page: DocumentTreeNode;
+  depth: number;
+  currentDocId: string;
+  routeBase: "/documents" | "/study";
+  isCollapsed: boolean;
+  isCreating: boolean;
+  onOpen: (id: string) => void;
+  onAdd: (parentId: string) => Promise<void>;
+  onDelete: (id: string) => Promise<void>;
+}) {
+  const isActive = page.id === currentDocId;
+
+  return (
+    <div className="space-y-1">
+      <div
+        className={cn(
+          "group flex items-center gap-2 rounded-xl text-sm transition-all relative",
+          isActive
+            ? "bg-state-today/10 text-state-today font-medium shadow-sm border border-state-today/20"
+            : "text-mossy-gray hover:bg-forest-slate/5 hover:text-forest-slate border border-transparent",
+          isCollapsed ? "justify-center px-1 py-2" : "py-2 pr-2"
+        )}
+        style={!isCollapsed ? { paddingLeft: `${Math.min(depth, 5) * 14 + 12}px` } : undefined}
+      >
+        <Link
+          href={`${routeBase}/${page.id}`}
+          className={cn("flex items-center gap-2 min-w-0", isCollapsed ? "justify-center" : "flex-1")}
+          title={isCollapsed ? page.title : undefined}
+        >
+          <FileText className={cn("h-4 w-4 shrink-0", isActive ? "text-state-today" : "text-mossy-gray/70")} />
+          {!isCollapsed && <span className="truncate">{page.title}</span>}
+        </Link>
+
+        {!isCollapsed && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className={cn(
+                "p-1 rounded-md hover:bg-black/5 transition-opacity opacity-0 group-hover:opacity-100",
+                isActive && "opacity-100"
+              )}>
+                <MoreVertical className="h-3.5 w-3.5" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-44">
+              <DropdownMenuItem onClick={() => onOpen(page.id)}>
+                <Pencil className="h-3.5 w-3.5 mr-2" />
+                Open Page
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onAdd(page.id)} disabled={isCreating}>
+                {isCreating ? <Loader2 className="h-3.5 w-3.5 mr-2 animate-spin" /> : <Plus className="h-3.5 w-3.5 mr-2" />}
+                Add Subpage
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="text-destructive focus:text-destructive"
+                onClick={() => onDelete(page.id)}
+              >
+                <Trash2 className="h-3.5 w-3.5 mr-2" />
+                Delete Page
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+      </div>
+      {!isCollapsed && page.children.length > 0 && (
+        <div className="space-y-1">
+          {page.children.map((child) => (
+            <PageTreeRow
+              key={child.id}
+              page={child}
+              depth={depth + 1}
+              currentDocId={currentDocId}
+              routeBase={routeBase}
+              isCollapsed={isCollapsed}
+              isCreating={isCreating}
+              onOpen={onOpen}
+              onAdd={onAdd}
+              onDelete={onDelete}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
