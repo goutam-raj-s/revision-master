@@ -353,6 +353,28 @@ export interface SimilarityMatch {
   reason: string;
 }
 
+// ─── Document Shares ───────────────────────────────────────────────────────────
+
+export interface DbDocumentShare {
+  _id: ObjectId;
+  token: string;
+  docId: ObjectId;
+  ownerId: ObjectId;
+  shareType: "public" | "email";
+  emails?: string[];
+  createdAt: Date;
+}
+
+export interface DocumentShare {
+  id: string;
+  token: string;
+  docId: string;
+  ownerId: string;
+  shareType: "public" | "email";
+  emails?: string[];
+  createdAt: string;
+}
+
 // ─── Server Action Results ─────────────────────────────────────────────────────
 
 export interface ActionResult<T = void> {

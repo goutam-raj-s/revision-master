@@ -397,7 +397,7 @@ export function DocumentListClient({
                       </div>
                     </Link>
                     <div className="flex shrink-0 items-center gap-0.5">
-                      <ShareButton title={doc.title} url={`/documents/${doc.id}`} />
+                      <ShareButton docId={doc.id} title={doc.title} />
                       <SimpleTooltip content="Study Document">
                         <Link
                           href={`/study/${doc.id}`}
@@ -516,7 +516,7 @@ export function DocumentListClient({
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-1">
-                          <ShareButton title={doc.title} url={`/documents/${doc.id}`} />
+                          <ShareButton docId={doc.id} title={doc.title} />
                           <SimpleTooltip content="Study Document">
                             <Link
                               href={`/study/${doc.id}`}

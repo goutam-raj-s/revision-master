@@ -4,6 +4,14 @@ Items surfaced during implementation review that are real issues but out of scop
 
 ---
 
+## Share feature: add unique index on document_shares {docId, ownerId}
+
+Without a unique compound index, two concurrent "Create & Copy Link" clicks for the same document can race the `findOne`/`insertOne` pair and insert duplicate share records. Both tokens become valid simultaneously; revoking one leaves the other live.
+
+Fix: add `{ docId: 1, ownerId: 1 }` unique index to `document_shares` collection (in `ensureIndexes` in `src/lib/db/collections.ts`).
+
+---
+
 ## Rate limiting on forgot-password endpoint
 
 **Source:** Review of spec-auth-forgot-password-oauth.md

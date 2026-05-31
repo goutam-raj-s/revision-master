@@ -14,6 +14,7 @@ import type {
   DbYoutubePlaylist,
   DbUdemySession,
   DbPlaylist,
+  DbDocumentShare,
   Document,
   DocumentTreeNode,
   Note,
@@ -98,6 +99,16 @@ export async function getUdemySessionsCollection(): Promise<Collection<DbUdemySe
 export async function getPlaylistsCollection(): Promise<Collection<DbPlaylist>> {
   const db = await getDb();
   return db.collection<DbPlaylist>("playlists");
+}
+
+export async function getDocumentSharesCollection(): Promise<Collection<DbDocumentShare>> {
+  const db = await getDb();
+  return db.collection<DbDocumentShare>("document_shares");
+}
+
+export async function getShareByToken(token: string): Promise<DbDocumentShare | null> {
+  const shares = await getDocumentSharesCollection();
+  return shares.findOne({ token });
 }
 
 // ─── Index setup ───────────────────────────────────────────────────────────────

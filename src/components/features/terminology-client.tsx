@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { BookText, ChevronDown, ChevronRight, ExternalLink, ImagePlus, Loader2, Plus, Search, Trash2, X } from "lucide-react";
+import { BookText, ChevronDown, ChevronRight, Copy, ExternalLink, ImagePlus, Loader2, Plus, Search, Trash2, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -10,7 +10,6 @@ import { toast } from "@/components/ui/toast";
 import { createStandaloneTermAction, deleteTermAction } from "@/actions/notes";
 import { uploadImageAction } from "@/actions/upload";
 import { ImagePreviewThumbnail } from "@/components/features/image-preview-thumbnail";
-import { ShareButton } from "@/components/features/share-button";
 import type { Term, Document } from "@/types";
 
 interface TerminologyClientProps {
@@ -314,11 +313,18 @@ export function TerminologyClient({ terms: initialTerms, docs }: TerminologyClie
                           <span className="truncate">{sourceDoc.title}</span>
                         </Link>
                       )}
-                      <ShareButton
-                        title={term.term}
-                        text={term.definition ? `${term.term}: ${term.definition}` : term.term}
-                        url={sourceDoc ? `/documents/${sourceDoc.id}` : "/terminology"}
-                      />
+                      <button
+                        type="button"
+                        title="Copy term"
+                        className="rounded-lg p-1.5 text-mossy-gray transition-colors hover:bg-canvas hover:text-forest-slate"
+                        onClick={async () => {
+                          const text = term.definition ? `${term.term}: ${term.definition}` : term.term;
+                          await navigator.clipboard.writeText(text);
+                          toast("Copied to clipboard", { variant: "success" });
+                        }}
+                      >
+                        <Copy className="h-3.5 w-3.5" />
+                      </button>
                       <button
                         onClick={() => handleDelete(term.id)}
                         className="p-1.5 text-mossy-gray opacity-100 transition-all hover:bg-destructive/10 hover:text-destructive sm:opacity-0 sm:group-hover:opacity-100"
