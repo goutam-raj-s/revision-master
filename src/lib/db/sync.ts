@@ -17,7 +17,6 @@ const SYNC_COLLECTIONS = [
   "youtube_bookmarks",
   "youtube_playlists",
   "youtube_repetitions",
-  "udemy_sessions",
   "login-records",
 ];
 

@@ -2,9 +2,6 @@ import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth/session";
 import { Sidebar } from "@/components/features/sidebar";
 import { CommandPalette } from "@/components/features/command-palette";
-import { AudioEngine } from "@/components/features/audio-engine";
-import { MiniPlayer } from "@/components/features/mini-player";
-import { ExpandedPlayer } from "@/components/features/expanded-player";
 import { DashboardHeader } from "@/components/features/dashboard-header";
 import { GlobalFAB } from "@/components/features/global-fab";
 import { GlobalClipperWidget } from "@/components/features/global-clipper-widget";
@@ -39,9 +36,6 @@ export default async function DashboardLayout({
         <CommandPalette documents={docs} tags={tags} />
         <GlobalFAB />
         <GlobalClipperWidget />
-        <AudioEngine />
-        <MiniPlayer />
-        <ExpandedPlayer />
       </div>
     </TooltipProvider>
   );

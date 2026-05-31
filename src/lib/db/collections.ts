@@ -12,8 +12,6 @@ import type {
   DbYoutubeSession,
   DbYoutubeBookmark,
   DbYoutubePlaylist,
-  DbUdemySession,
-  DbPlaylist,
   DbDocumentShare,
   Document,
   DocumentTreeNode,
@@ -24,8 +22,6 @@ import type {
   YoutubeSession,
   YoutubeBookmark,
   YoutubePlaylist,
-  UdemySession,
-  Playlist,
   DbLoginRecord,
 } from "@/types";
 
@@ -91,16 +87,6 @@ export async function getYoutubeRepetitionsCollection(): Promise<Collection<DbRe
   return db.collection<DbRepetition>("youtube_repetitions");
 }
 
-export async function getUdemySessionsCollection(): Promise<Collection<DbUdemySession>> {
-  const db = await getDb();
-  return db.collection<DbUdemySession>("udemy_sessions");
-}
-
-export async function getPlaylistsCollection(): Promise<Collection<DbPlaylist>> {
-  const db = await getDb();
-  return db.collection<DbPlaylist>("playlists");
-}
-
 export async function getDocumentSharesCollection(): Promise<Collection<DbDocumentShare>> {
   const db = await getDb();
   return db.collection<DbDocumentShare>("document_shares");
@@ -138,10 +124,6 @@ export async function ensureIndexes(): Promise<void> {
     { key: { userId: 1, mediaType: 1 } },
   ]);
 
-  await db.collection("playlists").createIndexes([
-    { key: { userId: 1, createdAt: -1 } },
-  ]);
-
   await db.collection("repetitions").createIndexes([
     { key: { userId: 1, nextReviewDate: 1 } },
     { key: { docId: 1 }, unique: true },
@@ -175,10 +157,6 @@ export async function ensureIndexes(): Promise<void> {
     { key: { docId: 1 }, unique: true },
   ]);
 
-  await db.collection("udemy_sessions").createIndexes([
-    { key: { userId: 1, createdAt: -1 } },
-    { key: { userId: 1, courseSlug: 1 } },
-  ]);
 }
 
 // ─── Serializers ───────────────────────────────────────────────────────────────
@@ -215,16 +193,6 @@ export function serializeDoc(d: DbDocument): Document {
     content: d.content,
     createdAt: d.createdAt.toISOString(),
     updatedAt: d.updatedAt.toISOString(),
-  };
-}
-
-export function serializePlaylist(p: DbPlaylist): Playlist {
-  return {
-    id: p._id.toString(),
-    name: p.name,
-    trackIds: p.trackIds.map((id) => id.toString()),
-    createdAt: p.createdAt.toISOString(),
-    updatedAt: p.updatedAt.toISOString(),
   };
 }
 
@@ -303,22 +271,6 @@ export function serializeYoutubePlaylist(p: DbYoutubePlaylist, items: YoutubePla
     items,
     createdAt: p.createdAt.toISOString(),
     updatedAt: p.updatedAt.toISOString(),
-  };
-}
-
-export function serializeUdemySession(s: DbUdemySession): UdemySession {
-  return {
-    id: s._id.toString(),
-    courseSlug: s.courseSlug,
-    lectureId: s.lectureId,
-    lectureTitle: s.lectureTitle,
-    courseTitle: s.courseTitle,
-    courseUrl: s.courseUrl,
-    notes: s.notes,
-    tags: s.tags,
-    difficulty: s.difficulty,
-    createdAt: s.createdAt.toISOString(),
-    updatedAt: s.updatedAt.toISOString(),
   };
 }
 

@@ -1,5 +1,5 @@
 # generated: 2026-04-11T16:18:02+05:30
-# last_updated: 2026-04-12T00:00:00+05:30
+# last_updated: 2026-05-30T00:00:00+05:30
 # project: Revision-Master
 # project_key: NOKEY
 # tracking_system: file-system
@@ -20,7 +20,7 @@
 #   - done: Story completed
 
 generated: 2026-04-11T16:18:02+05:30
-last_updated: 2026-04-12T00:00:00+05:30
+last_updated: 2026-05-30T00:00:00+05:30
 project: Revision-Master
 project_key: NOKEY
 tracking_system: file-system
@@ -108,3 +108,7 @@ development_status:
   9-2-doc-study-sidebar-panel: review
   9-3-resizable-ui-panels: in-progress
   9-4-chrome-extension-clipper: review
+
+  # --- Epic 10: Google Docs Import Experience ---
+  epic-10: in-progress
+  10-1-seamless-google-docs-import-and-sync: ready-for-dev

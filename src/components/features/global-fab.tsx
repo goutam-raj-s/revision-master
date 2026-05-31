@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { Plus, BookOpen, FileText, CirclePlay, Music, X } from "lucide-react";
+import { Plus, BookOpen, FileText, CirclePlay, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SimpleTooltip } from "@/components/ui/tooltip";
 
@@ -10,7 +10,6 @@ const ACTIONS = [
   { label: "Add Document", icon: BookOpen, href: "/documents/new", color: "bg-state-today hover:bg-state-today/90" },
   { label: "Create Note Doc", icon: FileText, href: "/documents/create", color: "bg-state-upcoming hover:bg-state-upcoming/90" },
   { label: "YouTube Study", icon: CirclePlay, href: "/study/youtube", color: "bg-destructive hover:bg-destructive/90" },
-  { label: "Music Library", icon: Music, href: "/music", color: "bg-state-stale hover:bg-state-stale/90" },
 ];
 
 function getFabMetrics() {

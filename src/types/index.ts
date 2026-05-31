@@ -70,15 +70,6 @@ export interface DbDocument {
   updatedAt: Date;
 }
 
-export interface DbPlaylist {
-  _id: ObjectId;
-  userId: ObjectId;
-  name: string;
-  trackIds: ObjectId[];
-  createdAt: Date;
-  updatedAt: Date;
-}
-
 export interface DbYoutubePlaylist {
   _id: ObjectId;
   userId: ObjectId;
@@ -161,14 +152,6 @@ export interface Document {
 
 export interface DocumentTreeNode extends Document {
   children: DocumentTreeNode[];
-}
-
-export interface Playlist {
-  id: string;
-  name: string;
-  trackIds: string[];
-  createdAt: string;
-  updatedAt: string;
 }
 
 export interface YoutubePlaylistItem {
@@ -273,50 +256,6 @@ export interface YoutubeBookmark {
   thumbnailUrl: string;
   createdAt: string;
   updatedAt: string;
-}
-
-// ─── Udemy Sessions ──────────────────────────────────────────────────────────────
-
-export interface DbUdemySession {
-  _id: ObjectId;
-  userId: ObjectId;
-  courseSlug: string;
-  lectureId?: string;
-  lectureTitle?: string;   // per-lecture title separate from course title
-  courseTitle: string;
-  courseUrl: string;
-  notes: string;
-  tags: string[];
-  difficulty: Difficulty;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-export interface UdemySession {
-  id: string;
-  courseSlug: string;
-  lectureId?: string;
-  lectureTitle?: string;
-  courseTitle: string;
-  courseUrl: string;
-  notes: string;
-  tags: string[];
-  difficulty: Difficulty;
-  createdAt: string;
-  updatedAt: string;
-}
-
-// Lightweight type for course curriculum from Udemy
-export interface UdemyCurriculumSection {
-  id: number;
-  title: string;
-  lectures: UdemyCurriculumLecture[];
-}
-
-export interface UdemyCurriculumLecture {
-  id: number;
-  title: string;
-  durationSeconds?: number;
 }
 
 // ─── Task Queue ────────────────────────────────────────────────────────────────

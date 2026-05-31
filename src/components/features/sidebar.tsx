@@ -15,9 +15,7 @@ import {
   Tag,
   ChevronRight,
   CirclePlay,
-  Music2,
   Film,
-  GraduationCap,
   PanelLeftClose,
   PanelLeftOpen,
 } from "lucide-react";
@@ -34,8 +32,6 @@ const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/documents", label: "Documents", icon: BookOpen },
   { href: "/study/youtube", label: "YouTube", icon: CirclePlay },
-  { href: "/study/udemy", label: "Udemy", icon: GraduationCap },
-  { href: "/music", label: "Music", icon: Music2 },
   { href: "/video", label: "Video", icon: Film },
   { href: "/terminology", label: "Terminology", icon: BookText },
   { href: "/settings", label: "Settings", icon: Settings },

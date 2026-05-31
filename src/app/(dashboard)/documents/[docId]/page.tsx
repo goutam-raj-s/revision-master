@@ -152,7 +152,7 @@ export default async function DocumentDetailPage({ params }: DocumentDetailPageP
             </div>
           </div>
           <div className="flex shrink-0 flex-wrap items-center gap-2 self-start">
-            <ShareButton title={doc.title} url={`/documents/${doc.id}`} size="sm" />
+            <ShareButton docId={doc.id} title={doc.title} size="sm" />
             <DocumentThumbnailButton docId={doc.id} currentThumbnailUrl={doc.thumbnailUrl} />
             <Link href={`/study/${doc.id}`}>
               <Button variant="outline" size="sm" className="gap-1.5 bouncy-hover">
