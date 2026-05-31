@@ -18,6 +18,18 @@ import play from "play-dl";
 
 const DIRECT_VIDEO_EXTENSIONS = [".mp4", ".webm", ".ogg", ".ogv", ".mov", ".m4v"];
 
+type YoutubePlaylistVideoPreview = {
+  videoId: string;
+  title: string;
+  thumbnailUrl: string;
+};
+
+type YoutubePlaylistData = {
+  playlistId: string;
+  title: string;
+  videos: YoutubePlaylistVideoPreview[];
+};
+
 function normalizeExternalUrl(url: string): string {
   const parsed = new URL(url.trim());
   parsed.hash = "";
@@ -37,6 +49,102 @@ function getExternalTitle(url: string): string {
   const parsed = new URL(url);
   const lastPathPart = decodeURIComponent(parsed.pathname.split("/").filter(Boolean).at(-1) ?? "");
   return lastPathPart || parsed.hostname.replace(/^www\./, "");
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" ? value as Record<string, unknown> : null;
+}
+
+function readText(value: unknown): string {
+  const record = asRecord(value);
+  if (!record) return "";
+
+  if (typeof record.simpleText === "string") return record.simpleText;
+
+  if (Array.isArray(record.runs)) {
+    return record.runs
+      .map((run) => asRecord(run)?.text)
+      .filter((text): text is string => typeof text === "string")
+      .join("");
+  }
+
+  return "";
+}
+
+function readThumbnailUrl(value: unknown): string {
+  const record = asRecord(value);
+  const thumbnails = asRecord(record?.thumbnail)?.thumbnails ?? record?.thumbnails;
+  if (!Array.isArray(thumbnails)) return "";
+
+  const last = thumbnails
+    .map((thumbnail) => asRecord(thumbnail))
+    .filter((thumbnail): thumbnail is Record<string, unknown> => Boolean(thumbnail))
+    .at(-1);
+
+  return typeof last?.url === "string" ? last.url : "";
+}
+
+function collectPlaylistVideosFromInitialData(data: unknown): YoutubePlaylistVideoPreview[] {
+  const videos = new Map<string, YoutubePlaylistVideoPreview>();
+  const stack: unknown[] = [data];
+
+  while (stack.length > 0) {
+    const current = stack.pop();
+    const record = asRecord(current);
+    if (!record) continue;
+
+    const renderer = asRecord(record.playlistVideoRenderer);
+    const videoId = renderer && typeof renderer.videoId === "string" ? renderer.videoId : "";
+    if (renderer && videoId && !videos.has(videoId)) {
+      videos.set(videoId, {
+        videoId,
+        title: readText(renderer.title) || "Unknown Title",
+        thumbnailUrl: readThumbnailUrl(renderer.thumbnail),
+      });
+    }
+
+    for (const value of Object.values(record)) {
+      if (value && typeof value === "object") stack.push(value);
+    }
+  }
+
+  return Array.from(videos.values());
+}
+
+function extractYoutubeInitialData(html: string): unknown | null {
+  const match =
+    html.match(/var ytInitialData = ([\s\S]*?);<\/script>/) ??
+    html.match(/window\["ytInitialData"\]\s*=\s*([\s\S]*?);/) ??
+    html.match(/ytInitialData\s*=\s*([\s\S]*?);<\/script>/);
+
+  if (!match?.[1]) return null;
+
+  try {
+    return JSON.parse(match[1]);
+  } catch {
+    return null;
+  }
+}
+
+async function fetchYoutubePlaylistFromPage(playlistId: string, title = "YouTube Playlist"): Promise<YoutubePlaylistData> {
+  const response = await fetch(`https://www.youtube.com/playlist?list=${playlistId}&hl=en`, {
+    headers: {
+      "accept-language": "en-US,en;q=0.9",
+      "user-agent": "Mozilla/5.0",
+    },
+    cache: "no-store",
+  });
+
+  if (!response.ok) throw new Error("Failed to fetch playlist page");
+
+  const initialData = extractYoutubeInitialData(await response.text());
+  const videos = initialData ? collectPlaylistVideosFromInitialData(initialData) : [];
+
+  return {
+    playlistId,
+    title,
+    videos,
+  };
 }
 
 export async function fetchYoutubeMetadata(
@@ -61,23 +169,28 @@ export async function fetchYoutubeMetadata(
 
 export async function fetchYoutubePlaylist(
   playlistId: string
-): Promise<{ playlistId: string; title: string; videos: { videoId: string; title: string; thumbnailUrl: string }[] }> {
+): Promise<YoutubePlaylistData> {
   try {
     const playlist = await play.playlist_info(`https://www.youtube.com/playlist?list=${playlistId}`, { incomplete: true });
     const videos = await playlist.all_videos();
+    const playlistVideos = videos.map((v) => ({
+      videoId: v.id || "",
+      title: v.title || "Unknown Title",
+      thumbnailUrl: v.thumbnails[0]?.url || "",
+    })).filter((v) => v.videoId);
+
+    if (playlistVideos.length === 0) {
+      return fetchYoutubePlaylistFromPage(playlistId, playlist.title || "YouTube Playlist");
+    }
     
     return {
       playlistId,
       title: playlist.title || "YouTube Playlist",
-      videos: videos.map((v) => ({
-        videoId: v.id || "",
-        title: v.title || "Unknown Title",
-        thumbnailUrl: v.thumbnails[0]?.url || "",
-      })).filter((v) => v.videoId), // Remove any invalid videos
+      videos: playlistVideos,
     };
   } catch (error) {
-    console.error("Failed to fetch playlist", error);
-    throw new Error("Failed to fetch playlist data");
+    console.error("play-dl failed to fetch playlist; trying page fallback", error);
+    return fetchYoutubePlaylistFromPage(playlistId);
   }
 }
 
