@@ -2,41 +2,91 @@
  * YouTube URL utility functions — safe to import from client and server.
  */
 
-export function extractYoutubeVideoId(url: string): string | null {
+const YOUTUBE_VIDEO_ID_PATTERN = /^[a-zA-Z0-9_-]{11}$/;
+const HOST_LIKE_INPUT_PATTERN = /^(?:localhost(?::\d+)?(?:[/?#]|$)|(?:\d{1,3}\.){3}\d{1,3}(?::\d+)?(?:[/?#]|$)|[^\s/]+\.[^\s/]+.*$)/i;
+
+function isYoutubeHost(hostname: string): boolean {
+  const host = hostname.toLowerCase().replace(/^www\./, "");
+  return (
+    host === "youtube.com" ||
+    host.endsWith(".youtube.com") ||
+    host === "youtube-nocookie.com" ||
+    host.endsWith(".youtube-nocookie.com") ||
+    host === "youtu.be"
+  );
+}
+
+function cleanYoutubeId(value: string | null): string | null {
+  if (!value) return null;
+  const id = value.trim().split(/[?&#/]/)[0];
+  return YOUTUBE_VIDEO_ID_PATTERN.test(id) ? id : null;
+}
+
+export function parseUrlInput(input: string): URL | null {
+  const trimmed = input.trim().replace(/^<(.+)>$/, "$1");
+  if (!trimmed) return null;
+
   try {
-    const u = new URL(url);
-    // youtu.be/<id>
-    if (u.hostname === "youtu.be") {
-      const id = u.pathname.slice(1).split("?")[0];
-      if (id) return id;
-    }
-    // youtube.com variants
-    if (u.hostname.includes("youtube.com")) {
-      const v = u.searchParams.get("v");
-      if (v) return v;
-      // youtube.com/embed/<id>
-      const embedMatch = u.pathname.match(/\/embed\/([^/?]+)/);
-      if (embedMatch) return embedMatch[1];
-      // youtube.com/shorts/<id>
-      const shortsMatch = u.pathname.match(/\/shorts\/([^/?]+)/);
-      if (shortsMatch) return shortsMatch[1];
-    }
+    return new URL(trimmed);
   } catch {
-    // not a valid URL
+    try {
+      if (!HOST_LIKE_INPUT_PATTERN.test(trimmed)) return null;
+      return new URL(`https://${trimmed}`);
+    } catch {
+      return null;
+    }
+  }
+}
+
+function extractNestedYoutubeUrl(u: URL): string | null {
+  for (const key of ["u", "url", "q"]) {
+    const nested = u.searchParams.get(key);
+    if (!nested) continue;
+    let nestedUrl = parseUrlInput(nested);
+    if (!nestedUrl) {
+      try {
+        nestedUrl = new URL(nested, "https://www.youtube.com");
+      } catch {
+        nestedUrl = null;
+      }
+    }
+    if (nestedUrl && isYoutubeHost(nestedUrl.hostname)) return nestedUrl.toString();
   }
   return null;
 }
 
-export function extractYoutubePlaylistId(url: string): string | null {
-  try {
-    const u = new URL(url);
-    if (u.hostname.includes("youtube.com")) {
-      const list = u.searchParams.get("list");
-      if (list) return list;
-    }
-  } catch {
-    // not a valid URL
+export function extractYoutubeVideoId(url: string): string | null {
+  const u = parseUrlInput(url);
+  if (!u || !isYoutubeHost(u.hostname)) return null;
+
+  const nested = extractNestedYoutubeUrl(u);
+  if (nested) return extractYoutubeVideoId(nested);
+
+  // youtu.be/<id>
+  if (u.hostname.toLowerCase().replace(/^www\./, "") === "youtu.be") {
+    return cleanYoutubeId(u.pathname.split("/").filter(Boolean)[0] ?? null);
   }
+
+  const v = cleanYoutubeId(u.searchParams.get("v"));
+  if (v) return v;
+
+  // youtube.com/embed/<id>, /shorts/<id>, /live/<id>, /v/<id>
+  const pathIdMatch = u.pathname.match(/^\/(?:embed|shorts|live|v|e)\/([^/?#]+)/);
+  if (pathIdMatch) return cleanYoutubeId(pathIdMatch[1]);
+
+  return null;
+}
+
+export function extractYoutubePlaylistId(url: string): string | null {
+  const u = parseUrlInput(url);
+  if (!u || !isYoutubeHost(u.hostname)) return null;
+
+  const nested = extractNestedYoutubeUrl(u);
+  if (nested) return extractYoutubePlaylistId(nested);
+
+  const list = u.searchParams.get("list")?.trim();
+  if (list) return list;
+
   return null;
 }
 

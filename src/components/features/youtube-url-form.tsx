@@ -6,7 +6,7 @@ import { CirclePlay as Youtube, ArrowRight, Link2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { extractYoutubeVideoId, extractYoutubePlaylistId } from "@/lib/youtube-utils";
+import { extractYoutubeVideoId, extractYoutubePlaylistId, parseUrlInput } from "@/lib/youtube-utils";
 
 export function YoutubeUrlForm() {
   const router = useRouter();
@@ -20,13 +20,7 @@ export function YoutubeUrlForm() {
     const playlistId = extractYoutubePlaylistId(trimmedUrl);
     const videoId = extractYoutubeVideoId(trimmedUrl);
 
-    let parsedUrl: URL;
-    try {
-      parsedUrl = new URL(trimmedUrl);
-    } catch {
-      setError("Please enter a valid URL");
-      return;
-    }
+    const parsedUrl = parseUrlInput(trimmedUrl);
 
     if (playlistId && videoId) {
       router.push(`/study/youtube?list=${playlistId}&v=${videoId}`);
@@ -34,6 +28,8 @@ export function YoutubeUrlForm() {
       router.push(`/study/youtube?list=${playlistId}`);
     } else if (videoId) {
       router.push(`/study/youtube?v=${videoId}`);
+    } else if (!parsedUrl) {
+      setError("Please enter a valid URL");
     } else {
       router.push(`/study/youtube?u=${encodeURIComponent(parsedUrl.toString())}`);
     }
@@ -56,7 +52,8 @@ export function YoutubeUrlForm() {
           <Label htmlFor="yt-url">Video URL</Label>
           <Input
             id="yt-url"
-            type="url"
+            type="text"
+            inputMode="url"
             value={url}
             onChange={(e) => { setUrl(e.target.value); setError(""); }}
             placeholder="https://youtu.be/... or https://www.airtribe.live/..."

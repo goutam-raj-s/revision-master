@@ -342,7 +342,8 @@ function LinkTab({
             </div>
             <Input
               id="yt-url-field"
-              type="url"
+              type="text"
+              inputMode="url"
               value={url}
               onChange={(e) => { setUrl(e.target.value); setUrlError(""); }}
               onBlur={handleUrlBlur}
@@ -448,7 +449,8 @@ function LinkTab({
           <Input
             id="url"
             name="url"
-            type="url"
+            type="text"
+            inputMode="url"
             value={url}
             onChange={(e) => { setUrl(e.target.value); setUrlError(""); }}
             onBlur={handleUrlBlur}

@@ -46,7 +46,7 @@ export async function fetchYoutubeMetadata(
   if (!videoId) throw new Error("Invalid YouTube URL");
 
   try {
-    const videoInfo = await play.video_basic_info(url);
+    const videoInfo = await play.video_basic_info(`https://www.youtube.com/watch?v=${videoId}`);
     return {
       videoId,
       title: videoInfo.video_details.title || videoId,
