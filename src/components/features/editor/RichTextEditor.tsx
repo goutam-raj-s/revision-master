@@ -14,10 +14,14 @@ import Placeholder from "@tiptap/extension-placeholder";
 import TextAlign from "@tiptap/extension-text-align";
 import { CollapsibleImage } from "./extensions/CollapsibleImage";
 import { FontSize } from "./extensions/FontSize";
+import { PageBreak } from "./extensions/PageBreak";
 import { uploadImageAction } from "@/actions/upload";
 import { EditorToolbar } from "./EditorToolbar";
 import { Button } from "@/components/ui/button";
 import { AlertCircle, CheckCircle2, Download, FileText, Loader2, Save, UploadCloud } from "lucide-react";
+
+const PAGE_HEIGHT = 1056; // A4 at 96 dpi
+const PAGE_TOP_PADDING = 72; // py-[72px] on the page card
 import { updateDocumentContentAction } from "@/actions/documents";
 import { toast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
@@ -54,6 +58,9 @@ export function RichTextEditor({
   const [characterCount, setCharacterCount] = React.useState(0);
   const [isDragActive, setIsDragActive] = React.useState(false);
   const [focusMode, setFocusMode] = React.useState(false);
+  const [pageView, setPageView] = React.useState(false);
+  const [pageBreakLines, setPageBreakLines] = React.useState<number[]>([]);
+  const pageCardRef = React.useRef<HTMLDivElement>(null);
   const readingMinutes = Math.max(1, Math.ceil(wordCount / 220));
 
   const saveTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -77,6 +84,41 @@ export function RichTextEditor({
   React.useEffect(() => {
     window.localStorage.setItem("lostbae_editor_focus_mode", focusMode ? "1" : "0");
   }, [focusMode]);
+
+  React.useEffect(() => {
+    if (compact) return;
+    const stored = window.localStorage.getItem("lostbae_editor_page_view");
+    if (stored === "1") setPageView(true);
+  }, [compact]);
+
+  React.useEffect(() => {
+    if (compact) return;
+    window.localStorage.setItem("lostbae_editor_page_view", pageView ? "1" : "0");
+  }, [pageView, compact]);
+
+  // Compute page-break guide line positions via ResizeObserver
+  React.useEffect(() => {
+    if (!pageView || compact) {
+      setPageBreakLines([]);
+      return;
+    }
+    const el = pageCardRef.current;
+    if (!el) return;
+
+    const compute = () => {
+      const h = el.scrollHeight;
+      const lines: number[] = [];
+      for (let y = PAGE_TOP_PADDING + PAGE_HEIGHT; y < h; y += PAGE_HEIGHT) {
+        lines.push(y);
+      }
+      setPageBreakLines(lines);
+    };
+
+    compute();
+    const ro = new ResizeObserver(compute);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [pageView, compact]);
 
   React.useEffect(() => {
     return () => {
@@ -207,6 +249,7 @@ export function RichTextEditor({
       Highlight.configure({ multicolor: true }),
       FontSize,
       CollapsibleImage,
+      PageBreak,
       Link.configure({
         openOnClick: false,
         HTMLAttributes: {
@@ -404,7 +447,11 @@ export function RichTextEditor({
     <div
       className={cn(
         "relative flex flex-col bg-surface border border-border overflow-hidden shadow-card transition-all duration-300",
-        focusMode ? "min-h-[calc(100vh-7rem)] rounded-none md:rounded-2xl" : "h-full rounded-2xl"
+        pageView
+          ? "h-full rounded-2xl"
+          : focusMode
+            ? "min-h-[calc(100vh-7rem)] rounded-none md:rounded-2xl"
+            : "h-full rounded-2xl"
       )}
     >
       {!readOnly && (
@@ -413,9 +460,18 @@ export function RichTextEditor({
           isStickyHighlight={isStickyHighlight}
           activeHighlightColor={activeHighlightColor}
           focusMode={compact ? false : focusMode}
+          pageView={compact ? false : pageView}
           onToggleStickyHighlight={toggleStickyHighlight}
           onSelectHighlightColor={setHighlightColor}
-          onToggleFocusMode={compact ? undefined : () => setFocusMode((current) => !current)}
+          onToggleFocusMode={compact ? undefined : () => {
+            setFocusMode((cur) => !cur);
+            setPageView(false); // mutually exclusive
+          }}
+          onTogglePageView={compact ? undefined : () => {
+            setPageView((cur) => !cur);
+            setFocusMode(false); // mutually exclusive
+          }}
+          onInsertPageBreak={compact ? undefined : () => editor?.commands.insertPageBreak()}
           compact={compact}
         />
       )}
@@ -423,17 +479,55 @@ export function RichTextEditor({
       <div
         className={cn(
           "relative flex-1 overflow-y-auto tiptap-content transition-colors",
-          focusMode ? "bg-[#fbfcfb] px-4 py-8 md:px-10" : "bg-surface p-5 md:p-8"
+          pageView
+            ? "bg-[#e8eaed] p-6 md:p-10"
+            : focusMode
+              ? "bg-[#fbfcfb] px-4 py-8 md:px-10"
+              : "bg-surface p-5 md:p-8"
         )}
       >
         <div
+          ref={pageCardRef}
           className={cn(
-            "mx-auto transition-all duration-300",
-            focusMode ? "max-w-3xl" : "max-w-5xl"
+            "relative mx-auto transition-all duration-300",
+            pageView
+              ? "max-w-[816px] bg-white px-[72px] py-[72px] shadow-[0_1px_3px_rgba(0,0,0,.3),0_4px_16px_rgba(0,0,0,.12)] mb-10"
+              : focusMode
+                ? "max-w-3xl"
+                : "max-w-5xl"
           )}
+          style={
+            pageView
+              ? { minHeight: `${PAGE_TOP_PADDING * 2 + PAGE_HEIGHT}px` }
+              : undefined
+          }
         >
+          {/* Page-break guide lines — rendered before content so text paints above */}
+          {pageView &&
+            pageBreakLines.map((y, i) => (
+              <div
+                key={i}
+                className="pointer-events-none absolute inset-x-0 z-0"
+                style={{ top: y }}
+              >
+                {/* Dashed separator line */}
+                <div
+                  className="h-[2px] w-full opacity-50"
+                  style={{
+                    backgroundImage:
+                      "repeating-linear-gradient(90deg,#9ca3af 0,#9ca3af 6px,transparent 6px,transparent 14px)",
+                  }}
+                />
+                {/* Page label */}
+                <span className="absolute right-0 top-1 select-none font-mono text-[9px] text-gray-400/60 tabular-nums">
+                  Page {i + 2}
+                </span>
+              </div>
+            ))}
+
           <EditorContent editor={editor} />
         </div>
+
         {isDragActive && (
           <div className="pointer-events-none absolute inset-4 z-20 flex items-center justify-center rounded-2xl border-2 border-dashed border-state-today/60 bg-state-today/8 text-state-today shadow-inner">
             <div className="flex items-center gap-2 rounded-full bg-white/90 px-4 py-2 text-sm font-medium shadow-soft">

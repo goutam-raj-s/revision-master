@@ -23,6 +23,8 @@ import {
   Check,
   Focus,
   Type,
+  BookOpen,
+  Scissors,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -44,9 +46,12 @@ interface EditorToolbarProps {
   isStickyHighlight?: boolean;
   activeHighlightColor?: string;
   focusMode?: boolean;
+  pageView?: boolean;
   onToggleStickyHighlight?: () => void;
   onSelectHighlightColor?: (color: string, name: string) => void;
   onToggleFocusMode?: () => void;
+  onTogglePageView?: () => void;
+  onInsertPageBreak?: () => void;
   /** Hides focus-mode toggle when true */
   compact?: boolean;
 }
@@ -72,9 +77,12 @@ export function EditorToolbar({
   isStickyHighlight = false,
   activeHighlightColor = "#fef08a",
   focusMode = false,
+  pageView = false,
   onToggleStickyHighlight,
   onSelectHighlightColor,
   onToggleFocusMode,
+  onTogglePageView,
+  onInsertPageBreak,
   compact = false,
 }: EditorToolbarProps) {
   if (!editor) return null;
@@ -333,12 +341,29 @@ export function EditorToolbar({
             <Redo className="h-4 w-4" />
           </ToolbarButton>
           {!compact && (
-            <ToolbarButton onClick={onToggleFocusMode ?? (() => undefined)} isActive={focusMode} tooltip={focusMode ? "Exit Focus Mode (Cmd+Shift+F)" : "Focus Mode (Cmd+Shift+F)"}>
-              <Focus className="h-4 w-4" />
-            </ToolbarButton>
+            <>
+              <ToolbarButton
+                onClick={onTogglePageView ?? (() => undefined)}
+                isActive={pageView}
+                tooltip={pageView ? "Exit Page View" : "Page View (Google Docs style)"}
+              >
+                <BookOpen className="h-4 w-4" />
+              </ToolbarButton>
+              {pageView && (
+                <ToolbarButton
+                  onClick={onInsertPageBreak ?? (() => undefined)}
+                  tooltip="Insert Page Break (Cmd+Enter)"
+                >
+                  <Scissors className="h-4 w-4" />
+                </ToolbarButton>
+              )}
+              <ToolbarButton onClick={onToggleFocusMode ?? (() => undefined)} isActive={focusMode} tooltip={focusMode ? "Exit Focus Mode (Cmd+Shift+F)" : "Focus Mode (Cmd+Shift+F)"}>
+                <Focus className="h-4 w-4" />
+              </ToolbarButton>
+            </>
           )}
         </div>
-        {(isStickyHighlight || focusMode) && (
+        {(isStickyHighlight || focusMode || pageView) && (
           <div className="flex flex-wrap items-center gap-2 border-t border-border/60 bg-canvas/50 px-3 py-1.5 text-[11px] text-mossy-gray">
             {isStickyHighlight && (
               <span className="inline-flex items-center gap-1.5 rounded-full bg-state-today/10 px-2 py-0.5 font-medium text-state-today">
@@ -350,6 +375,12 @@ export function EditorToolbar({
               <span className="inline-flex items-center gap-1.5 rounded-full bg-forest-slate/5 px-2 py-0.5 font-medium text-forest-slate">
                 <Focus className="h-3 w-3" />
                 Focus mode
+              </span>
+            )}
+            {pageView && (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-state-today/10 px-2 py-0.5 font-medium text-state-today">
+                <BookOpen className="h-3 w-3" />
+                Page view · Cmd+Enter for page break
               </span>
             )}
             <span className="font-mono text-[10px] text-mossy-gray/80">Cmd+Shift+H/P/O/I</span>

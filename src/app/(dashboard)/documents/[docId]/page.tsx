@@ -29,6 +29,8 @@ const DOC_DETAIL_SHORTCUTS = [
   { keys: "Cmd+Shift+O", label: "Sticky orange highlight" },
   { keys: "Cmd+Shift+I", label: "Sticky red highlight" },
   { keys: "Cmd+Shift+F", label: "Focus / distraction-free mode" },
+  { keys: "BookOpen icon", label: "Toggle Page View (Google Docs style)" },
+  { keys: "Cmd+Enter", label: "Insert page break (when in page view)" },
   { keys: "Double-click title", label: "Edit title inline" },
   { keys: "Enter / Escape", label: "Save / cancel title edit" },
   { keys: "Enter / ,", label: "Add tag in tag input" },
