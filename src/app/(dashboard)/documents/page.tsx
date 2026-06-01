@@ -3,6 +3,19 @@ import { Plus } from "lucide-react";
 import { getUserDocuments, getAllUserTags } from "@/actions/documents";
 import { Button } from "@/components/ui/button";
 import { DocumentListClient } from "@/components/features/document-list-client";
+import { QuickGuideButton } from "@/components/ui/quick-guide-button";
+
+const DOCS_SHORTCUTS = [
+  { keys: "Cmd+K", label: "Command palette" },
+  { keys: "Cmd+Shift+K", label: "Quick clipper widget" },
+  { keys: "Double-click title", label: "Edit document title inline" },
+  { keys: "Enter", label: "Save inline title edit" },
+  { keys: "Escape", label: "Cancel inline title edit" },
+  { keys: "Enter / ,", label: "Add a tag in tag input" },
+  { keys: "Cmd+Enter", label: "Save note (in note input)" },
+  { keys: "⋯ menu", label: "Edit / delete / reschedule" },
+  { keys: "Cmd+Shift+V", label: "Clipboard history (last 10 copies)" },
+];
 
 interface DocumentsPageProps {
   searchParams: Promise<{ tag?: string; search?: string; status?: string }>;
@@ -30,6 +43,7 @@ export default async function DocumentsPage({ searchParams }: DocumentsPageProps
           <p className="mt-0.5 text-xs text-mossy-gray sm:text-sm">{docs.length} document{docs.length !== 1 ? "s" : ""} in your library</p>
         </div>
         <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+          <QuickGuideButton shortcuts={DOCS_SHORTCUTS} title="Documents" />
           <Link href="/documents/create">
             <Button
               variant="outline"

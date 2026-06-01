@@ -13,7 +13,29 @@ import { YoutubePlaylistsList } from "@/components/features/youtube-playlists-li
 import { YoutubeSavedPlaylistPreview } from "@/components/features/youtube-saved-playlist-preview";
 import { DashboardHeader } from "@/components/features/dashboard-header";
 import { getYoutubePlaylists } from "@/actions/youtube-playlists";
+import { QuickGuideButton } from "@/components/ui/quick-guide-button";
+import { YoutubeSessionActions } from "@/components/features/youtube-session-actions";
+import { YoutubeShareButton } from "@/components/features/youtube-share-button";
+import { YoutubePlaylistNav } from "@/components/features/youtube-playlist-nav";
 import type { YoutubeSession } from "@/types";
+
+const YT_SHORTCUTS = [
+  { keys: "T", label: "Insert timestamp at cursor" },
+  { keys: "−10s / +10s buttons", label: "Skip back / forward in video" },
+  { keys: "⛶ Fullscreen + Notes", label: "Fullscreen with floating notes FAB" },
+  { keys: "Cmd+B", label: "Bold in notes" },
+  { keys: "Cmd+I", label: "Italic in notes" },
+  { keys: "Cmd+U", label: "Underline in notes" },
+  { keys: "Cmd+Shift+H", label: "Sticky yellow highlight" },
+  { keys: "Cmd+Shift+P", label: "Sticky pink highlight" },
+  { keys: "Cmd+Shift+O", label: "Sticky orange highlight" },
+  { keys: "Cmd+Shift+I", label: "Sticky red highlight" },
+  { keys: "Cmd+S", label: "Save notes" },
+  { keys: "Chevron ›", label: "Collapse / expand notes panel" },
+  { keys: "Cmd+K", label: "Command palette" },
+  { keys: "Cmd+Shift+K", label: "Quick clipper widget" },
+  { keys: "Cmd+Shift+V", label: "Clipboard history (last 10 copies)" },
+];
 
 interface YoutubeStudyPageProps {
   searchParams: Promise<{ v?: string; list?: string; u?: string; yp?: string }>;
@@ -99,6 +121,10 @@ export default async function YoutubeStudyPage({ searchParams }: YoutubeStudyPag
               >
                 Open original ↗
               </a>
+              {canUsePlaylists && (
+                <YoutubeSessionActions sessionId={session.id} currentTitle={session.videoTitle} />
+              )}
+              <QuickGuideButton shortcuts={YT_SHORTCUTS} title="YouTube Study" />
             </div>
           }
         />
@@ -206,6 +232,33 @@ export default async function YoutubeStudyPage({ searchParams }: YoutubeStudyPag
     getYoutubePlaylists(),
   ]);
 
+  // Playlist navigation context
+  let playlistNavData: {
+    playlistId: string;
+    playlistName: string;
+    prevItem: import("@/types").YoutubePlaylistItem | null;
+    nextItem: import("@/types").YoutubePlaylistItem | null;
+    currentIndex: number;
+    total: number;
+  } | null = null;
+
+  if (youtubePlaylistId) {
+    const playlist = youtubePlaylists.find((p) => p.id === youtubePlaylistId);
+    if (playlist && playlist.items.length > 0) {
+      const idx = playlist.items.findIndex((item) => item.videoId === videoId || item.sessionId === session.id);
+      if (idx !== -1) {
+        playlistNavData = {
+          playlistId: playlist.id,
+          playlistName: playlist.name,
+          prevItem: idx > 0 ? playlist.items[idx - 1] : null,
+          nextItem: idx < playlist.items.length - 1 ? playlist.items[idx + 1] : null,
+          currentIndex: idx + 1,
+          total: playlist.items.length,
+        };
+      }
+    }
+  }
+
   return (
     <div className="h-screen flex flex-col bg-canvas overflow-hidden">
       {/* Minimal header */}
@@ -217,26 +270,32 @@ export default async function YoutubeStudyPage({ searchParams }: YoutubeStudyPag
           { href: `/study/youtube?v=${videoId}`, label: session.videoTitle },
         ]}
         rightActions={
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
+            {playlistNavData && (
+              <YoutubePlaylistNav {...playlistNavData} />
+            )}
             <YoutubePlaylistControls
               sessionId={session.id}
               initialPlaylists={youtubePlaylists}
             />
-            <YoutubeBookmarkToggle 
-              youtubeId={videoId as string} 
-              type="video" 
-              title={session.videoTitle} 
-              thumbnailUrl={session.thumbnailUrl} 
-              initialIsBookmarked={isBookmarked} 
+            <YoutubeBookmarkToggle
+              youtubeId={videoId as string}
+              type="video"
+              title={session.videoTitle}
+              thumbnailUrl={session.thumbnailUrl}
+              initialIsBookmarked={isBookmarked}
             />
             <a
               href={`https://www.youtube.com/watch?v=${videoId}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-xs text-mossy-gray hover:text-forest-slate transition-colors"
+              className="hidden sm:inline text-xs text-mossy-gray hover:text-forest-slate transition-colors"
             >
-              Open on YouTube ↗
+              YouTube ↗
             </a>
+            <YoutubeShareButton resourceType="session" resourceId={session.id} title={session.videoTitle} />
+            <YoutubeSessionActions sessionId={session.id} currentTitle={session.videoTitle} />
+            <QuickGuideButton shortcuts={YT_SHORTCUTS} title="YouTube Study" />
           </div>
         }
       />

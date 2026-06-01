@@ -44,6 +44,9 @@ export interface DbSession {
   createdAt: Date;
 }
 
+export type DocumentSource = "manual" | "google-picker" | "upload" | "native";
+export type GoogleDriveSyncStatus = "synced" | "needs_sync" | "needs_reconnect" | "error";
+
 export interface DbDocument {
   _id: ObjectId;
   userId: ObjectId;
@@ -66,7 +69,29 @@ export interface DbDocument {
   playCount?: number;
   lastPlayedAt?: Date;
   content?: string; // For native documents (TipTap JSON/HTML)
+  // Google Drive sync fields
+  source?: DocumentSource;
+  googleDriveFileId?: string;
+  googleDriveModifiedTime?: Date;
+  googleDriveVersion?: string;
+  googleDriveWebViewLink?: string;
+  googleDriveExportMimeType?: string;
+  googleDriveSyncStatus?: GoogleDriveSyncStatus;
+  googleDriveSyncError?: string;
+  lastSyncedAt?: Date;
   createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface DbGoogleIntegration {
+  _id: ObjectId;
+  userId: ObjectId;
+  provider: "google";
+  scopes: string[];
+  refreshTokenEncrypted?: string;
+  accessToken?: string;
+  accessTokenExpiresAt?: Date;
+  connectedAt: Date;
   updatedAt: Date;
 }
 
@@ -145,6 +170,15 @@ export interface Document {
   playCount?: number;
   lastPlayedAt?: string;
   content?: string;
+  // Google Drive sync fields
+  source?: DocumentSource;
+  googleDriveFileId?: string;
+  googleDriveModifiedTime?: string;
+  googleDriveVersion?: string;
+  googleDriveWebViewLink?: string;
+  googleDriveSyncStatus?: GoogleDriveSyncStatus;
+  googleDriveSyncError?: string;
+  lastSyncedAt?: string;
   createdAt: string;
   updatedAt: string;
   nextReviewDate?: string;
@@ -300,6 +334,8 @@ export interface DbDocumentShare {
   docId: ObjectId;
   ownerId: ObjectId;
   shareType: "public" | "email";
+  /** "read" = view-only (default for existing records). "write" = full edit access. */
+  accessLevel: "read" | "write";
   emails?: string[];
   createdAt: Date;
 }
@@ -310,7 +346,36 @@ export interface DocumentShare {
   docId: string;
   ownerId: string;
   shareType: "public" | "email";
+  accessLevel: "read" | "write";
   emails?: string[];
+  createdAt: string;
+}
+
+// ─── YouTube Shares ────────────────────────────────────────────────────────────
+
+export interface DbYoutubeShare {
+  _id: ObjectId;
+  token: string;
+  ownerId: ObjectId;
+  resourceType: "session" | "playlist";
+  resourceId: ObjectId;
+  accessLevel: "read" | "write";
+  shareType: "public" | "email";
+  emails?: string[];
+  title: string;
+  createdAt: Date;
+}
+
+export interface YoutubeShare {
+  id: string;
+  token: string;
+  ownerId: string;
+  resourceType: "session" | "playlist";
+  resourceId: string;
+  accessLevel: "read" | "write";
+  shareType: "public" | "email";
+  emails?: string[];
+  title: string;
   createdAt: string;
 }
 

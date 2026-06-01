@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Check, Copy, Globe, Mail, Trash2, Loader2 } from "lucide-react";
+import { Check, Copy, Globe, Mail, Trash2, Loader2, Eye, Pencil } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -25,6 +25,7 @@ type Tab = "public" | "email";
 
 export function ShareModal({ open, onOpenChange, docId, docTitle }: ShareModalProps) {
   const [tab, setTab] = React.useState<Tab>("public");
+  const [accessLevel, setAccessLevel] = React.useState<"read" | "write">("read");
   const [emailInput, setEmailInput] = React.useState("");
   const [loading, setLoading] = React.useState(false);
   const [copied, setCopied] = React.useState(false);
@@ -35,7 +36,9 @@ export function ShareModal({ open, onOpenChange, docId, docTitle }: ShareModalPr
     if (!open) return;
     setExistingShare(undefined);
     getDocShareAction(docId).then((res) => {
-      setExistingShare(res.success ? (res.data ?? null) : null);
+      const share = res.success ? (res.data ?? null) : null;
+      setExistingShare(share);
+      if (share) setAccessLevel(share.accessLevel ?? "read");
     });
   }, [open, docId]);
 
@@ -53,7 +56,7 @@ export function ShareModal({ open, onOpenChange, docId, docTitle }: ShareModalPr
 
   async function handleCreatePublic() {
     setLoading(true);
-    const res = await createShareAction(docId, "public");
+    const res = await createShareAction(docId, "public", undefined, accessLevel);
     setLoading(false);
     if (!res.success) {
       toast(res.error ?? "Failed to create share link", { variant: "error" });
@@ -62,7 +65,7 @@ export function ShareModal({ open, onOpenChange, docId, docTitle }: ShareModalPr
     const url = `${window.location.origin}/shared/${res.data!.token}`;
     await navigator.clipboard.writeText(url);
     toast("Share link created and copied!", { variant: "success" });
-    setExistingShare({ id: "", token: res.data!.token, docId, ownerId: "", shareType: "public", createdAt: new Date().toISOString() });
+    setExistingShare({ id: "", token: res.data!.token, docId, ownerId: "", shareType: "public", accessLevel, createdAt: new Date().toISOString() });
   }
 
   async function handleSendEmail() {
@@ -75,7 +78,7 @@ export function ShareModal({ open, onOpenChange, docId, docTitle }: ShareModalPr
       return;
     }
     setLoading(true);
-    const res = await createShareAction(docId, "email", emails);
+    const res = await createShareAction(docId, "email", emails, accessLevel);
     setLoading(false);
     if (!res.success) {
       toast(res.error ?? "Failed to send invite", { variant: "error" });
@@ -83,7 +86,7 @@ export function ShareModal({ open, onOpenChange, docId, docTitle }: ShareModalPr
     }
     toast(`Invite sent to ${emails.length} address${emails.length > 1 ? "es" : ""}`, { variant: "success" });
     setEmailInput("");
-    setExistingShare({ id: "", token: res.data!.token, docId, ownerId: "", shareType: "email", emails, createdAt: new Date().toISOString() });
+    setExistingShare({ id: "", token: res.data!.token, docId, ownerId: "", shareType: "email", accessLevel, emails, createdAt: new Date().toISOString() });
   }
 
   async function handleRevoke() {
@@ -127,6 +130,28 @@ export function ShareModal({ open, onOpenChange, docId, docTitle }: ShareModalPr
           >
             <Mail className="h-3.5 w-3.5" />
             Email Invite
+          </button>
+        </div>
+
+        {/* Access level toggle */}
+        <div className="flex gap-1 rounded-lg border border-border bg-muted/40 p-1">
+          <button
+            onClick={() => setAccessLevel("read")}
+            className={`flex flex-1 items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+              accessLevel === "read" ? "bg-white shadow-sm text-forest-slate" : "text-mossy-gray hover:text-forest-slate"
+            }`}
+          >
+            <Eye className="h-3.5 w-3.5" />
+            Read only
+          </button>
+          <button
+            onClick={() => setAccessLevel("write")}
+            className={`flex flex-1 items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+              accessLevel === "write" ? "bg-white shadow-sm text-forest-slate" : "text-mossy-gray hover:text-forest-slate"
+            }`}
+          >
+            <Pencil className="h-3.5 w-3.5" />
+            Can edit
           </button>
         </div>
 

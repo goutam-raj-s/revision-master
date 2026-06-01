@@ -13,6 +13,7 @@ import type {
   DbYoutubeBookmark,
   DbYoutubePlaylist,
   DbDocumentShare,
+  DbGoogleIntegration,
   Document,
   DocumentTreeNode,
   Note,
@@ -23,6 +24,8 @@ import type {
   YoutubeBookmark,
   YoutubePlaylist,
   DbLoginRecord,
+  DbYoutubeShare,
+  YoutubeShare,
 } from "@/types";
 
 // ─── Collection accessors ──────────────────────────────────────────────────────
@@ -92,9 +95,39 @@ export async function getDocumentSharesCollection(): Promise<Collection<DbDocume
   return db.collection<DbDocumentShare>("document_shares");
 }
 
+export async function getYoutubeSharesCollection(): Promise<Collection<DbYoutubeShare>> {
+  const db = await getDb();
+  return db.collection<DbYoutubeShare>("youtube_shares");
+}
+
+export async function getGoogleIntegrationsCollection(): Promise<Collection<DbGoogleIntegration>> {
+  const db = await getDb();
+  return db.collection<DbGoogleIntegration>("google_integrations");
+}
+
 export async function getShareByToken(token: string): Promise<DbDocumentShare | null> {
   const shares = await getDocumentSharesCollection();
   return shares.findOne({ token });
+}
+
+export async function getYoutubeShareByToken(token: string): Promise<DbYoutubeShare | null> {
+  const shares = await getYoutubeSharesCollection();
+  return shares.findOne({ token });
+}
+
+export function serializeYoutubeShare(s: DbYoutubeShare): YoutubeShare {
+  return {
+    id: s._id.toString(),
+    token: s.token,
+    ownerId: s.ownerId.toString(),
+    resourceType: s.resourceType,
+    resourceId: s.resourceId.toString(),
+    accessLevel: s.accessLevel,
+    shareType: s.shareType,
+    emails: s.emails,
+    title: s.title,
+    createdAt: s.createdAt.toISOString(),
+  };
 }
 
 // ─── Index setup ───────────────────────────────────────────────────────────────
@@ -122,6 +155,7 @@ export async function ensureIndexes(): Promise<void> {
     { key: { userId: 1, tags: 1 } },
     { key: { userId: 1, title: "text", tags: "text" } },
     { key: { userId: 1, mediaType: 1 } },
+    { key: { userId: 1, googleDriveFileId: 1 }, unique: true, sparse: true },
   ]);
 
   await db.collection("repetitions").createIndexes([
@@ -155,6 +189,10 @@ export async function ensureIndexes(): Promise<void> {
   await db.collection("youtube_repetitions").createIndexes([
     { key: { userId: 1, nextReviewDate: 1 } },
     { key: { docId: 1 }, unique: true },
+  ]);
+
+  await db.collection("google_integrations").createIndexes([
+    { key: { userId: 1, provider: 1 }, unique: true },
   ]);
 
 }
@@ -191,6 +229,14 @@ export function serializeDoc(d: DbDocument): Document {
     playCount: d.playCount ?? 0,
     lastPlayedAt: d.lastPlayedAt?.toISOString(),
     content: d.content,
+    source: d.source,
+    googleDriveFileId: d.googleDriveFileId,
+    googleDriveModifiedTime: d.googleDriveModifiedTime?.toISOString(),
+    googleDriveVersion: d.googleDriveVersion,
+    googleDriveWebViewLink: d.googleDriveWebViewLink,
+    googleDriveSyncStatus: d.googleDriveSyncStatus,
+    googleDriveSyncError: d.googleDriveSyncError,
+    lastSyncedAt: d.lastSyncedAt?.toISOString(),
     createdAt: d.createdAt.toISOString(),
     updatedAt: d.updatedAt.toISOString(),
   };

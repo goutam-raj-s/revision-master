@@ -15,8 +15,28 @@ import { InlineTitleEditor } from "@/components/features/inline-title-editor";
 import { ShareButton } from "@/components/features/share-button";
 import { RichTextEditorDynamic as RichTextEditor } from "@/components/features/editor/RichTextEditorDynamic";
 import { PDFAnnotatorDynamic as PDFAnnotator } from "@/components/features/editor/PDFAnnotatorDynamic";
+import { QuickGuideButton } from "@/components/ui/quick-guide-button";
 import { formatDate, formatRelativeDate } from "@/lib/utils";
 import type { DocumentTreeNode } from "@/types";
+
+const DOC_DETAIL_SHORTCUTS = [
+  { keys: "Cmd+S", label: "Save document" },
+  { keys: "Cmd+B", label: "Bold" },
+  { keys: "Cmd+I", label: "Italic" },
+  { keys: "Cmd+U", label: "Underline" },
+  { keys: "Cmd+Shift+H", label: "Sticky yellow highlight" },
+  { keys: "Cmd+Shift+P", label: "Sticky pink highlight" },
+  { keys: "Cmd+Shift+O", label: "Sticky orange highlight" },
+  { keys: "Cmd+Shift+I", label: "Sticky red highlight" },
+  { keys: "Cmd+Shift+F", label: "Focus / distraction-free mode" },
+  { keys: "Double-click title", label: "Edit title inline" },
+  { keys: "Enter / Escape", label: "Save / cancel title edit" },
+  { keys: "Enter / ,", label: "Add tag in tag input" },
+  { keys: "Cmd+Enter", label: "Save note" },
+  { keys: "Cmd+K", label: "Command palette" },
+  { keys: "Cmd+Shift+K", label: "Quick clipper widget" },
+  { keys: "Cmd+Shift+V", label: "Clipboard history (last 10 copies)" },
+];
 
 interface DocumentDetailPageProps {
   params: Promise<{ docId: string }>;
@@ -152,6 +172,7 @@ export default async function DocumentDetailPage({ params }: DocumentDetailPageP
             </div>
           </div>
           <div className="flex shrink-0 flex-wrap items-center gap-2 self-start">
+            <QuickGuideButton shortcuts={DOC_DETAIL_SHORTCUTS} title="Document" />
             <ShareButton docId={doc.id} title={doc.title} size="sm" />
             <DocumentThumbnailButton docId={doc.id} currentThumbnailUrl={doc.thumbnailUrl} />
             <Link href={`/study/${doc.id}`}>

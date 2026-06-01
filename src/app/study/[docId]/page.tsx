@@ -12,7 +12,27 @@ import { getDocNotes, getDocTerms } from "@/actions/notes";
 import { DashboardHeader } from "@/components/features/dashboard-header";
 import { RichTextEditorDynamic as RichTextEditor } from "@/components/features/editor/RichTextEditorDynamic";
 import { DocumentTabsSidebar } from "@/components/features/document-tabs-sidebar";
+import { QuickGuideButton } from "@/components/ui/quick-guide-button";
 import type { DocumentTreeNode } from "@/types";
+
+const DOC_SHORTCUTS = [
+  { keys: "Cmd+]", label: "Toggle study panel open/closed" },
+  { keys: "Cmd+S", label: "Save document" },
+  { keys: "Cmd+B", label: "Bold" },
+  { keys: "Cmd+I", label: "Italic" },
+  { keys: "Cmd+U", label: "Underline" },
+  { keys: "Cmd+Shift+H", label: "Sticky yellow highlight" },
+  { keys: "Cmd+Shift+P", label: "Sticky pink highlight" },
+  { keys: "Cmd+Shift+O", label: "Sticky orange highlight" },
+  { keys: "Cmd+Shift+I", label: "Sticky red highlight" },
+  { keys: "Cmd+Shift+F", label: "Focus / distraction-free mode" },
+  { keys: "Cmd+Enter", label: "Save note (in note input)" },
+  { keys: "Enter / ,", label: "Add tag (in tag input)" },
+  { keys: "Cmd+K", label: "Command palette" },
+  { keys: "Cmd+Shift+K", label: "Quick clipper widget" },
+  { keys: "Escape", label: "Close overlays / cancel editing" },
+  { keys: "Cmd+Shift+V", label: "Clipboard history (last 10 copies)" },
+];
 
 interface StudyPageProps {
   params: Promise<{ docId: string }>;
@@ -72,6 +92,7 @@ export default async function StudyPage({ params }: StudyPageProps) {
                   <span className="hidden sm:inline">Open in Google Docs</span>
                 </a>
               )}
+              <QuickGuideButton shortcuts={DOC_SHORTCUTS} title="Document Study" />
             </div>
           }
         />

@@ -18,6 +18,7 @@ function serializeShare(share: import("@/types").DbDocumentShare): DocumentShare
     docId: share.docId.toString(),
     ownerId: share.ownerId.toString(),
     shareType: share.shareType,
+    accessLevel: share.accessLevel ?? "read",
     emails: share.emails,
     createdAt: share.createdAt.toISOString(),
   };
@@ -42,8 +43,9 @@ async function getRootDocId(docId: string, userId: string): Promise<ObjectId | n
 export async function createShareAction(
   docId: string,
   shareType: "public" | "email",
-  emails?: string[]
-): Promise<ActionResult<{ token: string }>> {
+  emails?: string[],
+  accessLevel: "read" | "write" = "read"
+): Promise<ActionResult<{ token: string; accessLevel: "read" | "write" }>> {
   const user = await requireAuth();
   const rootDocId = await getRootDocId(docId, user.id);
   if (!rootDocId) return { success: false, error: "Document not found." };
@@ -67,7 +69,11 @@ export async function createShareAction(
         )
       );
     }
-    return { success: true, data: { token: existing.token } };
+    // Update access level if it changed
+    if (existing.accessLevel !== accessLevel) {
+      await shares.updateOne({ _id: existing._id }, { $set: { accessLevel } });
+    }
+    return { success: true, data: { token: existing.token, accessLevel } };
   }
 
   const token = generateToken();
@@ -77,6 +83,7 @@ export async function createShareAction(
     docId: rootDocId,
     ownerId: new ObjectId(user.id),
     shareType,
+    accessLevel,
     emails: emails && emails.length > 0 ? emails : undefined,
     createdAt: new Date(),
   });
@@ -97,7 +104,7 @@ export async function createShareAction(
     );
   }
 
-  return { success: true, data: { token } };
+  return { success: true, data: { token, accessLevel } };
 }
 
 export async function revokeShareAction(token: string): Promise<ActionResult> {
@@ -121,4 +128,42 @@ export async function getDocShareAction(
   const shares = await getDocumentSharesCollection();
   const share = await shares.findOne({ docId: rootDocId, ownerId: new ObjectId(user.id) });
   return { success: true, data: share ? serializeShare(share) : null };
+}
+
+/**
+ * Save document content via a share token (write-access only).
+ * Does not require the editor to be the document owner.
+ */
+export async function updateDocumentContentViaShare(
+  token: string,
+  docId: string,
+  content: string
+): Promise<ActionResult> {
+  const share = await getShareByToken(token);
+  if (!share) return { success: false, error: "Share not found." };
+  if (share.accessLevel !== "write") return { success: false, error: "Read-only share." };
+  if (share.docId.toString() !== docId) {
+    // Check if docId is a subpage of the shared root
+    const { getDocumentsCollection: getDocs } = await import("@/lib/db/collections");
+    const docsCol = await getDocs();
+    const doc = await docsCol.findOne({ _id: new ObjectId(docId) });
+    if (!doc) return { success: false, error: "Document not found." };
+    // Walk parents
+    let parentId = doc.parentDocId?.toString();
+    let found = false;
+    while (parentId) {
+      if (parentId === share.docId.toString()) { found = true; break; }
+      const parent = await docsCol.findOne({ _id: new ObjectId(parentId) });
+      parentId = parent?.parentDocId?.toString();
+    }
+    if (!found) return { success: false, error: "Document not in this share." };
+  }
+
+  const { getDocumentsCollection: getDocs2 } = await import("@/lib/db/collections");
+  const docsCol = await getDocs2();
+  await docsCol.updateOne(
+    { _id: new ObjectId(docId), userId: share.ownerId },
+    { $set: { content, updatedAt: new Date() } }
+  );
+  return { success: true };
 }

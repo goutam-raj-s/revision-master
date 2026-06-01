@@ -6,6 +6,8 @@ export interface YoutubePlayerHandle {
   getCurrentTime(): number;
   seekTo(seconds: number): void;
   getPlayerState(): number;
+  skipForward(seconds: number): void;
+  skipBack(seconds: number): void;
 }
 
 interface Props {
@@ -31,6 +33,14 @@ const YoutubePlayer = forwardRef<YoutubePlayerHandle, Props>(
       getCurrentTime: () => playerRef.current?.getCurrentTime?.() ?? 0,
       seekTo: (s: number) => playerRef.current?.seekTo?.(s, true),
       getPlayerState: () => playerRef.current?.getPlayerState?.() ?? -1,
+      skipForward: (s: number) => {
+        const current = playerRef.current?.getCurrentTime?.() ?? 0;
+        playerRef.current?.seekTo?.(current + s, true);
+      },
+      skipBack: (s: number) => {
+        const current = playerRef.current?.getCurrentTime?.() ?? 0;
+        playerRef.current?.seekTo?.(Math.max(0, current - s), true);
+      },
     }));
 
     useEffect(() => {

@@ -69,7 +69,7 @@ const CollapsibleImageComponent = ({ node, updateAttributes, deleteNode }: any) 
                 "relative group transition-all duration-300",
                 isOpen ? "block w-full" : "inline-flex items-center"
               )}
-              onDoubleClick={() => setIsOpen(true)}
+              onClick={() => setIsOpen(true)}
             >
               {!isOpen ? (
                 <div className="flex items-center gap-1.5 px-2 py-1 bg-forest-slate/5 hover:bg-forest-slate/10 text-forest-slate/70 hover:text-forest-slate rounded-md border border-forest-slate/10 transition-all cursor-pointer shadow-sm select-none">
@@ -165,7 +165,7 @@ const CollapsibleImageComponent = ({ node, updateAttributes, deleteNode }: any) 
                 <img src={src} className="w-full h-auto object-contain max-h-[400px]" alt="Image Preview" />
                 <div className="p-1.5 bg-canvas/50 border-t border-border flex items-center justify-between">
                   <span className="text-[9px] text-mossy-gray font-semibold uppercase tracking-widest">Hover Preview</span>
-                  <span className="text-[8px] text-mossy-gray/40">Double-click badge to expand</span>
+                  <span className="text-[8px] text-mossy-gray/40">Click to expand</span>
                 </div>
               </div>
             </TooltipContent>

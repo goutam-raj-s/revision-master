@@ -12,6 +12,8 @@ interface YoutubeFullscreenOverlayProps {
   thumbnailUrl: string;
   playerRef: React.RefObject<YoutubePlayerHandle | null>;
   localStorageKey?: string;
+  /** If provided, use this value instead of listening to fullscreenchange internally */
+  isFullscreenOverride?: boolean;
 }
 
 /**
@@ -26,8 +28,9 @@ export function YoutubeFullscreenOverlay({
   thumbnailUrl,
   playerRef,
   localStorageKey,
+  isFullscreenOverride,
 }: YoutubeFullscreenOverlayProps) {
-  const [isFullscreen, setIsFullscreen] = React.useState(false);
+  const [isFullscreenInternal, setIsFullscreenInternal] = React.useState(false);
   const [notesOpen, setNotesOpen] = React.useState(false);
 
   // FAB position (bottom-right default)
@@ -36,16 +39,24 @@ export function YoutubeFullscreenOverlay({
   const dragStartRef = React.useRef({ mx: 0, my: 0, px: 0, py: 0 });
   const fabRef = React.useRef<HTMLButtonElement>(null);
 
-  // Track browser fullscreen state
+  // Only listen internally when no override is provided
   React.useEffect(() => {
+    if (isFullscreenOverride !== undefined) return;
     const onChange = () => {
       const inFs = !!document.fullscreenElement;
-      setIsFullscreen(inFs);
+      setIsFullscreenInternal(inFs);
       if (!inFs) setNotesOpen(false);
     };
     document.addEventListener("fullscreenchange", onChange);
     return () => document.removeEventListener("fullscreenchange", onChange);
-  }, []);
+  }, [isFullscreenOverride]);
+
+  // When override changes to false, close notes drawer
+  React.useEffect(() => {
+    if (isFullscreenOverride === false) setNotesOpen(false);
+  }, [isFullscreenOverride]);
+
+  const isFullscreen = isFullscreenOverride ?? isFullscreenInternal;
 
   // Drag logic for the FAB
   const handleFabMouseDown = React.useCallback(

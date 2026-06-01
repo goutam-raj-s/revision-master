@@ -2,6 +2,7 @@
 
 import { createHash } from "crypto";
 import { ObjectId } from "mongodb";
+import { revalidatePath } from "next/cache";
 import { requireAuth } from "@/lib/auth/session";
 import {
   getYoutubeSessionsCollection,
@@ -337,6 +338,28 @@ export async function updateYoutubeSessionNotes(
       { $set: { notes, updatedAt: new Date() } }
     );
     if (result.matchedCount === 0) return { success: false, error: "Session not found" };
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : "Unknown error" };
+  }
+}
+
+export async function renameYoutubeSession(
+  sessionId: string,
+  newTitle: string
+): Promise<ActionResult> {
+  try {
+    if (!ObjectId.isValid(sessionId)) return { success: false, error: "Invalid session ID" };
+    const trimmedTitle = newTitle.trim();
+    if (!trimmedTitle) return { success: false, error: "Title is required" };
+    const user = await requireAuth();
+    const col = await getYoutubeSessionsCollection();
+    const result = await col.updateOne(
+      { _id: new ObjectId(sessionId), userId: new ObjectId(user.id) },
+      { $set: { videoTitle: trimmedTitle, updatedAt: new Date() } }
+    );
+    if (result.matchedCount === 0) return { success: false, error: "Session not found" };
+    revalidatePath("/study/youtube");
     return { success: true };
   } catch (err) {
     return { success: false, error: err instanceof Error ? err.message : "Unknown error" };

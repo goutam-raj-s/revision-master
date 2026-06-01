@@ -7,10 +7,39 @@ import YoutubePlayer, { type YoutubePlayerHandle } from "./youtube-player";
 import { ExternalVideoPlayer } from "./external-video-player";
 import { YoutubeNotesPanel } from "./youtube-notes-panel";
 import { YoutubeFullscreenOverlay, FullscreenButton } from "./youtube-fullscreen-overlay";
+import { ChevronLeft, ChevronRight, SkipBack, SkipForward } from "lucide-react";
 import type { YoutubeSession } from "@/types";
 
 interface YoutubeStudyClientProps {
   session: YoutubeSession;
+}
+
+const LS_NOTES_OPEN = "lostbae_yt_notes_open";
+
+function SkipButton({
+  seconds,
+  playerRef,
+}: {
+  seconds: number;
+  playerRef: React.RefObject<YoutubePlayerHandle | null>;
+}) {
+  const isForward = seconds > 0;
+  const label = isForward ? `+${seconds}s` : `${seconds}s`;
+  return (
+    <button
+      onClick={() =>
+        isForward
+          ? playerRef.current?.skipForward(Math.abs(seconds))
+          : playerRef.current?.skipBack(Math.abs(seconds))
+      }
+      title={isForward ? `Skip forward ${Math.abs(seconds)}s` : `Skip back ${Math.abs(seconds)}s`}
+      aria-label={isForward ? `Skip forward ${Math.abs(seconds)} seconds` : `Skip back ${Math.abs(seconds)} seconds`}
+      className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-forest-slate/10 hover:bg-forest-slate/20 text-forest-slate border border-forest-slate/20 transition-colors"
+    >
+      {isForward ? <SkipForward className="h-3.5 w-3.5" /> : <SkipBack className="h-3.5 w-3.5" />}
+      <span>{label}</span>
+    </button>
+  );
 }
 
 export function YoutubeStudyClient({ session }: YoutubeStudyClientProps) {
@@ -18,9 +47,22 @@ export function YoutubeStudyClient({ session }: YoutubeStudyClientProps) {
   const containerRef = React.useRef<HTMLDivElement | null>(null);
   const [isMobile, setIsMobile] = React.useState(false);
   const [isFullscreen, setIsFullscreen] = React.useState(false);
+  const [isNotesOpen, setIsNotesOpen] = React.useState(true);
+
   const localNotesKey = session.id.startsWith("external-preview-")
     ? `rm:${session.id}:notes`
     : undefined;
+
+  // Load persisted notes-open state
+  React.useEffect(() => {
+    const stored = window.localStorage.getItem(LS_NOTES_OPEN);
+    if (stored === "0") setIsNotesOpen(false);
+  }, []);
+
+  // Persist notes-open state
+  React.useEffect(() => {
+    window.localStorage.setItem(LS_NOTES_OPEN, isNotesOpen ? "1" : "0");
+  }, [isNotesOpen]);
 
   React.useEffect(() => {
     const mq = window.matchMedia("(max-width: 767px)");
@@ -30,14 +72,18 @@ export function YoutubeStudyClient({ session }: YoutubeStudyClientProps) {
     return () => mq.removeEventListener("change", handler);
   }, []);
 
-  // Track fullscreen state — hide default notes column in fullscreen
+  // Track fullscreen state — only our custom fullscreen (when containerRef is the FS element)
   React.useEffect(() => {
-    const onChange = () => setIsFullscreen(!!document.fullscreenElement);
+    const onChange = () =>
+      setIsFullscreen(
+        !!document.fullscreenElement &&
+        document.fullscreenElement === containerRef.current
+      );
     document.addEventListener("fullscreenchange", onChange);
     return () => document.removeEventListener("fullscreenchange", onChange);
   }, []);
 
-  // Global T key listener — insert timestamp (skip if focused in input/textarea)
+  // Global T key listener — insert timestamp (skip if focused in input/textarea/contenteditable)
   React.useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       const tag = (e.target as HTMLElement)?.tagName?.toLowerCase();
@@ -81,6 +127,8 @@ export function YoutubeStudyClient({ session }: YoutubeStudyClientProps) {
       thumbnailUrl={session.thumbnailUrl}
       playerRef={playerRef}
       localStorageKey={localNotesKey}
+      isCollapsed={!isNotesOpen}
+      onToggleCollapse={() => setIsNotesOpen((o) => !o)}
     />
   );
 
@@ -88,6 +136,11 @@ export function YoutubeStudyClient({ session }: YoutubeStudyClientProps) {
     return (
       <div ref={containerRef} className="flex flex-col h-full w-full overflow-auto relative">
         <div className="shrink-0">{playerEl}</div>
+        {/* Skip controls */}
+        <div className="shrink-0 flex items-center gap-2 px-3 py-2 border-b border-border/50 bg-canvas/50">
+          <SkipButton seconds={-10} playerRef={playerRef} />
+          <SkipButton seconds={10} playerRef={playerRef} />
+        </div>
         {/* Hide default notes panel in fullscreen — overlay FAB handles it */}
         <div className={`flex-1 min-h-0 ${isFullscreen ? "hidden" : ""}`}>{notesEl}</div>
         <YoutubeFullscreenOverlay
@@ -97,6 +150,7 @@ export function YoutubeStudyClient({ session }: YoutubeStudyClientProps) {
           thumbnailUrl={session.thumbnailUrl}
           playerRef={playerRef}
           localStorageKey={localNotesKey}
+          isFullscreenOverride={isFullscreen}
         />
       </div>
     );
@@ -106,33 +160,54 @@ export function YoutubeStudyClient({ session }: YoutubeStudyClientProps) {
     <div ref={containerRef} className={cn("h-full relative", isFullscreen && "bg-black")}>
       {/*
         ResizablePanelGroup always gets two children (required by its type).
-        In fullscreen we pass split=100 (controlled) to push the right pane to 0%
-        and hide it visually — the overlay FAB handles notes instead.
+        In fullscreen we pass split=100 to push the right pane to 0%.
+        When notes are collapsed we also pass split=100 to hide the right pane.
       */}
       <ResizablePanelGroup
         defaultSplit={60}
         minSplit={30}
         maxSplit={100}
-        // In fullscreen: force left pane to 100% via controlled split
-        split={isFullscreen ? 100 : undefined}
-        className={cn("h-full", isFullscreen && "[&>div[role='separator']]:hidden")}
+        split={isFullscreen || !isNotesOpen ? 100 : undefined}
+        className={cn(
+          "h-full",
+          (isFullscreen || !isNotesOpen) && "[&>div[role='separator']]:hidden"
+        )}
       >
         {/* Player column */}
         <div className={cn("h-full flex flex-col justify-center gap-2", isFullscreen ? "p-0" : "pt-6 px-4")}>
           {playerEl}
-          {/* Fullscreen button sits below the video in normal view */}
+          {/* Controls row: skip buttons + fullscreen toggle */}
           {!isFullscreen && (
-            <div className="flex items-center justify-end pr-1">
+            <div className="flex items-center justify-between pr-1">
+              <div className="flex items-center gap-1.5">
+                <SkipButton seconds={-10} playerRef={playerRef} />
+                <SkipButton seconds={10} playerRef={playerRef} />
+              </div>
               <FullscreenButton targetRef={containerRef} />
             </div>
           )}
         </div>
 
-        {/* Notes column — visually hidden in fullscreen (split=100 collapses it to 0px) */}
-        <div className={`h-full overflow-hidden ${isFullscreen ? "invisible pointer-events-none" : ""}`}>
+        {/* Notes column — visually hidden in fullscreen or when collapsed */}
+        <div className={cn(
+          "h-full overflow-hidden",
+          (isFullscreen || !isNotesOpen) && "invisible pointer-events-none"
+        )}>
           {notesEl}
         </div>
       </ResizablePanelGroup>
+
+      {/* Re-open chevron — only visible when notes are collapsed and not in fullscreen */}
+      {!isNotesOpen && !isFullscreen && (
+        <button
+          onClick={() => setIsNotesOpen(true)}
+          className="absolute right-0 top-1/2 -translate-y-1/2 z-20 flex items-center justify-center h-12 w-6 bg-surface border border-border border-r-0 rounded-l-lg shadow-soft text-mossy-gray hover:text-forest-slate hover:bg-canvas transition-colors"
+          title="Expand notes panel"
+          aria-label="Expand notes panel"
+        >
+          <ChevronLeft className="h-4 w-4" />
+        </button>
+      )}
 
       {/* Fullscreen notes overlay — FAB + sliding panel, only active in fullscreen */}
       <YoutubeFullscreenOverlay

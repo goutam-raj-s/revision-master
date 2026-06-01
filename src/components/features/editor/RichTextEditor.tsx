@@ -28,7 +28,14 @@ interface RichTextEditorProps {
   initialContent?: string;
   docId?: string;
   readOnly?: boolean;
-  onSave?: (content: string) => void;
+  onSave?: (content: string) => void | Promise<void>;
+  /** Compact mode: hides focus-mode toggle, PDF export, and word-count footer. */
+  compact?: boolean;
+  /**
+   * When set, a ref whose `.current` will be populated with an `insertContent`
+   * function so external code can insert text at the editor cursor.
+   */
+  insertContentRef?: React.MutableRefObject<((text: string) => void) | null>;
 }
 
 type SaveState = "saved" | "saving" | "unsaved" | "error";
@@ -38,6 +45,8 @@ export function RichTextEditor({
   docId,
   readOnly = false,
   onSave,
+  compact = false,
+  insertContentRef,
 }: RichTextEditorProps) {
   const [saveState, setSaveState] = React.useState<SaveState>("saved");
   const [lastSavedAt, setLastSavedAt] = React.useState<Date | null>(null);
@@ -79,19 +88,32 @@ export function RichTextEditor({
     contentToSave: string,
     options: { notify?: boolean } = {}
   ) => {
-    if (!docId) return;
+    if (!docId && !onSave) return;
     setSaveState("saving");
-    const result = await updateDocumentContentAction(docId, contentToSave);
-    if (result.success) {
-      setSaveState("saved");
-      setLastSavedAt(new Date());
-      onSave?.(contentToSave);
-      if (options.notify) {
-        toast("Changes saved", { variant: "success" });
+    if (docId) {
+      const result = await updateDocumentContentAction(docId, contentToSave);
+      if (result.success) {
+        setSaveState("saved");
+        setLastSavedAt(new Date());
+        onSave?.(contentToSave);
+        if (options.notify) {
+          toast("Changes saved", { variant: "success" });
+        }
+      } else {
+        setSaveState("error");
+        toast(result.error || "Failed to save changes", { variant: "error" });
       }
-    } else {
-      setSaveState("error");
-      toast(result.error || "Failed to save changes", { variant: "error" });
+    } else if (onSave) {
+      try {
+        await onSave(contentToSave);
+        setSaveState("saved");
+        setLastSavedAt(new Date());
+        if (options.notify) {
+          toast("Changes saved", { variant: "success" });
+        }
+      } catch {
+        setSaveState("error");
+      }
     }
   }, [docId, onSave]);
 
@@ -319,6 +341,15 @@ export function RichTextEditor({
   // Keep editorRef in sync so Ctrl+S handler always has the latest editor
   React.useEffect(() => { editorRef.current = editor; }, [editor]);
 
+  // Expose insertContent function to external callers (e.g. YouTube notes timestamp)
+  React.useEffect(() => {
+    if (!insertContentRef) return;
+    insertContentRef.current = editor
+      ? (text: string) => editor.chain().focus().insertContent(text).run()
+      : null;
+    return () => { if (insertContentRef) insertContentRef.current = null; };
+  }, [editor, insertContentRef]);
+
   const handleManualSave = React.useCallback(async () => {
     if (!editor || !docId) return;
     const content = editor.getHTML();
@@ -381,10 +412,11 @@ export function RichTextEditor({
           editor={editor}
           isStickyHighlight={isStickyHighlight}
           activeHighlightColor={activeHighlightColor}
-          focusMode={focusMode}
+          focusMode={compact ? false : focusMode}
           onToggleStickyHighlight={toggleStickyHighlight}
           onSelectHighlightColor={setHighlightColor}
-          onToggleFocusMode={() => setFocusMode((current) => !current)}
+          onToggleFocusMode={compact ? undefined : () => setFocusMode((current) => !current)}
+          compact={compact}
         />
       )}
       
@@ -412,7 +444,7 @@ export function RichTextEditor({
         )}
       </div>
 
-      {!readOnly && (
+      {!readOnly && !compact && (
         <div className={cn("flex items-center justify-between gap-2 border-t border-border bg-canvas/60 px-2 py-1.5 sm:gap-3 sm:p-3", focusMode && "bg-white/90")}>
           <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-mossy-gray sm:gap-x-3 sm:text-xs">
             <span className={cn("inline-flex items-center gap-1.5 font-medium", saveState === "error" && "text-destructive", saveState === "unsaved" && "text-state-stale")}>

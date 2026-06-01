@@ -78,6 +78,60 @@ export async function getYoutubePlaylists(): Promise<YoutubePlaylist[]> {
   );
 }
 
+export async function renameYoutubePlaylist(
+  playlistId: string,
+  newName: string
+): Promise<ActionResult> {
+  const user = await requireAuth();
+  if (!ObjectId.isValid(playlistId)) return { success: false, error: "Invalid playlist ID." };
+  const trimmedName = newName.trim();
+  if (!trimmedName) return { success: false, error: "Name is required." };
+
+  const col = await getYoutubePlaylistsCollection();
+  const result = await col.updateOne(
+    { _id: new ObjectId(playlistId), userId: new ObjectId(user.id) },
+    { $set: { name: trimmedName, updatedAt: new Date() } }
+  );
+  if (result.matchedCount === 0) return { success: false, error: "Playlist not found." };
+
+  revalidatePath("/study/youtube");
+  return { success: true };
+}
+
+export async function deleteYoutubePlaylist(playlistId: string): Promise<ActionResult> {
+  const user = await requireAuth();
+  if (!ObjectId.isValid(playlistId)) return { success: false, error: "Invalid playlist ID." };
+
+  const col = await getYoutubePlaylistsCollection();
+  const result = await col.deleteOne({
+    _id: new ObjectId(playlistId),
+    userId: new ObjectId(user.id),
+  });
+  if (result.deletedCount === 0) return { success: false, error: "Playlist not found." };
+
+  revalidatePath("/study/youtube");
+  return { success: true };
+}
+
+export async function removeYoutubeSessionFromPlaylist(
+  playlistId: string,
+  sessionId: string
+): Promise<ActionResult> {
+  const user = await requireAuth();
+  if (!ObjectId.isValid(playlistId)) return { success: false, error: "Invalid playlist ID." };
+  if (!ObjectId.isValid(sessionId)) return { success: false, error: "Invalid session ID." };
+
+  const col = await getYoutubePlaylistsCollection();
+  const result = await col.updateOne(
+    { _id: new ObjectId(playlistId), userId: new ObjectId(user.id) },
+    { $pull: { sessionIds: new ObjectId(sessionId) }, $set: { updatedAt: new Date() } }
+  );
+  if (result.matchedCount === 0) return { success: false, error: "Playlist not found." };
+
+  revalidatePath("/study/youtube");
+  return { success: true };
+}
+
 export async function addYoutubeSessionToPlaylist(
   playlistId: string,
   sessionId: string

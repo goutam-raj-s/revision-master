@@ -52,6 +52,16 @@ export const ExternalVideoPlayer = React.forwardRef<YoutubePlayerHandle, Externa
         if (!video) return -1;
         return video.paused ? 2 : 1;
       },
+      skipForward: (seconds: number) => {
+        if (playerType === "direct" && videoRef.current) {
+          videoRef.current.currentTime += seconds;
+        }
+      },
+      skipBack: (seconds: number) => {
+        if (playerType === "direct" && videoRef.current) {
+          videoRef.current.currentTime = Math.max(0, videoRef.current.currentTime - seconds);
+        }
+      },
     }), [playerType]);
 
     if (playerType === "direct") {

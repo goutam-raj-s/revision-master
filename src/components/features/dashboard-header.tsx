@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ChevronRight, HeartHandshake } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { CopyHistoryButton } from "@/components/ui/copy-history-button";
 
 export function DashboardHeader({
   customBreadcrumbs,
@@ -81,11 +82,14 @@ export function DashboardHeader({
         })}
       </nav>
 
-      {rightActions && (
-        <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-          {rightActions}
-        </div>
-      )}
+      <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+        <CopyHistoryButton />
+        {rightActions && (
+          <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+            {rightActions}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

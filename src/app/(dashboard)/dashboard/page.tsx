@@ -8,7 +8,18 @@ import { AnalyticsInsights } from "@/components/features/analytics-insights";
 import { OnboardingBanner } from "@/components/features/onboarding-banner";
 import { ReviewTrendChartDynamic as ReviewTrendChart } from "@/components/features/review-trend-chart-dynamic";
 import { Button } from "@/components/ui/button";
+import { QuickGuideButton } from "@/components/ui/quick-guide-button";
 import type { TaskFilter } from "@/types";
+
+const DASHBOARD_SHORTCUTS = [
+  { keys: "Cmd+K", label: "Open command palette" },
+  { keys: "Cmd+/", label: "Also opens command palette" },
+  { keys: "Cmd+Shift+K", label: "Quick clipper widget" },
+  { keys: "E", label: "Complete focused task (row expanded)" },
+  { keys: "Escape", label: "Close review modal / clear focus" },
+  { keys: "Today / Pending", label: "Switch revision queue filter" },
+  { keys: "Cmd+Shift+V", label: "Clipboard history (last 10 copies)" },
+];
 
 interface DashboardPageProps {
   searchParams: Promise<{ filter?: string }>;
@@ -81,12 +92,15 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
             <kbd className="ml-2 hidden rounded bg-border px-1.5 py-0.5 font-mono text-xs text-mossy-gray sm:inline">⌘K</kbd>
           </p>
         </div>
-        <Link href="/documents/new" prefetch={true}>
-          <Button className="h-8 gap-1.5 px-3 text-xs bouncy-hover sm:h-9 sm:gap-2 sm:px-4 sm:text-sm" aria-label="Add document">
-            <Plus className="h-4 w-4" />
-            <span className="hidden sm:inline">Add Document</span>
-          </Button>
-        </Link>
+        <div className="flex items-center gap-2">
+          <QuickGuideButton shortcuts={DASHBOARD_SHORTCUTS} title="Dashboard" />
+          <Link href="/documents/new" prefetch={true}>
+            <Button className="h-8 gap-1.5 px-3 text-xs bouncy-hover sm:h-9 sm:gap-2 sm:px-4 sm:text-sm" aria-label="Add document">
+              <Plus className="h-4 w-4" />
+              <span className="hidden sm:inline">Add Document</span>
+            </Button>
+          </Link>
+        </div>
       </div>
 
       {/* Onboarding — only for new users with 0 docs */}

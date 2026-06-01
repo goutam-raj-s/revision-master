@@ -47,6 +47,8 @@ interface EditorToolbarProps {
   onToggleStickyHighlight?: () => void;
   onSelectHighlightColor?: (color: string, name: string) => void;
   onToggleFocusMode?: () => void;
+  /** Hides focus-mode toggle when true */
+  compact?: boolean;
 }
 
 const HIGHLIGHT_PRESETS = [
@@ -73,6 +75,7 @@ export function EditorToolbar({
   onToggleStickyHighlight,
   onSelectHighlightColor,
   onToggleFocusMode,
+  compact = false,
 }: EditorToolbarProps) {
   if (!editor) return null;
   const currentEditor = editor;
@@ -82,15 +85,32 @@ export function EditorToolbar({
     onSelectHighlightColor?.(color, name);
   }
 
-  function insertImageFromUrl() {
-    const url = window.prompt("Paste image URL");
-    if (!url) return;
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
-    currentEditor
-      .chain()
-      .focus()
-      .insertContent({ type: "collapsibleImage", attrs: { src: url } })
-      .run();
+  function handleImageButtonClick() {
+    fileInputRef.current?.click();
+  }
+
+  async function handleImageFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    // Reset so the same file can be selected again
+    e.target.value = "";
+
+    const reader = new FileReader();
+    reader.onload = async (ev) => {
+      const base64 = ev.target?.result as string;
+      const { uploadImageAction } = await import("@/actions/upload");
+      const result = await uploadImageAction(base64);
+      if (result.success && result.url) {
+        currentEditor
+          .chain()
+          .focus()
+          .insertContent({ type: "collapsibleImage", attrs: { src: result.url } })
+          .run();
+      }
+    };
+    reader.readAsDataURL(file);
   }
 
   const ToolbarButton = ({
@@ -248,7 +268,7 @@ export function EditorToolbar({
                   Sticky
                 </Button>
               </div>
-              <div className="grid grid-cols-6 gap-1.5">
+              <div className="flex flex-col gap-1">
                 {HIGHLIGHT_PRESETS.map((preset) => {
                   const isCurrent = activeHighlightColor === preset.color;
                   return (
@@ -256,13 +276,26 @@ export function EditorToolbar({
                       key={preset.color}
                       onClick={() => applyHighlight(preset.color, preset.name)}
                       className={cn(
-                        "relative aspect-square rounded-md border border-border transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-state-today/40",
-                        isCurrent && "ring-2 ring-state-today ring-offset-2 ring-offset-surface"
+                        "flex items-center gap-2.5 w-full rounded-md px-2 py-1.5 border border-transparent transition-all hover:border-border hover:bg-canvas focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-state-today/40",
+                        isCurrent && "border-state-today/40 bg-canvas ring-1 ring-state-today/30"
                       )}
-                      style={{ backgroundColor: preset.color }}
                       title={preset.shortcut ? `${preset.name} (Cmd+Shift+${preset.shortcut})` : preset.name}
                     >
-                      {isCurrent && <Check className="absolute inset-0 m-auto h-3.5 w-3.5 text-forest-slate/70" />}
+                      {/* Swatch */}
+                      <span
+                        className="relative h-5 w-5 shrink-0 rounded border border-border/60"
+                        style={{ backgroundColor: preset.color }}
+                      >
+                        {isCurrent && <Check className="absolute inset-0 m-auto h-3 w-3 text-forest-slate/70" />}
+                      </span>
+                      {/* Name */}
+                      <span className="flex-1 text-left text-xs text-forest-slate">{preset.name}</span>
+                      {/* Shortcut kbd */}
+                      {preset.shortcut && (
+                        <kbd className="shrink-0 rounded border border-border bg-canvas px-1.5 py-0.5 font-mono text-[9px] text-mossy-gray shadow-sm">
+                          ⌘⇧{preset.shortcut}
+                        </kbd>
+                      )}
                     </button>
                   );
                 })}
@@ -274,9 +307,18 @@ export function EditorToolbar({
             </PopoverContent>
           </Popover>
 
-          <ToolbarButton onClick={insertImageFromUrl} tooltip="Insert Image URL">
+          <ToolbarButton onClick={handleImageButtonClick} tooltip="Insert Image (click to upload, or paste/drop)">
             <ImageIcon className="h-4 w-4" />
           </ToolbarButton>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="sr-only"
+            aria-hidden="true"
+            tabIndex={-1}
+            onChange={handleImageFileChange}
+          />
 
           <ToolbarButton onClick={() => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()} tooltip="Insert Table">
             <TableIcon className="h-4 w-4" />
@@ -290,9 +332,11 @@ export function EditorToolbar({
           <ToolbarButton onClick={() => editor.chain().focus().redo().run()} disabled={!editor.can().redo()} tooltip="Redo">
             <Redo className="h-4 w-4" />
           </ToolbarButton>
-          <ToolbarButton onClick={onToggleFocusMode ?? (() => undefined)} isActive={focusMode} tooltip={focusMode ? "Exit Focus Mode (Cmd+Shift+F)" : "Focus Mode (Cmd+Shift+F)"}>
-            <Focus className="h-4 w-4" />
-          </ToolbarButton>
+          {!compact && (
+            <ToolbarButton onClick={onToggleFocusMode ?? (() => undefined)} isActive={focusMode} tooltip={focusMode ? "Exit Focus Mode (Cmd+Shift+F)" : "Focus Mode (Cmd+Shift+F)"}>
+              <Focus className="h-4 w-4" />
+            </ToolbarButton>
+          )}
         </div>
         {(isStickyHighlight || focusMode) && (
           <div className="flex flex-wrap items-center gap-2 border-t border-border/60 bg-canvas/50 px-3 py-1.5 text-[11px] text-mossy-gray">
