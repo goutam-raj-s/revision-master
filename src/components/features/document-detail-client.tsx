@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2, Check, Loader2, BookText, FileText, X, Save, Search, Copy, CalendarDays, ImagePlus } from "lucide-react";
+import { Plus, Trash2, Check, Loader2, BookText, FileText, X, Save, Search, Copy, CalendarDays } from "lucide-react";
 import { SimpleTooltip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -18,8 +18,8 @@ import {
   createNoteAction, createTermAction, deleteNoteAction,
   markNoteDoneAction, deleteTermAction,
 } from "@/actions/notes";
-import { uploadImageAction } from "@/actions/upload";
 import { ImagePreviewThumbnail } from "@/components/features/image-preview-thumbnail";
+import { ImagePickerButton } from "@/components/features/image-picker-button";
 import { updateDocumentAction } from "@/actions/documents";
 import type { Document, Repetition, Note, Term, Difficulty } from "@/types";
 
@@ -40,7 +40,6 @@ export function DocumentDetailClient({ doc, rep, initialNotes, initialTerms }: D
   const [newDef, setNewDef] = React.useState("");
   const [newTermImageUrl, setNewTermImageUrl] = React.useState("");
   const [savingTerm, setSavingTerm] = React.useState(false);
-  const [uploadingTermImage, setUploadingTermImage] = React.useState(false);
   const [difficulty, setDifficulty] = React.useState<Difficulty>(doc.difficulty);
   const [tagInput, setTagInput] = React.useState("");
   const [tags, setTags] = React.useState<string[]>(doc.tags);
@@ -97,32 +96,18 @@ export function DocumentDetailClient({ doc, rep, initialNotes, initialTerms }: D
     setSavingTerm(false);
   }
 
-  async function uploadTermImage(file: File) {
-    setUploadingTermImage(true);
-    const reader = new FileReader();
-    reader.onload = async (event) => {
-      const result = await uploadImageAction(event.target?.result as string);
-      setUploadingTermImage(false);
-      if (result.success && result.url) {
-        setNewTermImageUrl(result.url);
-        toast("Image attached", { variant: "success" });
-      } else {
-        toast(result.error || "Could not upload image", { variant: "error" });
-      }
-    };
-    reader.onerror = () => {
-      setUploadingTermImage(false);
-      toast("Could not read image", { variant: "error" });
-    };
-    reader.readAsDataURL(file);
-  }
-
   function handleTermDefinitionPaste(event: React.ClipboardEvent<HTMLTextAreaElement>) {
     const imageItem = Array.from(event.clipboardData.items).find((item) => item.type.startsWith("image"));
     const file = imageItem?.getAsFile();
     if (!file) return;
     event.preventDefault();
-    uploadTermImage(file);
+    const reader = new FileReader();
+    reader.onload = async (ev) => {
+      const { uploadImageAction } = await import("@/actions/upload");
+      const result = await uploadImageAction(ev.target?.result as string);
+      if (result.success && result.url) setNewTermImageUrl(result.url);
+    };
+    reader.readAsDataURL(file);
   }
 
   async function handleDeleteTerm(termId: string) {
@@ -353,30 +338,11 @@ export function DocumentDetailClient({ doc, rep, initialNotes, initialTerms }: D
                 className="min-h-[80px]"
               />
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="gap-1.5"
-                    disabled={uploadingTermImage}
-                    onClick={() => {
-                      const url = window.prompt("Paste image URL");
-                      if (url) setNewTermImageUrl(url.trim());
-                    }}
-                  >
-                    {uploadingTermImage ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ImagePlus className="h-3.5 w-3.5" />}
-                    Image
-                  </Button>
-                  {newTermImageUrl && (
-                    <div className="flex items-center gap-1 rounded-xl border border-border bg-canvas p-1">
-                      <img src={newTermImageUrl} alt="" className="h-8 w-8 rounded-lg object-cover" />
-                      <button type="button" onClick={() => setNewTermImageUrl("")} className="rounded-lg p-1 text-mossy-gray hover:text-destructive">
-                        <X className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                  )}
-                </div>
+                <ImagePickerButton
+                  imageUrl={newTermImageUrl}
+                  onImageUrl={setNewTermImageUrl}
+                  disabled={savingTerm}
+                />
                 <Button
                   size="sm"
                   onClick={handleSaveTerm}

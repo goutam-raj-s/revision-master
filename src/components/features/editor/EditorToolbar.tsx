@@ -25,6 +25,8 @@ import {
   Type,
   BookOpen,
   Scissors,
+  Link2,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -33,6 +35,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import {
   Tooltip,
@@ -94,6 +97,20 @@ export function EditorToolbar({
   }
 
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const [imageUrlMode, setImageUrlMode] = React.useState(false);
+  const [imageUrlDraft, setImageUrlDraft] = React.useState("");
+
+  function insertImageUrl(url: string) {
+    const trimmed = url.trim();
+    if (!trimmed) return;
+    currentEditor
+      .chain()
+      .focus()
+      .insertContent({ type: "collapsibleImage", attrs: { src: trimmed } })
+      .run();
+    setImageUrlMode(false);
+    setImageUrlDraft("");
+  }
 
   function handleImageButtonClick() {
     fileInputRef.current?.click();
@@ -315,9 +332,41 @@ export function EditorToolbar({
             </PopoverContent>
           </Popover>
 
-          <ToolbarButton onClick={handleImageButtonClick} tooltip="Insert Image (click to upload, or paste/drop)">
-            <ImageIcon className="h-4 w-4" />
-          </ToolbarButton>
+          {imageUrlMode ? (
+            <div className="flex items-center gap-1">
+              <Input
+                autoFocus
+                value={imageUrlDraft}
+                onChange={(e) => setImageUrlDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") { e.preventDefault(); insertImageUrl(imageUrlDraft); }
+                  if (e.key === "Escape") { setImageUrlMode(false); setImageUrlDraft(""); }
+                }}
+                placeholder="https://…"
+                className="h-7 w-40 text-xs"
+              />
+              <button
+                type="button"
+                onClick={() => insertImageUrl(imageUrlDraft)}
+                className="rounded px-2 py-1 text-xs bg-state-today text-white hover:bg-state-today/90"
+                disabled={!imageUrlDraft.trim()}
+              >OK</button>
+              <button
+                type="button"
+                onClick={() => { setImageUrlMode(false); setImageUrlDraft(""); }}
+                className="rounded p-1 text-mossy-gray hover:bg-canvas"
+              ><X className="h-3.5 w-3.5" /></button>
+            </div>
+          ) : (
+            <div className="flex items-center">
+              <ToolbarButton onClick={handleImageButtonClick} tooltip="Upload image from device">
+                <ImageIcon className="h-4 w-4" />
+              </ToolbarButton>
+              <ToolbarButton onClick={() => setImageUrlMode(true)} tooltip="Insert image from URL">
+                <Link2 className="h-4 w-4" />
+              </ToolbarButton>
+            </div>
+          )}
           <input
             ref={fileInputRef}
             type="file"

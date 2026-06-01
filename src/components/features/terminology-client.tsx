@@ -2,14 +2,14 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { BookText, ChevronDown, ChevronRight, Copy, ExternalLink, ImagePlus, Loader2, Pencil, Plus, Search, Trash2, X } from "lucide-react";
+import { BookText, ChevronDown, ChevronRight, Copy, ExternalLink, Loader2, Pencil, Plus, Search, Trash2, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/toast";
 import { createStandaloneTermAction, deleteTermAction, updateTermAction } from "@/actions/notes";
-import { uploadImageAction } from "@/actions/upload";
 import { ImagePreviewThumbnail } from "@/components/features/image-preview-thumbnail";
+import { ImagePickerButton } from "@/components/features/image-picker-button";
 import type { Term, Document } from "@/types";
 
 interface TerminologyClientProps {
@@ -25,7 +25,6 @@ export function TerminologyClient({ terms: initialTerms, docs }: TerminologyClie
   const [newDefinition, setNewDefinition] = React.useState("");
   const [newImageUrl, setNewImageUrl] = React.useState("");
   const [saving, setSaving] = React.useState(false);
-  const [uploadingImage, setUploadingImage] = React.useState(false);
   const [expandedIds, setExpandedIds] = React.useState<Set<string>>(() => new Set());
   const [editingId, setEditingId] = React.useState<string | null>(null);
   const [editTerm, setEditTerm] = React.useState("");
@@ -93,35 +92,6 @@ export function TerminologyClient({ terms: initialTerms, docs }: TerminologyClie
       toast(result.error || "Could not add term", { variant: "error" });
     }
     setSaving(false);
-  }
-
-  async function uploadPastedImage(file: File) {
-    setUploadingImage(true);
-    const reader = new FileReader();
-    reader.onload = async (event) => {
-      const result = await uploadImageAction(event.target?.result as string);
-      setUploadingImage(false);
-      if (result.success && result.url) {
-        setNewImageUrl(result.url);
-        toast("Image attached", { variant: "success" });
-      } else {
-        toast(result.error || "Could not upload image", { variant: "error" });
-      }
-    };
-    reader.onerror = () => {
-      setUploadingImage(false);
-      toast("Could not read image", { variant: "error" });
-    };
-    reader.readAsDataURL(file);
-  }
-
-  function handleDefinitionPaste(event: React.ClipboardEvent<HTMLTextAreaElement>) {
-    const imageItem = Array.from(event.clipboardData.items).find((item) => item.type.startsWith("image"));
-    if (!imageItem) return;
-    const file = imageItem.getAsFile();
-    if (!file) return;
-    event.preventDefault();
-    uploadPastedImage(file);
   }
 
   function startEdit(term: Term) {
@@ -226,39 +196,14 @@ export function TerminologyClient({ terms: initialTerms, docs }: TerminologyClie
             <Textarea
               value={newDefinition}
               onChange={(e) => setNewDefinition(e.target.value)}
-              onPaste={handleDefinitionPaste}
               placeholder="Short explanation"
               className="min-h-[88px] resize-none text-sm"
             />
-            <div className="flex flex-wrap items-center gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="gap-1.5"
-                disabled={uploadingImage}
-                onClick={() => {
-                  const url = window.prompt("Paste image URL");
-                  if (url) setNewImageUrl(url.trim());
-                }}
-              >
-                {uploadingImage ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ImagePlus className="h-3.5 w-3.5" />}
-                Image
-              </Button>
-              {newImageUrl && (
-                <div className="flex items-center gap-2 rounded-xl border border-border bg-canvas px-2 py-1">
-                  <img src={newImageUrl} alt="" className="h-9 w-9 rounded-lg object-cover" />
-                  <button
-                    type="button"
-                    onClick={() => setNewImageUrl("")}
-                    className="rounded-lg p-1 text-mossy-gray hover:bg-surface hover:text-destructive"
-                    aria-label="Remove image"
-                  >
-                    <X className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-              )}
-            </div>
+            <ImagePickerButton
+              imageUrl={newImageUrl}
+              onImageUrl={setNewImageUrl}
+              disabled={saving}
+            />
             <div className="flex justify-end gap-2">
               <Button
                 type="button"
@@ -398,34 +343,11 @@ export function TerminologyClient({ terms: initialTerms, docs }: TerminologyClie
                               placeholder="Short explanation"
                               className="min-h-[80px] resize-none text-sm"
                             />
-                            <div className="flex flex-wrap items-center gap-2">
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                className="gap-1.5"
-                                onClick={() => {
-                                  const url = window.prompt("Paste image URL", editImageUrl);
-                                  if (url !== null) setEditImageUrl(url.trim());
-                                }}
-                              >
-                                <ImagePlus className="h-3.5 w-3.5" />
-                                Image
-                              </Button>
-                              {editImageUrl && (
-                                <div className="flex items-center gap-2 rounded-xl border border-border bg-canvas px-2 py-1">
-                                  <img src={editImageUrl} alt="" className="h-9 w-9 rounded-lg object-cover" />
-                                  <button
-                                    type="button"
-                                    onClick={() => setEditImageUrl("")}
-                                    className="rounded-lg p-1 text-mossy-gray hover:bg-surface hover:text-destructive"
-                                    aria-label="Remove image"
-                                  >
-                                    <X className="h-3.5 w-3.5" />
-                                  </button>
-                                </div>
-                              )}
-                            </div>
+                            <ImagePickerButton
+                              imageUrl={editImageUrl}
+                              onImageUrl={setEditImageUrl}
+                              disabled={editSaving}
+                            />
                             <div className="flex justify-end gap-2">
                               <Button type="button" variant="ghost" size="sm" onClick={cancelEdit} disabled={editSaving}>
                                 Cancel
