@@ -2,12 +2,12 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { BookText, ChevronDown, ChevronRight, Copy, ExternalLink, ImagePlus, Loader2, Plus, Search, Trash2, X } from "lucide-react";
+import { BookText, ChevronDown, ChevronRight, Copy, ExternalLink, ImagePlus, Loader2, Pencil, Plus, Search, Trash2, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/toast";
-import { createStandaloneTermAction, deleteTermAction } from "@/actions/notes";
+import { createStandaloneTermAction, deleteTermAction, updateTermAction } from "@/actions/notes";
 import { uploadImageAction } from "@/actions/upload";
 import { ImagePreviewThumbnail } from "@/components/features/image-preview-thumbnail";
 import type { Term, Document } from "@/types";
@@ -27,6 +27,11 @@ export function TerminologyClient({ terms: initialTerms, docs }: TerminologyClie
   const [saving, setSaving] = React.useState(false);
   const [uploadingImage, setUploadingImage] = React.useState(false);
   const [expandedIds, setExpandedIds] = React.useState<Set<string>>(() => new Set());
+  const [editingId, setEditingId] = React.useState<string | null>(null);
+  const [editTerm, setEditTerm] = React.useState("");
+  const [editDefinition, setEditDefinition] = React.useState("");
+  const [editImageUrl, setEditImageUrl] = React.useState("");
+  const [editSaving, setEditSaving] = React.useState(false);
 
   const docMap = React.useMemo(() => {
     const m = new Map<string, Document>();
@@ -117,6 +122,43 @@ export function TerminologyClient({ terms: initialTerms, docs }: TerminologyClie
     if (!file) return;
     event.preventDefault();
     uploadPastedImage(file);
+  }
+
+  function startEdit(term: Term) {
+    setEditingId(term.id);
+    setEditTerm(term.term);
+    setEditDefinition(term.definition ?? "");
+    setEditImageUrl(term.thumbnailUrl ?? "");
+    setExpandedIds((prev) => new Set(prev).add(term.id));
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+    setEditTerm("");
+    setEditDefinition("");
+    setEditImageUrl("");
+  }
+
+  async function handleSaveEdit(termId: string) {
+    if (!editTerm.trim()) return;
+    setEditSaving(true);
+    const result = await updateTermAction(termId, editTerm, editDefinition, editImageUrl || undefined);
+    if (result.success) {
+      setTerms((prev) =>
+        prev
+          .map((t) =>
+            t.id === termId
+              ? { ...t, term: editTerm.trim(), definition: editDefinition.trim(), thumbnailUrl: editImageUrl || undefined }
+              : t
+          )
+          .sort((a, b) => a.term.localeCompare(b.term))
+      );
+      cancelEdit();
+      toast("Term updated", { variant: "success" });
+    } else {
+      toast(result.error || "Could not update term", { variant: "error" });
+    }
+    setEditSaving(false);
   }
 
   function toggleExpanded(termId: string) {
@@ -326,6 +368,13 @@ export function TerminologyClient({ terms: initialTerms, docs }: TerminologyClie
                         <Copy className="h-3.5 w-3.5" />
                       </button>
                       <button
+                        onClick={() => startEdit(term)}
+                        className="p-1.5 text-mossy-gray opacity-100 transition-all hover:bg-canvas hover:text-state-today sm:opacity-0 sm:group-hover:opacity-100"
+                        aria-label={`Edit term ${term.term}`}
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </button>
+                      <button
                         onClick={() => handleDelete(term.id)}
                         className="p-1.5 text-mossy-gray opacity-100 transition-all hover:bg-destructive/10 hover:text-destructive sm:opacity-0 sm:group-hover:opacity-100"
                         aria-label={`Delete term ${term.term}`}
@@ -335,17 +384,78 @@ export function TerminologyClient({ terms: initialTerms, docs }: TerminologyClie
                     </div>
                     {isExpanded && (
                       <div className="border-t border-border/60 px-3 pb-3 pt-2 sm:px-4 sm:pb-4">
-                        {term.definition && (
-                          <p className="text-sm leading-relaxed text-mossy-gray">{term.definition}</p>
-                        )}
-                        {sourceDoc && (
-                          <Link
-                            href={`/documents/${sourceDoc.id}`}
-                            className="mt-2 inline-flex items-center gap-1.5 text-xs text-state-today hover:underline sm:hidden"
-                          >
-                            <ExternalLink className="h-3 w-3" />
-                            {sourceDoc.title}
-                          </Link>
+                        {editingId === term.id ? (
+                          <div className="space-y-2">
+                            <Input
+                              value={editTerm}
+                              onChange={(e) => setEditTerm(e.target.value)}
+                              placeholder="Term"
+                              className="h-9"
+                            />
+                            <Textarea
+                              value={editDefinition}
+                              onChange={(e) => setEditDefinition(e.target.value)}
+                              placeholder="Short explanation"
+                              className="min-h-[80px] resize-none text-sm"
+                            />
+                            <div className="flex flex-wrap items-center gap-2">
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="gap-1.5"
+                                onClick={() => {
+                                  const url = window.prompt("Paste image URL", editImageUrl);
+                                  if (url !== null) setEditImageUrl(url.trim());
+                                }}
+                              >
+                                <ImagePlus className="h-3.5 w-3.5" />
+                                Image
+                              </Button>
+                              {editImageUrl && (
+                                <div className="flex items-center gap-2 rounded-xl border border-border bg-canvas px-2 py-1">
+                                  <img src={editImageUrl} alt="" className="h-9 w-9 rounded-lg object-cover" />
+                                  <button
+                                    type="button"
+                                    onClick={() => setEditImageUrl("")}
+                                    className="rounded-lg p-1 text-mossy-gray hover:bg-surface hover:text-destructive"
+                                    aria-label="Remove image"
+                                  >
+                                    <X className="h-3.5 w-3.5" />
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                            <div className="flex justify-end gap-2">
+                              <Button type="button" variant="ghost" size="sm" onClick={cancelEdit} disabled={editSaving}>
+                                Cancel
+                              </Button>
+                              <Button
+                                type="button"
+                                size="sm"
+                                onClick={() => handleSaveEdit(term.id)}
+                                disabled={editSaving || !editTerm.trim()}
+                              >
+                                {editSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+                                Save
+                              </Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            {term.definition && (
+                              <p className="text-sm leading-relaxed text-mossy-gray">{term.definition}</p>
+                            )}
+                            {sourceDoc && (
+                              <Link
+                                href={`/documents/${sourceDoc.id}`}
+                                className="mt-2 inline-flex items-center gap-1.5 text-xs text-state-today hover:underline sm:hidden"
+                              >
+                                <ExternalLink className="h-3 w-3" />
+                                {sourceDoc.title}
+                              </Link>
+                            )}
+                          </>
                         )}
                       </div>
                     )}
