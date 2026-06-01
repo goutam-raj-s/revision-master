@@ -151,22 +151,17 @@ export async function GET(
 
   const users = await getUsersCollection();
 
-  // Email collision check: existing email/password account
-  const existingByEmail = await users.findOne({
-    email: profile.email.toLowerCase(),
-  });
-
-  if (existingByEmail && (!existingByEmail.provider || existingByEmail.provider === "email")) {
-    const response = NextResponse.redirect(new URL("/login?error=email_exists", appUrl));
-    response.cookies.set("oauth_state", "", { maxAge: 0, path: "/" });
-    return response;
-  }
-
-  // Find or create OAuth user
+  // Find or create OAuth user — also match by email to allow existing
+  // email/password users to sign in via OAuth (account linking)
   let user = await users.findOne({
     provider: p,
     providerAccountId: profile.id,
   });
+
+  if (!user) {
+    // Check if an account with this email already exists (any provider)
+    user = await users.findOne({ email: profile.email.toLowerCase() });
+  }
 
   if (!user) {
     const now = new Date();
