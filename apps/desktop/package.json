@@ -1,0 +1,82 @@
+{
+  "name": "revison-desktop",
+  "productName": "lostbae",
+  "version": "1.0.0",
+  "description": "Revison desktop app — thin Electron wrapper around the hosted web app",
+  "private": true,
+  "main": "dist/main.js",
+  "scripts": {
+    "compile": "tsc -p tsconfig.json",
+    "dev": "npm run compile && electron . --env=dev",
+    "start": "npm run compile && electron .",
+    "build:mac": "npm run compile && electron-builder --mac --x64 --arm64",
+    "build:win": "npm run compile && electron-builder --win --x64",
+    "build:all": "npm run compile && electron-builder --mac --x64 --arm64 --win"
+  },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^25.1.8",
+    "typescript": "^5.6.0"
+  },
+  "build": {
+    "appId": "com.lostbae.app",
+    "productName": "lostbae",
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "goutam-raj-s",
+        "repo": "revision-master"
+      }
+    ],
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "dist/**/*",
+      "static/**/*",
+      "build/icon.png"
+    ],
+    "mac": {
+      "category": "public.app-category.productivity",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ],
+      "icon": "build/icon.png",
+      "identity": null
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    }
+  },
+  "dependencies": {
+    "electron-updater": "^6.8.9"
+  }
+}

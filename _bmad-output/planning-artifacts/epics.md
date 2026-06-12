@@ -1,6 +1,10 @@
 ---
 stepsCompleted: ['step-01-validate-prerequisites.md', 'step-02-design-epics.md', 'step-03-create-stories.md', 'step-04-final-validation.md']
 inputDocuments: ['prd.md', 'architecture.md', 'ux-design-specification.md']
+epic11Run:
+  date: 2026-06-13
+  stepsCompleted: ['step-01-validate-prerequisites.md', 'step-02-design-epics.md', 'step-03-create-stories.md', 'step-04-final-validation.md']
+  inputDocuments: ['user directive', 'code verification: src/app/api/auth, src/app/api/google-docs, src/lib/auth/oauth-url.ts, src/components/features']
 workflowType: 'create-epics-and-stories'
 ---
 
@@ -64,6 +68,23 @@ NFR15: Fully semantic DOM structure guaranteeing keyboard navigability.
 - **Error Handling:** Use Next.js `error.tsx` boundaries at route level. Implement Zod schema validation on all Server Action inputs.
 - **Project Structure:** App Router with route groups: `(admin)`, `(auth)`, `(dashboard)`, `/study/[docId]` for Focus Mode.
 
+### Desktop Distribution Requirements (Epic 11)
+
+Source: user directive (2026-06-13) + code verification of `src/app/api/auth/[provider]/`, `src/app/api/google-docs/`, `src/lib/auth/oauth-url.ts`, and clipboard/popup/iframe usage across `src/components/features/`. The PRD/Architecture contain no desktop coverage; these requirements supplement them.
+
+D-FR1: Installable desktop apps for macOS (.dmg, Intel + Apple Silicon) and Windows (.exe NSIS; .msi only if trivial) built with electron-builder.
+D-FR2: Electron BrowserWindow loads the deployed Revison web URL, configurable per environment (dev/staging/prod); no bundled or embedded server.
+D-FR3: All auth flows work end-to-end inside Electron — email/password, Google/GitHub/Discord OAuth, and Google Docs import OAuth. Verified in code: all OAuth uses same-window redirects back to the hosted origin (`getOAuthAppUrl` honors `NEXT_PUBLIC_APP_URL`), so no custom protocol handler is required — navigation to provider domains must be allowed and session cookies must persist.
+D-FR4: Native desktop affordances — app/dock/taskbar icon, native menus, system tray, single-instance lock, window-state persistence, auto-launch (optional), external links open in the system browser.
+D-FR5 (stretch): Auto-update via electron-updater plus code signing (macOS notarization, Windows signing).
+
+D-NFR1: Zero regression — no changes to existing web business logic, UI, or API routes; browser users unaffected.
+D-NFR2: 100% feature parity inside the shell — verified surfaces include `window.open`/`target="_blank"` external links, embedded Google Docs/YouTube iframes, `navigator.clipboard` read/write (9 components), and in-app keyboard shortcuts (Cmd+K, Cmd+/, Cmd+Shift+H) which native menu accelerators must not shadow.
+D-NFR3: Automatic sync — the shell loads the remote URL, so every web deploy is immediately reflected in the desktop app with no desktop release.
+D-NFR4: Lightweight, isolated shell — lives in `apps/desktop/`, zero coupling to `src/`, no duplicated codebase.
+D-NFR5: Network required (no offline mode); offline state shows a graceful fallback screen with retry/auto-reconnect instead of a blank window.
+D-NFR6: Electron security baseline — `contextIsolation: true`, `nodeIntegration: false`, navigation allowlisted to the app origin + OAuth provider domains, controlled permission handler for clipboard.
+
 ### UX Design Requirements
 
 UX-DR1: Implement "Zen Productivity (Mint Tint)" global theme — sage/mint cream canvas (#f1f5f2), pristine white card surfaces (#FFFFFF) with border-radius 1.5rem, deep forest-slate typography (#1e2d24), muted mossy gray secondary text (#6b7f73).
@@ -103,6 +124,13 @@ FR18: Epic 6 — Core dashboard metrics
 FR19: Epic 6 — Most Repeated / Least Revised analytics
 FR20: Epic 1 — Gemini API key secure storage in settings
 
+D-FR1: Epic 11 — Installable macOS/Windows apps via electron-builder
+D-FR2: Epic 11 — BrowserWindow loads deployed URL, per-env config
+D-FR3: Epic 11 — All auth/OAuth flows verified inside Electron
+D-FR4: Epic 11 — Native menus, tray, icons, single-instance, window state
+D-FR5: Epic 11 — (Stretch) auto-update + code signing
+D-NFR1–D-NFR6: Epic 11 — Zero regression, full parity, auto-sync, isolated shell, offline fallback, security baseline
+
 ## Epic List
 
 ### Epic 1: Project Foundation & Authentication
@@ -137,6 +165,17 @@ The full Zen Productivity visual system is applied across all views — semantic
 ### Epic 8: AI Acceleration & Advanced Learning
 Integrate Gemini AI and advanced workflows to shift the user from passive reading into active, automated recall. The system auto-generates terminology, creates intelligent "Quiz Me" flashcards, suggests tags, and provides built-in focus timers.
 **FRs covered:** FR21, FR22, FR23, FR24, FR25, FR26, FR27
+
+### Epic 9: Advanced Editor & Hierarchical Workspace
+Evolves the document editor into a powerful hierarchical workspace with sub-pages, collapsible navigation, sticky highlighter, and collapsible image annotations. (Detailed below; all stories completed.)
+
+### Epic 10: Google Docs Import Experience
+Seamless Google Docs import and sync via Google OAuth. (Tracked in `_bmad-output/implementation-artifacts/sprint-status.yaml` and story file `10-1-seamless-google-docs-import-and-sync.md`; in progress.)
+
+### Epic 11: Desktop Application Distribution (Electron Thin Wrapper)
+Users can install Revison as a native macOS/Windows desktop app that loads the production web app with full feature parity — auth, OAuth, Google Docs import, clipboard, embeds, and shortcuts all work identically — and stays automatically in sync with every web deploy (the shell loads the remote URL; no desktop release needed for web changes). No web codebase changes; the shell lives isolated in `apps/desktop/`.
+**FRs covered:** D-FR1, D-FR2, D-FR3, D-FR4, D-FR5 (stretch)
+**NFRs covered:** D-NFR1–D-NFR6
 
 ---
 
@@ -773,3 +812,117 @@ Evolves the document editor into a powerful hierarchical workspace with professi
 ### Story 9.5: Resizable Media & Clipboard Copy [COMPLETED]
 **Status:** ✅ COMPLETED
 **Description:** Add a drag-to-resize handle for expanded images and a one-click "Copy" button to the image overlay to write media back to the system clipboard.
+
+---
+
+## Epic 11: Desktop Application Distribution (Electron Thin Wrapper)
+
+Users can install Revison as a native macOS/Windows desktop app that loads the production web app with full feature parity — auth, OAuth, Google Docs import, clipboard, embeds, and shortcuts all work identically — and stays automatically in sync with every web deploy (the shell loads the remote URL; no desktop release needed for web changes). No web codebase changes; the shell lives isolated in `apps/desktop/`.
+
+### Story 11.1: Electron Shell Scaffolding
+
+As a **developer**,
+I want a minimal Electron project scaffolded in `apps/desktop/` with its own dependencies and dev workflow,
+So that the desktop shell can be built and run without touching or coupling to the existing web codebase.
+
+**Acceptance Criteria:**
+
+**Given** the existing repo with the Next.js app at the root
+**When** `apps/desktop/` is created with its own `package.json`, TypeScript config, and electron + electron-builder dev dependencies
+**Then** `npm install && npm run dev` inside `apps/desktop/` launches an Electron window
+**And** no file under `src/` is modified, and the root `package.json`/build are unaffected (web `npm run build` still passes)
+**And** main/preload processes are TypeScript with `contextIsolation: true` and `nodeIntegration: false` from the first commit
+**And** `apps/desktop/` has its own `.gitignore` entries for `dist/`/`out/` artifacts
+
+### Story 11.2: Remote URL Loading with Per-Environment Config & Security Baseline
+
+As a **user**,
+I want the desktop app to load the deployed Revison web app for the configured environment,
+So that I always see the live product, automatically in sync with every web deploy.
+
+**Acceptance Criteria:**
+
+**Given** an environment config (dev/staging/prod URL, default prod) read from a config file or `REVISON_ENV`/`REVISON_APP_URL` override
+**When** the app starts
+**Then** the BrowserWindow loads the configured URL and all app pages render and navigate normally
+**And** in-app navigation is allowlisted to the app origin plus OAuth provider domains (`accounts.google.com`, `github.com`, `discord.com`); any other navigation is cancelled and opened in the system browser
+**And** `window.open` / `target="_blank"` usages (external-video-player, study pages, media player, settings) open in the system browser, never a child Electron window
+**And** embedded iframes (Google Docs viewer, YouTube players) continue to render in-window
+**And** a permission handler grants clipboard read/write so all copy buttons and the CollapsibleImage "Copy" work
+**And** `contextIsolation: true`, `nodeIntegration: false`, and no remote-content Node access are verified
+
+### Story 11.3: Auth & Functionality Parity Verification Inside Electron
+
+As a **user**,
+I want every login method and feature to work identically in the desktop app,
+So that nothing is lost compared to the browser.
+
+**Acceptance Criteria:**
+
+**Given** the shell from Story 11.2 pointed at a deployed environment
+**When** I sign in via email/password, Google, GitHub, and Discord OAuth
+**Then** each flow completes in-window (provider page → hosted callback → dashboard) with the `oauth_state` cookie honored and the session persisting across app restarts
+**And** Google Docs import OAuth (`/api/google-docs/auth`) completes and import/sync works
+**And** password reset emails link back to the hosted app and open correctly
+**And** a parity checklist is executed and recorded covering: clipboard copy (all 9 components), Google Doc/YouTube iframes, glass modal study flow, keyboard shortcuts (Cmd+K, Cmd+/, Cmd+Shift+H), share links, image upload (Cloudinary + Base64 fallback)
+**And** any gap found is fixed in the shell config only — zero changes to web code (D-NFR1); if a web change is unavoidable, it is escalated to the user before implementation
+
+### Story 11.4: Native Window & Desktop Behavior
+
+As a **user**,
+I want the desktop app to behave like a real native application,
+So that it integrates cleanly with my OS workflow.
+
+**Acceptance Criteria:**
+
+**Given** the running shell
+**When** I use the app day-to-day
+**Then** it shows the Revison icon in dock/taskbar and a native application menu (with standard Edit/copy-paste accelerators that don't shadow in-app shortcuts like Cmd+K / Cmd+Shift+H)
+**And** a system tray icon offers Show/Hide and Quit
+**And** launching a second instance focuses the existing window instead of opening a new one (single-instance lock)
+**And** window size/position persist across restarts
+**And** when offline or the URL fails to load, a graceful local fallback screen appears with a Retry button and auto-reconnect — never a blank/error chrome page
+**And** auto-launch at login is available as an optional toggle (off by default)
+
+### Story 11.5: macOS Build & Packaging
+
+As a **macOS user**,
+I want a `.dmg` installer that works on both Intel and Apple Silicon,
+So that I can install Revison like any Mac app.
+
+**Acceptance Criteria:**
+
+**Given** the completed shell
+**When** `npm run build:mac` runs in `apps/desktop/`
+**Then** electron-builder produces a `.dmg` (universal binary, or x64 + arm64 artifacts) with correct app name, icon, and version
+**And** the installed app launches and passes the Story 11.3 parity checklist
+**And** unsigned-build caveats (Gatekeeper "unidentified developer" and the right-click → Open bypass) are documented in `apps/desktop/README.md` until Story 11.7 lands
+**And** builds run locally via npm scripts; CI automation is explicitly out of scope
+
+### Story 11.6: Windows Build & Packaging
+
+As a **Windows user**,
+I want an installer for Revison,
+So that I can install it like any Windows app.
+
+**Acceptance Criteria:**
+
+**Given** the completed shell
+**When** `npm run build:win` runs
+**Then** electron-builder produces an NSIS `.exe` installer with correct name, icon, version, Start Menu shortcut, and uninstaller (`.msi` additionally only if it requires no extra tooling)
+**And** the installed app launches and passes the Story 11.3 parity checklist
+**And** unsigned-build caveats (SmartScreen "More info → Run anyway") are documented in the README until Story 11.7 lands
+
+### Story 11.7 (Stretch): Code Signing, Notarization & Auto-Update
+
+As a **user**,
+I want signed installers that update themselves,
+So that installation is warning-free and I always run the latest shell.
+
+**Acceptance Criteria:**
+
+**Given** Apple Developer + Windows signing certificates are available (user-provided; story blocks gracefully without them)
+**When** release builds are produced
+**Then** the macOS app is signed + notarized (no Gatekeeper warning) and the Windows installer is signed (no SmartScreen warning)
+**And** electron-updater checks a configured release feed (e.g. GitHub Releases) on launch, downloads updates in the background, and applies on restart with user notification
+**And** failed update checks never block app startup (silent failover)
