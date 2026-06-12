@@ -18,6 +18,7 @@ import {
   FileText,
   ImageIcon,
 } from "lucide-react";
+import { GoogleDocsTab } from "@/components/features/google-docs-importer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -954,9 +955,14 @@ function FileUploadTab({ onSuccess }: { onSuccess: (docId: string) => void }) {
 }
 
 // ── Main AddDocumentForm ──────────────────────────────────────────────────────
-export function AddDocumentForm() {
+interface AddDocumentFormProps {
+  initialTab?: "link" | "file" | "google";
+  googleStatus?: "connected" | "error" | null;
+}
+
+export function AddDocumentForm({ initialTab, googleStatus }: AddDocumentFormProps = {}) {
   const router = useRouter();
-  const [activeTab, setActiveTab] = React.useState<"link" | "file">("link");
+  const [activeTab, setActiveTab] = React.useState<"link" | "file" | "google">(initialTab ?? "link");
   const [similarMatches, setSimilarMatches] = React.useState<SimilarityMatch[]>([]);
   const [showSimilarity, setShowSimilarity] = React.useState(false);
   const [newDocId, setNewDocId] = React.useState<string | null>(null);
@@ -1040,7 +1046,7 @@ export function AddDocumentForm() {
         <button
           type="button"
           onClick={() => setActiveTab("link")}
-          className={`flex-1 flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all ${
+          className={`flex-1 flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-all ${
             activeTab === "link"
               ? "bg-surface shadow-card text-forest-slate"
               : "text-mossy-gray hover:text-forest-slate"
@@ -1053,7 +1059,7 @@ export function AddDocumentForm() {
         <button
           type="button"
           onClick={() => setActiveTab("file")}
-          className={`flex-1 flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all ${
+          className={`flex-1 flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-all ${
             activeTab === "file"
               ? "bg-surface shadow-card text-forest-slate"
               : "text-mossy-gray hover:text-forest-slate"
@@ -1061,14 +1067,30 @@ export function AddDocumentForm() {
           aria-pressed={activeTab === "file"}
         >
           <Upload className="h-4 w-4" />
-          File Upload
+          File
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab("google")}
+          className={`flex-1 flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-all ${
+            activeTab === "google"
+              ? "bg-surface shadow-card text-forest-slate"
+              : "text-mossy-gray hover:text-forest-slate"
+          }`}
+          aria-pressed={activeTab === "google"}
+        >
+          <FileText className="h-4 w-4" />
+          Google Docs
         </button>
       </div>
 
-      {activeTab === "link" ? (
-        <LinkTab onSuccess={handleSuccess} />
-      ) : (
-        <FileUploadTab onSuccess={(docId) => handleSuccess(docId)} />
+      {activeTab === "link" && <LinkTab onSuccess={handleSuccess} />}
+      {activeTab === "file" && <FileUploadTab onSuccess={(docId) => handleSuccess(docId)} />}
+      {activeTab === "google" && (
+        <GoogleDocsTab
+          onSuccess={(docId) => handleSuccess(docId)}
+          initialStatus={googleStatus}
+        />
       )}
     </div>
   );
