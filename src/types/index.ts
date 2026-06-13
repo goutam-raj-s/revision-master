@@ -352,6 +352,14 @@ export interface SimilarityMatch {
   reason: string;
 }
 
+export interface DbStatShare {
+  _id: ObjectId;
+  token: string;
+  userId: ObjectId;
+  name: string;
+  createdAt: Date;
+}
+
 // ─── Document Shares ───────────────────────────────────────────────────────────
 
 export interface DbDocumentShare {

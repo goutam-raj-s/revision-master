@@ -6,6 +6,7 @@ import { AnalyticsInsights } from "@/components/features/analytics-insights";
 import { ReviewTrendChartDynamic as ReviewTrendChart } from "@/components/features/review-trend-chart-dynamic";
 import { Card } from "@/components/ui/card";
 import { Achievements } from "@/components/features/achievements";
+import { ShareStatsButton } from "@/components/features/share-stats-button";
 
 export const metadata = { title: "Your Stats" };
 
@@ -26,9 +27,12 @@ export default async function StatsPage() {
 
   return (
     <div className="space-y-6 sm:space-y-8">
-      <div>
-        <h1 className="text-xl font-bold text-forest-slate sm:text-2xl">Your Stats</h1>
-        <p className="mt-0.5 text-xs text-mossy-gray sm:text-sm">Your learning, measured over time.</p>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-bold text-forest-slate sm:text-2xl">Your Stats</h1>
+          <p className="mt-0.5 text-xs text-mossy-gray sm:text-sm">Your learning, measured over time.</p>
+        </div>
+        <ShareStatsButton />
       </div>
 
       {/* Summary numbers */}

@@ -2,7 +2,13 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { BookText, ChevronDown, ChevronRight, Copy, ExternalLink, GraduationCap, Loader2, Pencil, Plus, Search, Trash2, X } from "lucide-react";
+import { BookText, ChevronDown, ChevronRight, Copy, Download, ExternalLink, GraduationCap, Loader2, Pencil, Plus, Search, Trash2, X } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -23,6 +29,32 @@ export function TerminologyClient({ terms: initialTerms, docs }: TerminologyClie
   const [search, setSearch] = React.useState("");
   const [showComposer, setShowComposer] = React.useState(false);
   const [practicing, setPracticing] = React.useState(false);
+
+  function exportGlossary(format: "md" | "csv") {
+    let content: string;
+    let mime: string;
+    let ext: string;
+    if (format === "md") {
+      content = `# Glossary\n\n${terms
+        .map((t) => `## ${t.term}\n\n${t.definition}\n`)
+        .join("\n")}`;
+      mime = "text/markdown";
+      ext = "md";
+    } else {
+      const esc = (s: string) => `"${(s ?? "").replace(/"/g, '""')}"`;
+      content = `Term,Definition\n${terms.map((t) => `${esc(t.term)},${esc(t.definition)}`).join("\n")}`;
+      mime = "text/csv";
+      ext = "csv";
+    }
+    const blob = new Blob([content], { type: mime });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `lostbae-glossary-${new Date().toISOString().slice(0, 10)}.${ext}`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast(`Glossary exported (${ext.toUpperCase()})`, { variant: "success" });
+  }
   const [newTerm, setNewTerm] = React.useState("");
   const [newDefinition, setNewDefinition] = React.useState("");
   const [newImageUrl, setNewImageUrl] = React.useState("");
@@ -167,6 +199,20 @@ export function TerminologyClient({ terms: initialTerms, docs }: TerminologyClie
           )}
         </div>
         <div className="flex gap-2 self-start sm:self-auto">
+          {terms.length > 0 && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button type="button" variant="outline" className="h-9 gap-2">
+                  <Download className="h-4 w-4" />
+                  Export
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => exportGlossary("md")}>Markdown (.md)</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => exportGlossary("csv")}>CSV (.csv)</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
           {terms.length > 0 && (
             <Button
               type="button"
