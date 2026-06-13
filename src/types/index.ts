@@ -39,6 +39,8 @@ export interface DbReviewEvent {
   reviewedAt: Date;
   /** Local calendar day key (YYYY-MM-DD) for streak/heatmap aggregation. */
   dayKey: string;
+  /** How well the user recalled this item. */
+  confidence?: "easy" | "okay" | "struggled";
 }
 
 export interface DbLoginRecord {

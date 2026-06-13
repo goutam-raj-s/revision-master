@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/select";
 import { toast } from "@/components/ui/toast";
 import { completeReviewAction, rescheduleDocAction, updateDocumentAction } from "@/actions/documents";
+import type { ReviewConfidence } from "@/lib/streak";
 import { createNoteAction, createTermAction, getDocNotes, getDocTerms, deleteNoteAction } from "@/actions/notes";
 import type { TaskItem, Note, Term, Difficulty } from "@/types";
 
@@ -83,11 +84,17 @@ export function GlassModal({ task, onClose, onComplete }: GlassModalProps) {
     return () => document.removeEventListener("keydown", handleKey);
   }, [task, onClose]);
 
-  async function handleComplete() {
+  async function handleComplete(confidence?: ReviewConfidence) {
     if (!task) return;
     setCompleting(true);
-    await completeReviewAction(task.doc.id);
-    toast("Review complete!", { variant: "success", description: "Rescheduled for next interval" });
+    await completeReviewAction(task.doc.id, confidence);
+    const msg =
+      confidence === "easy"
+        ? "Nice — pushed further out"
+        : confidence === "struggled"
+          ? "We'll show this again tomorrow"
+          : "Rescheduled for next interval";
+    toast("Review complete!", { variant: "success", description: msg });
     onComplete(task.doc.id);
     onClose();
   }
@@ -390,20 +397,43 @@ export function GlassModal({ task, onClose, onComplete }: GlassModalProps) {
               </SimpleTooltip>
             </div>
 
-            {/* Complete */}
-            <Button
-              className="w-full"
-              onClick={handleComplete}
-              disabled={completing}
-            >
-              {completing ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <CheckCircle2 className="h-4 w-4" />
-              )}
-              Mark Complete
-              <span className="ml-auto text-white/50 text-xs font-mono">[E]</span>
-            </Button>
+            {/* Complete — rate your recall, which tunes the next interval */}
+            <div className="space-y-1.5">
+              <p className="text-center text-[11px] font-medium text-mossy-gray">How well did you recall this?</p>
+              <div className="grid grid-cols-3 gap-1.5">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleComplete("struggled")}
+                  disabled={completing}
+                  className="flex-col gap-0.5 h-auto py-2 text-state-stale hover:bg-state-stale/10"
+                >
+                  <span className="text-base leading-none">😣</span>
+                  <span className="text-[11px]">Struggled</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleComplete("okay")}
+                  disabled={completing}
+                  className="flex-col gap-0.5 h-auto py-2 text-state-upcoming hover:bg-state-upcoming/10"
+                >
+                  <span className="text-base leading-none">🙂</span>
+                  <span className="text-[11px]">Okay</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleComplete("easy")}
+                  disabled={completing}
+                  className="flex-col gap-0.5 h-auto py-2 text-state-today hover:bg-state-today/10"
+                >
+                  <span className="text-base leading-none">😎</span>
+                  <span className="text-[11px]">Easy</span>
+                </Button>
+              </div>
+              <p className="text-center text-[10px] text-mossy-gray/70">Press [E] for Okay</p>
+            </div>
           </div>
         </div>
         </ResizablePanelGroup>

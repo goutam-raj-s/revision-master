@@ -3,6 +3,7 @@ import Link from "next/link";
 import { getTaskQueue } from "@/actions/queue";
 import { getDashboardStats, getReviewTrendAction, getStreakAction } from "@/actions/analytics";
 import { StreakCard } from "@/components/features/streak-card";
+import { DashboardBrief } from "@/components/features/dashboard-brief";
 import { TaskQueue } from "@/components/features/task-queue";
 import { StatsCards } from "@/components/features/stats-cards";
 import { AnalyticsInsights } from "@/components/features/analytics-insights";
@@ -86,6 +87,14 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     getStreakAction(),
   ]);
 
+  // Derive "today's focus" from the first queue item (doc or youtube).
+  const first = tasks[0];
+  const next = first
+    ? "source" in first
+      ? { title: first.session.videoTitle, href: `/study/youtube?v=${first.session.videoId}` }
+      : { title: first.doc.title, href: `/study/${first.doc.id}` }
+    : null;
+
   return (
     <div className="space-y-4 sm:space-y-6 md:space-y-8">
       {/* Page header */}
@@ -113,6 +122,11 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
 
       {/* Onboarding — only for new users with 0 docs */}
       <OnboardingBanner totalDocs={stats.totalDocs} />
+
+      {/* Today's focus + weakest tags */}
+      {stats.totalDocs > 0 && (
+        <DashboardBrief next={next} dueCount={stats.pendingRevisions} weakestTags={stats.leastRevisedAreas} />
+      )}
 
       {/* Stats */}
       <StatsCards stats={stats} />

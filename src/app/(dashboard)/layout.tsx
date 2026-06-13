@@ -8,6 +8,7 @@ import { getUserDocuments, getAllUserTags } from "@/actions/documents";
 import { getAllTerms } from "@/actions/notes";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ShortcutsHelp } from "@/components/features/shortcuts-help";
+import { PomodoroTimer } from "@/components/features/pomodoro-timer";
 
 
 export default async function DashboardLayout({
@@ -38,6 +39,7 @@ export default async function DashboardLayout({
         </main>
         <CommandPalette documents={docs} tags={tags} terms={termItems} />
         <ShortcutsHelp />
+        <PomodoroTimer />
         <GlobalClipperWidget />
       </div>
     </TooltipProvider>

@@ -12,7 +12,7 @@ import {
   serializeDoc,
 } from "@/lib/db/collections";
 import { getCustomNextReviewDate, getNextReviewDate } from "@/lib/srs/engine";
-import { logReviewEvent } from "@/lib/streak";
+import { logReviewEvent, type ReviewConfidence } from "@/lib/streak";
 import {
   isValidGoogleDocUrl,
   computeTitleSimilarity,
@@ -457,7 +457,8 @@ export async function rescheduleDocAction(
 }
 
 export async function completeReviewAction(
-  docId: string
+  docId: string,
+  confidence?: ReviewConfidence
 ): Promise<ActionResult> {
   const user = await requireAuth();
   const userId = new ObjectId(user.id);
@@ -475,7 +476,10 @@ export async function completeReviewAction(
   if (!rep) return { success: false, error: "Repetition record not found." };
 
   const newReviewCount = rep.reviewCount + 1;
-  const nextReviewDate = getNextReviewDate(rootDoc.difficulty, newReviewCount);
+  const nextReviewDate = applyConfidence(
+    getNextReviewDate(rootDoc.difficulty, newReviewCount),
+    confidence
+  );
 
   await reps.updateOne(
     { docId: rootDocId, userId },
@@ -494,10 +498,20 @@ export async function completeReviewAction(
     { $set: { status: "revision", updatedAt: new Date() } }
   );
 
-  await logReviewEvent(userId, rootDocId, "document");
+  await logReviewEvent(userId, rootDocId, "document", confidence);
 
   revalidatePath("/dashboard");
   return { success: true };
+}
+
+/** Adjusts a computed next-review date by how confidently the user recalled it:
+ *  "easy" pushes it ~50% further out, "struggled" pulls it back to tomorrow. */
+function applyConfidence(base: Date, confidence?: ReviewConfidence): Date {
+  if (!confidence || confidence === "okay") return base;
+  const now = new Date();
+  const days = Math.max(1, Math.round((base.getTime() - now.getTime()) / 86400000));
+  if (confidence === "struggled") return getCustomNextReviewDate(1);
+  return getCustomNextReviewDate(Math.max(1, Math.round(days * 1.5))); // easy
 }
 
 export async function markDocCompletedAction(docId: string): Promise<ActionResult> {

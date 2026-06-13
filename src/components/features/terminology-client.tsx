@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { BookText, ChevronDown, ChevronRight, Copy, ExternalLink, Loader2, Pencil, Plus, Search, Trash2, X } from "lucide-react";
+import { BookText, ChevronDown, ChevronRight, Copy, ExternalLink, GraduationCap, Loader2, Pencil, Plus, Search, Trash2, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,7 @@ import { toast } from "@/components/ui/toast";
 import { createStandaloneTermAction, deleteTermAction, updateTermAction } from "@/actions/notes";
 import { ImagePreviewThumbnail } from "@/components/features/image-preview-thumbnail";
 import { ImagePickerButton } from "@/components/features/image-picker-button";
+import { TerminologyPractice } from "@/components/features/terminology-practice";
 import type { Term, Document } from "@/types";
 
 interface TerminologyClientProps {
@@ -21,6 +22,7 @@ export function TerminologyClient({ terms: initialTerms, docs }: TerminologyClie
   const [terms, setTerms] = React.useState(initialTerms);
   const [search, setSearch] = React.useState("");
   const [showComposer, setShowComposer] = React.useState(false);
+  const [practicing, setPracticing] = React.useState(false);
   const [newTerm, setNewTerm] = React.useState("");
   const [newDefinition, setNewDefinition] = React.useState("");
   const [newImageUrl, setNewImageUrl] = React.useState("");
@@ -164,16 +166,31 @@ export function TerminologyClient({ terms: initialTerms, docs }: TerminologyClie
             </button>
           )}
         </div>
-        <Button
-          type="button"
-          onClick={() => setShowComposer((value) => !value)}
-          className="h-9 gap-2 self-start sm:self-auto"
-          variant={showComposer ? "outline" : "default"}
-        >
-          <Plus className="h-4 w-4" />
-          Add Term
-        </Button>
+        <div className="flex gap-2 self-start sm:self-auto">
+          {terms.length > 0 && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setPracticing(true)}
+              className="h-9 gap-2"
+            >
+              <GraduationCap className="h-4 w-4" />
+              Practice
+            </Button>
+          )}
+          <Button
+            type="button"
+            onClick={() => setShowComposer((value) => !value)}
+            className="h-9 gap-2"
+            variant={showComposer ? "outline" : "default"}
+          >
+            <Plus className="h-4 w-4" />
+            Add Term
+          </Button>
+        </div>
       </div>
+
+      {practicing && <TerminologyPractice terms={terms} onClose={() => setPracticing(false)} />}
 
       {showComposer && (
         <div className="rounded-2xl border border-border bg-surface p-3 shadow-card sm:p-4">

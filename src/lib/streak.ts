@@ -9,11 +9,14 @@ export function dayKey(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
+export type ReviewConfidence = "easy" | "okay" | "struggled";
+
 /** Records one review for streak/heatmap aggregation. Best-effort: never throws. */
 export async function logReviewEvent(
   userId: ObjectId,
   docId: ObjectId | undefined,
-  source: "document" | "youtube"
+  source: "document" | "youtube",
+  confidence?: ReviewConfidence
 ): Promise<void> {
   try {
     const now = new Date();
@@ -25,6 +28,7 @@ export async function logReviewEvent(
       source,
       reviewedAt: now,
       dayKey: dayKey(now),
+      ...(confidence ? { confidence } : {}),
     });
   } catch (err) {
     console.error("logReviewEvent failed:", err);
