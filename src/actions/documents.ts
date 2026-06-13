@@ -514,6 +514,26 @@ function applyConfidence(base: Date, confidence?: ReviewConfidence): Date {
   return getCustomNextReviewDate(Math.max(1, Math.round(days * 1.5))); // easy
 }
 
+/** Resolves a list of recently-opened doc ids to lightweight items, preserving
+ *  the given order and silently dropping any that no longer exist. */
+export async function getRecentDocsAction(
+  ids: string[]
+): Promise<{ id: string; title: string; mediaType?: string }[]> {
+  const user = await requireAuth();
+  const valid = ids.filter((id) => ObjectId.isValid(id)).slice(0, 8);
+  if (valid.length === 0) return [];
+  const docs = await getDocumentsCollection();
+  const rows = await docs
+    .find({ _id: { $in: valid.map((id) => new ObjectId(id)) }, userId: new ObjectId(user.id) })
+    .project({ title: 1, mediaType: 1 })
+    .toArray();
+  const byId = new Map(rows.map((r) => [r._id.toString(), r]));
+  return valid
+    .map((id) => byId.get(id))
+    .filter((r): r is NonNullable<typeof r> => Boolean(r))
+    .map((r) => ({ id: r._id.toString(), title: (r.title as string) ?? "Untitled", mediaType: r.mediaType as string | undefined }));
+}
+
 export async function markDocCompletedAction(docId: string): Promise<ActionResult> {
   const user = await requireAuth();
   const userId = new ObjectId(user.id);

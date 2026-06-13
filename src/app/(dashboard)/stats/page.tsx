@@ -5,6 +5,7 @@ import { StatsCards } from "@/components/features/stats-cards";
 import { AnalyticsInsights } from "@/components/features/analytics-insights";
 import { ReviewTrendChartDynamic as ReviewTrendChart } from "@/components/features/review-trend-chart-dynamic";
 import { Card } from "@/components/ui/card";
+import { Achievements } from "@/components/features/achievements";
 
 export const metadata = { title: "Your Stats" };
 
@@ -46,6 +47,14 @@ export default async function StatsPage() {
       </div>
 
       <StreakCard data={streak} />
+
+      <Achievements
+        totalReviews={streak.totalReviews}
+        bestStreak={streak.best}
+        totalDocs={stats.totalDocs}
+        totalCompleted={stats.totalCompleted}
+      />
+
       <StatsCards stats={stats} />
 
       <div className="grid gap-6 lg:grid-cols-2">

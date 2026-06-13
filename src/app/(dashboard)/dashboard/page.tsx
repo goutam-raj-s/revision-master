@@ -4,6 +4,8 @@ import { getTaskQueue } from "@/actions/queue";
 import { getDashboardStats, getReviewTrendAction, getStreakAction } from "@/actions/analytics";
 import { StreakCard } from "@/components/features/streak-card";
 import { DashboardBrief } from "@/components/features/dashboard-brief";
+import { DailyGoalRing } from "@/components/features/daily-goal-ring";
+import { RecentDocs } from "@/components/features/recent-docs";
 import { TaskQueue } from "@/components/features/task-queue";
 import { StatsCards } from "@/components/features/stats-cards";
 import { AnalyticsInsights } from "@/components/features/analytics-insights";
@@ -87,6 +89,9 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     getStreakAction(),
   ]);
 
+  // Reviews logged today (last entry in the heatmap is today).
+  const todayReviews = streak.heatmap.at(-1)?.count ?? 0;
+
   // Derive "today's focus" from the first queue item (doc or youtube).
   const first = tasks[0];
   const next = first
@@ -123,9 +128,15 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       {/* Onboarding — only for new users with 0 docs */}
       <OnboardingBanner totalDocs={stats.totalDocs} />
 
+      {/* Continue where you left off */}
+      <RecentDocs />
+
       {/* Today's focus + weakest tags */}
       {stats.totalDocs > 0 && (
-        <DashboardBrief next={next} dueCount={stats.pendingRevisions} weakestTags={stats.leastRevisedAreas} />
+        <div className="space-y-4">
+          <DashboardBrief next={next} dueCount={stats.pendingRevisions} weakestTags={stats.leastRevisedAreas} />
+          <DailyGoalRing done={todayReviews} />
+        </div>
       )}
 
       {/* Stats */}
