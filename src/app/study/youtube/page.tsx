@@ -5,7 +5,7 @@ import { fetchYoutubeMetadata, createOrGetYoutubeSession, fetchYoutubePlaylist, 
 import { YoutubeStudyClient } from "@/components/features/youtube-study-client";
 import { YoutubeUrlForm } from "@/components/features/youtube-url-form";
 import { PlaylistPreview } from "@/components/features/playlist-preview";
-import { getYoutubeBookmarks, checkYoutubeBookmark } from "@/actions/youtube-bookmarks";
+import { getYoutubeBookmarks, checkYoutubeBookmark, getBookmarkedPlaylistVideos, persistPlaylistVideos } from "@/actions/youtube-bookmarks";
 import { YoutubeBookmarkToggle } from "@/components/features/youtube-bookmark-toggle";
 import { YoutubeBookmarksList } from "@/components/features/youtube-bookmarks-list";
 import { YoutubePlaylistControls } from "@/components/features/youtube-playlist-controls";
@@ -185,12 +185,20 @@ export default async function YoutubeStudyPage({ searchParams }: YoutubeStudyPag
   // Playlist ID only — render PlaylistPreview
   if (!videoId && playlistId) {
     try {
-      const playlistData = await fetchYoutubePlaylist(playlistId);
+      let playlistData = await fetchYoutubePlaylist(playlistId);
       const isBookmarked = await checkYoutubeBookmark(playlistId);
+
+      // Persistence: keep saved playlists resilient to YouTube fetch glitches.
+      if (playlistData.videos.length === 0) {
+        const stored = await getBookmarkedPlaylistVideos(playlistId);
+        if (stored.length > 0) playlistData = { ...playlistData, videos: stored };
+      } else if (isBookmarked) {
+        await persistPlaylistVideos(playlistId, playlistData.videos);
+      }
 
       return (
         <div className="h-screen flex flex-col bg-canvas overflow-hidden">
-          <DashboardHeader 
+          <DashboardHeader
             showLogo={true}
             customBreadcrumbs={[
               { href: "/dashboard", label: "Dashboard" },
@@ -198,16 +206,17 @@ export default async function YoutubeStudyPage({ searchParams }: YoutubeStudyPag
               { href: `/study/youtube?list=${playlistId}`, label: playlistData.title },
             ]}
             rightActions={
-              <YoutubeBookmarkToggle 
-                youtubeId={playlistId} 
-                type="playlist" 
-                title={playlistData.title} 
-                thumbnailUrl={playlistData.videos[0]?.thumbnailUrl || ""} 
-                initialIsBookmarked={isBookmarked} 
+              <YoutubeBookmarkToggle
+                youtubeId={playlistId}
+                type="playlist"
+                title={playlistData.title}
+                thumbnailUrl={playlistData.videos[0]?.thumbnailUrl || ""}
+                initialIsBookmarked={isBookmarked}
+                videos={playlistData.videos}
               />
             }
           />
-          <PlaylistPreview playlist={playlistData} />
+          <PlaylistPreview playlist={playlistData} bookmarked={isBookmarked} />
         </div>
       );
     } catch {

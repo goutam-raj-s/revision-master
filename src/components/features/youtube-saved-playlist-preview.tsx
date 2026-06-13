@@ -115,7 +115,7 @@ export function YoutubeSavedPlaylistPreview({ playlist: initialPlaylist }: { pla
         </div>
 
         {playlist.items.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-border bg-white/70 px-4 py-14 text-center">
+          <div className="rounded-xl border border-dashed border-border bg-surface/70 px-4 py-14 text-center">
             <ListVideo className="mx-auto mb-2 h-8 w-8 text-mossy-gray/40" />
             <p className="text-sm font-medium text-forest-slate">No videos in this playlist yet</p>
             <p className="mt-1 text-xs text-mossy-gray">Open a YouTube study session and add it from the Playlist menu.</p>

@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useActionState } from "react";
-import { DatabaseZap, Key, User, Eye, EyeOff, Loader2, Trash2, Check } from "lucide-react";
+import { DatabaseZap, Key, User, Eye, EyeOff, Loader2, Trash2, Check, Download, Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,22 +11,32 @@ import { Separator } from "@/components/ui/separator";
 import { toast } from "@/components/ui/toast";
 import { updateProfileAction, saveGeminiKeyAction, deleteGeminiKeyAction } from "@/actions/auth";
 import { manualDatabaseSyncAction } from "@/actions/sync";
+import { deleteAccountAction, exportAccountDataAction, setEmailRemindersAction } from "@/actions/account";
+import { GoogleConnectionCard } from "@/components/features/google-connection-card";
+import { CompletionCharacterPicker } from "@/components/features/completion-character-picker";
 import type { User as UserType, ActionResult } from "@/types";
 
 interface SettingsClientProps {
   user: UserType;
   maskedGeminiKey: string | null;
+  emailReminders?: boolean;
 }
 
 const profileInitial: ActionResult<void> = { success: false };
 const geminiInitial: ActionResult<{ maskedKey: string }> = { success: false };
 
-export function SettingsClient({ user, maskedGeminiKey: initialMaskedKey }: SettingsClientProps) {
+export function SettingsClient({ user, maskedGeminiKey: initialMaskedKey, emailReminders: initialReminders = true }: SettingsClientProps) {
   const [showApiKey, setShowApiKey] = React.useState(false);
   const [maskedKey, setMaskedKey] = React.useState(initialMaskedKey);
   const [deletingKey, setDeletingKey] = React.useState(false);
   const [syncingDb, setSyncingDb] = React.useState(false);
   const [lastSyncSummary, setLastSyncSummary] = React.useState<string | null>(null);
+  const [exporting, setExporting] = React.useState(false);
+  const [confirmingDelete, setConfirmingDelete] = React.useState(false);
+  const [deleteEmail, setDeleteEmail] = React.useState("");
+  const [deletingAccount, setDeletingAccount] = React.useState(false);
+  const [reminders, setReminders] = React.useState(initialReminders);
+  const [savingReminders, setSavingReminders] = React.useState(false);
 
   const [profileState, profileAction, profilePending] = useActionState(updateProfileAction, profileInitial);
   const [geminiState, geminiAction, geminiPending] = useActionState(saveGeminiKeyAction, geminiInitial);
@@ -66,6 +76,33 @@ export function SettingsClient({ user, maskedGeminiKey: initialMaskedKey }: Sett
     }
 
     setSyncingDb(false);
+  }
+
+  async function handleExport() {
+    setExporting(true);
+    const res = await exportAccountDataAction();
+    setExporting(false);
+
+    if (res.success && res.data) {
+      const blob = new Blob([JSON.stringify(res.data, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `lostbae-export-${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast("Export downloaded", { variant: "success" });
+    } else {
+      toast(res.error ?? "Export failed", { variant: "error" });
+    }
+  }
+
+  async function handleDeleteAccount() {
+    setDeletingAccount(true);
+    const res = await deleteAccountAction(deleteEmail);
+    // On success the action redirects; we only get here on failure.
+    setDeletingAccount(false);
+    toast(res?.error ?? "Account deletion failed", { variant: "error" });
   }
 
   return (
@@ -229,6 +266,84 @@ export function SettingsClient({ user, maskedGeminiKey: initialMaskedKey }: Sett
         </CardContent>
       </Card>
 
+      {/* Completion companion */}
+      <CompletionCharacterPicker />
+
+      {/* Review reminders */}
+      <Card className="shadow-card">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <div className="p-1.5 rounded-lg bg-state-today/10">
+              <Bell className="h-4 w-4 text-state-today" />
+            </div>
+            Review Reminders
+          </CardTitle>
+          <CardDescription>
+            Get a daily email digest when documents are due for review, so nothing slips.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={reminders}
+            disabled={savingReminders}
+            onClick={async () => {
+              const next = !reminders;
+              setReminders(next);
+              setSavingReminders(true);
+              const res = await setEmailRemindersAction(next);
+              setSavingReminders(false);
+              if (res.success) {
+                toast(next ? "Daily reminders on" : "Reminders off", { variant: "success" });
+              } else {
+                setReminders(!next);
+                toast(res.error ?? "Could not save preference", { variant: "error" });
+              }
+            }}
+            className="flex items-center gap-3 text-sm text-forest-slate"
+          >
+            <span
+              className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors ${
+                reminders ? "bg-state-today" : "bg-muted"
+              }`}
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-surface shadow transition-transform ${
+                  reminders ? "translate-x-6" : "translate-x-1"
+                }`}
+              />
+            </span>
+            {reminders ? "Email me when reviews are due" : "Reminders are off"}
+          </button>
+        </CardContent>
+      </Card>
+
+      {/* Google Docs connection */}
+      <GoogleConnectionCard />
+
+      {/* Export */}
+      <Card className="shadow-card">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <div className="p-1.5 rounded-lg bg-state-upcoming/10">
+              <Download className="h-4 w-4 text-state-upcoming" />
+            </div>
+            Export Your Data
+          </CardTitle>
+          <CardDescription>
+            Download everything you own — documents, notes, terms, revision history, and YouTube
+            sessions — as a single JSON file.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button variant="outline" size="sm" onClick={handleExport} disabled={exporting} className="gap-1.5">
+            {exporting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+            Download my data (JSON)
+          </Button>
+        </CardContent>
+      </Card>
+
       {/* GDPR */}
       <Card className="shadow-card border-destructive/20">
         <CardHeader>
@@ -239,11 +354,42 @@ export function SettingsClient({ user, maskedGeminiKey: initialMaskedKey }: Sett
         </CardHeader>
         <CardContent>
           <p className="text-sm text-mossy-gray mb-4">
-            Deleting your account will permanently remove all your documents, notes, terms, and revision history. This action cannot be undone.
+            Deleting your account permanently removes all your documents, notes, terms, and revision
+            history. This action cannot be undone — export your data first if you want a copy.
           </p>
-          <Button variant="destructive" size="sm" disabled className="opacity-50 cursor-not-allowed">
-            Delete Account (contact support)
-          </Button>
+          {!confirmingDelete ? (
+            <Button variant="destructive" size="sm" onClick={() => setConfirmingDelete(true)}>
+              Delete Account
+            </Button>
+          ) : (
+            <div className="space-y-3 rounded-xl border border-destructive/30 bg-destructive/5 p-4">
+              <Label htmlFor="delete-confirm-email" className="text-sm">
+                Type your email <span className="font-mono">{user.email}</span> to confirm:
+              </Label>
+              <Input
+                id="delete-confirm-email"
+                value={deleteEmail}
+                onChange={(e) => setDeleteEmail(e.target.value)}
+                placeholder={user.email}
+                autoComplete="off"
+              />
+              <div className="flex gap-2 justify-end">
+                <Button variant="outline" size="sm" onClick={() => { setConfirmingDelete(false); setDeleteEmail(""); }} disabled={deletingAccount}>
+                  Cancel
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={handleDeleteAccount}
+                  disabled={deletingAccount || deleteEmail.trim().toLowerCase() !== user.email.toLowerCase()}
+                  className="gap-1.5"
+                >
+                  {deletingAccount ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                  Permanently delete everything
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

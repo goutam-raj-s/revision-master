@@ -21,7 +21,11 @@ export default async function SettingsPage() {
         <h1 className="text-2xl font-bold text-forest-slate">Settings</h1>
         <p className="text-sm text-mossy-gray mt-1">Manage your account and API integrations</p>
       </div>
-      <SettingsClient user={user} maskedGeminiKey={maskedKey} />
+      <SettingsClient
+        user={user}
+        maskedGeminiKey={maskedKey}
+        emailReminders={dbUser?.emailReminders !== false}
+      />
     </div>
   );
 }

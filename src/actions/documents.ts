@@ -12,6 +12,7 @@ import {
   serializeDoc,
 } from "@/lib/db/collections";
 import { getCustomNextReviewDate, getNextReviewDate } from "@/lib/srs/engine";
+import { logReviewEvent } from "@/lib/streak";
 import {
   isValidGoogleDocUrl,
   computeTitleSimilarity,
@@ -492,6 +493,8 @@ export async function completeReviewAction(
     { _id: rootDocId, userId },
     { $set: { status: "revision", updatedAt: new Date() } }
   );
+
+  await logReviewEvent(userId, rootDocId, "document");
 
   revalidatePath("/dashboard");
   return { success: true };

@@ -1,23 +1,27 @@
 import { Plus } from "lucide-react";
 import Link from "next/link";
 import { getTaskQueue } from "@/actions/queue";
-import { getDashboardStats, getReviewTrendAction } from "@/actions/analytics";
+import { getDashboardStats, getReviewTrendAction, getStreakAction } from "@/actions/analytics";
+import { StreakCard } from "@/components/features/streak-card";
 import { TaskQueue } from "@/components/features/task-queue";
 import { StatsCards } from "@/components/features/stats-cards";
 import { AnalyticsInsights } from "@/components/features/analytics-insights";
 import { OnboardingBanner } from "@/components/features/onboarding-banner";
+import { GoogleAutoSync } from "@/components/features/google-auto-sync";
 import { ReviewTrendChartDynamic as ReviewTrendChart } from "@/components/features/review-trend-chart-dynamic";
 import { Button } from "@/components/ui/button";
 import { QuickGuideButton } from "@/components/ui/quick-guide-button";
 import type { TaskFilter } from "@/types";
 
 const DASHBOARD_SHORTCUTS = [
-  { keys: "Cmd+K", label: "Open command palette" },
+  { keys: "Cmd+K", label: "Command palette — search docs/terms, run actions" },
   { keys: "Cmd+/", label: "Also opens command palette" },
+  { keys: "?", label: "Show full keyboard shortcuts sheet" },
   { keys: "Cmd+Shift+K", label: "Quick clipper widget" },
   { keys: "E", label: "Complete focused task (row expanded)" },
   { keys: "Escape", label: "Close review modal / clear focus" },
   { keys: "Today / Pending", label: "Switch revision queue filter" },
+  { keys: "Theme toggle", label: "Light / Dark / System (sidebar)" },
   { keys: "Cmd+Shift+V", label: "Clipboard history (last 10 copies)" },
 ];
 
@@ -75,10 +79,11 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   const params = await searchParams;
   const filter = (params.filter as TaskFilter) || "today";
 
-  const [tasks, stats, trend] = await Promise.all([
+  const [tasks, stats, trend, streak] = await Promise.all([
     getTaskQueue(filter),
     getDashboardStats(),
     getReviewTrendAction(),
+    getStreakAction(),
   ]);
 
   return (
@@ -103,11 +108,17 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         </div>
       </div>
 
+      {/* Hourly background re-sync of imported Google Docs */}
+      <GoogleAutoSync />
+
       {/* Onboarding — only for new users with 0 docs */}
       <OnboardingBanner totalDocs={stats.totalDocs} />
 
       {/* Stats */}
       <StatsCards stats={stats} />
+
+      {/* Streak + activity heatmap */}
+      <StreakCard data={streak} />
 
       {/* Task Queue */}
       <div>
@@ -115,7 +126,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           <h2 className="text-sm font-semibold text-forest-slate sm:text-base">Revision Queue</h2>
           <FilterTabs active={filter} pendingCount={stats.pendingRevisions} />
         </div>
-        <TaskQueue initialTasks={tasks} filter={filter} />
+        <TaskQueue initialTasks={tasks} filter={filter} streak={streak.current} />
       </div>
 
       {/* Analytics */}

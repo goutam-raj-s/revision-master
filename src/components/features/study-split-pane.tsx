@@ -100,7 +100,7 @@ export function StudySplitPane({
       style={{ userSelect: isDragging ? "none" : undefined }}
     >
       {/* Left pane — content */}
-      <div className="flex-1 relative min-w-0 h-full bg-white">
+      <div className="flex-1 relative min-w-0 h-full bg-surface">
         {leftContent}
       </div>
 

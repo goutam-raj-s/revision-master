@@ -9,8 +9,15 @@ import {
   Strikethrough,
   Heading1,
   Heading2,
+  Heading3,
   List,
   ListOrdered,
+  ListChecks,
+  Quote,
+  Code,
+  Code2,
+  Minus,
+  Palette,
   Undo,
   Redo,
   Highlighter,
@@ -43,6 +50,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { EditorOutline } from "./EditorOutline";
 
 interface EditorToolbarProps {
   editor: Editor | null;
@@ -73,6 +81,21 @@ const FONT_SIZE_PRESETS = [
   { label: "Normal", value: "16px" },
   { label: "Large", value: "20px" },
   { label: "Title", value: "28px" },
+];
+
+const TEXT_COLOR_PRESETS = [
+  { name: "Slate", color: "#1e2d24" },
+  { name: "Gray", color: "#6b7f73" },
+  { name: "Red", color: "#dc2626" },
+  { name: "Orange", color: "#d97706" },
+  { name: "Green", color: "#059669" },
+  { name: "Blue", color: "#2563eb" },
+  { name: "Indigo", color: "#4f46e5" },
+  { name: "Purple", color: "#9333ea" },
+  { name: "Pink", color: "#db2777" },
+  { name: "Teal", color: "#0d9488" },
+  { name: "Amber", color: "#b45309" },
+  { name: "Black", color: "#000000" },
 ];
 
 export function EditorToolbar({
@@ -200,11 +223,34 @@ export function EditorToolbar({
             <ToolbarButton onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()} isActive={editor.isActive("heading", { level: 2 })} tooltip="Heading 2">
               <Heading2 className="h-4 w-4" />
             </ToolbarButton>
+            <ToolbarButton onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()} isActive={editor.isActive("heading", { level: 3 })} tooltip="Heading 3">
+              <Heading3 className="h-4 w-4" />
+            </ToolbarButton>
             <ToolbarButton onClick={() => editor.chain().focus().toggleBulletList().run()} isActive={editor.isActive("bulletList")} tooltip="Bullet List">
               <List className="h-4 w-4" />
             </ToolbarButton>
             <ToolbarButton onClick={() => editor.chain().focus().toggleOrderedList().run()} isActive={editor.isActive("orderedList")} tooltip="Ordered List">
               <ListOrdered className="h-4 w-4" />
+            </ToolbarButton>
+            <ToolbarButton onClick={() => editor.chain().focus().toggleTaskList().run()} isActive={editor.isActive("taskList")} tooltip="Task List">
+              <ListChecks className="h-4 w-4" />
+            </ToolbarButton>
+          </div>
+
+          <Separator orientation="vertical" className="mx-1 h-7" />
+
+          <div className="flex items-center gap-1 rounded-lg bg-canvas/70 p-0.5">
+            <ToolbarButton onClick={() => editor.chain().focus().toggleBlockquote().run()} isActive={editor.isActive("blockquote")} tooltip="Quote">
+              <Quote className="h-4 w-4" />
+            </ToolbarButton>
+            <ToolbarButton onClick={() => editor.chain().focus().toggleCode().run()} isActive={editor.isActive("code")} tooltip="Inline Code">
+              <Code className="h-4 w-4" />
+            </ToolbarButton>
+            <ToolbarButton onClick={() => editor.chain().focus().toggleCodeBlock().run()} isActive={editor.isActive("codeBlock")} tooltip="Code Block">
+              <Code2 className="h-4 w-4" />
+            </ToolbarButton>
+            <ToolbarButton onClick={() => editor.chain().focus().setHorizontalRule().run()} tooltip="Divider">
+              <Minus className="h-4 w-4" />
             </ToolbarButton>
           </div>
 
@@ -332,6 +378,42 @@ export function EditorToolbar({
             </PopoverContent>
           </Popover>
 
+          {/* Text color */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 shrink-0 gap-1.5 px-2"
+                title="Text color"
+              >
+                <Palette
+                  className="h-4 w-4"
+                  style={{ color: editor.getAttributes("textStyle").color || undefined }}
+                />
+                <ChevronDown className="h-3 w-3 opacity-50" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-56 p-3" align="start">
+              <p className="mb-2 text-xs font-semibold text-forest-slate">Text color</p>
+              <div className="grid grid-cols-6 gap-1.5">
+                {TEXT_COLOR_PRESETS.map((c) => (
+                  <button
+                    key={c.color}
+                    onClick={() => editor.chain().focus().setColor(c.color).run()}
+                    title={c.name}
+                    className="h-7 w-7 rounded-md border border-border/60 transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-state-today/40"
+                    style={{ backgroundColor: c.color }}
+                  />
+                ))}
+              </div>
+              <Separator className="my-3" />
+              <Button variant="ghost" size="sm" className="w-full justify-start text-xs" onClick={() => editor.chain().focus().unsetColor().run()}>
+                Default color
+              </Button>
+            </PopoverContent>
+          </Popover>
+
           {imageUrlMode ? (
             <div className="flex items-center gap-1">
               <Input
@@ -382,6 +464,8 @@ export function EditorToolbar({
           </ToolbarButton>
 
           <div className="min-w-2 flex-1" />
+
+          <EditorOutline editor={editor} />
 
           <ToolbarButton onClick={() => editor.chain().focus().undo().run()} disabled={!editor.can().undo()} tooltip="Undo">
             <Undo className="h-4 w-4" />

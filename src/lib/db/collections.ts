@@ -24,6 +24,7 @@ import type {
   YoutubeBookmark,
   YoutubePlaylist,
   DbLoginRecord,
+  DbReviewEvent,
   DbYoutubeShare,
   YoutubeShare,
 } from "@/types";
@@ -68,6 +69,11 @@ export async function getPasswordResetTokensCollection(): Promise<Collection<DbP
 export async function getLoginRecordsCollection(): Promise<Collection<DbLoginRecord>> {
   const db = await getDb();
   return db.collection<DbLoginRecord>("login-records");
+}
+
+export async function getReviewEventsCollection(): Promise<Collection<DbReviewEvent>> {
+  const db = await getDb();
+  return db.collection<DbReviewEvent>("review_events");
 }
 
 export async function getYoutubeSessionsCollection(): Promise<Collection<DbYoutubeSession>> {
@@ -165,6 +171,11 @@ export async function ensureIndexes(): Promise<void> {
 
   await db.collection("notes").createIndexes([
     { key: { docId: 1, createdAt: -1 } },
+  ]);
+
+  await db.collection("review_events").createIndexes([
+    { key: { userId: 1, reviewedAt: -1 } },
+    { key: { userId: 1, dayKey: 1 } },
   ]);
 
   await db.collection("terms").createIndexes([
@@ -304,6 +315,7 @@ export function serializeYoutubeBookmark(b: DbYoutubeBookmark): YoutubeBookmark 
     youtubeId: b.youtubeId,
     title: b.title,
     thumbnailUrl: b.thumbnailUrl,
+    ...(b.videos ? { videos: b.videos } : {}),
     createdAt: b.createdAt.toISOString(),
     updatedAt: b.updatedAt.toISOString(),
   };

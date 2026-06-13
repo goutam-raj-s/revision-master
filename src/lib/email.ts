@@ -46,12 +46,6 @@ export async function sendDocumentShareEmail(to: string, shareUrl: string, docTi
 }
 
 export async function sendPasswordResetEmail(to: string, resetUrl: string): Promise<void> {
-  console.log("=== EMAIL DEBUG ===");
-  console.log("GMAIL_USER:", process.env.GMAIL_USER);
-  console.log("GMAIL_APP_PASSWORD:", process.env.GMAIL_APP_PASSWORD);
-  console.log("NEXT_PUBLIC_APP_URL:", process.env.NEXT_PUBLIC_APP_URL);
-  console.log("Attempting to send to:", to);
-
   try {
     const info = await transport.sendMail({
       from: `"lostbae" <${process.env.GMAIL_USER}>`,
@@ -92,12 +86,64 @@ export async function sendPasswordResetEmail(to: string, resetUrl: string): Prom
       </html>
     `,
     });
-    console.log("=== EMAIL SENT SUCCESSFULLY ===");
-    console.log("Message ID:", info.messageId);
-    console.log("Response:", info.response);
+    console.log("Password reset email sent:", info.messageId);
   } catch (error) {
-    console.error("=== NODEMAILER ERROR ===");
-    console.error(error);
+    console.error("Failed to send password reset email:", error);
     throw error; // Re-throw so the auth.ts action can catch it
   }
+}
+
+export interface ReminderItem {
+  title: string;
+  overdueDays: number;
+}
+
+export async function sendReviewReminderEmail(
+  to: string,
+  name: string,
+  items: ReminderItem[],
+  appUrl: string
+): Promise<void> {
+  const rows = items
+    .slice(0, 10)
+    .map(
+      (i) => `
+        <tr>
+          <td style="padding: 10px 14px; border-bottom: 1px solid #e2e8f0; color: #1c2e1a; font-size: 14px;">${i.title}</td>
+          <td style="padding: 10px 14px; border-bottom: 1px solid #e2e8f0; color: ${i.overdueDays > 0 ? "#d97706" : "#059669"}; font-size: 13px; white-space: nowrap;">
+            ${i.overdueDays > 0 ? `${i.overdueDays}d overdue` : "due today"}
+          </td>
+        </tr>`
+    )
+    .join("");
+  const more = items.length > 10 ? `<p style="color:#a0aec0;font-size:13px;">…and ${items.length - 10} more.</p>` : "";
+
+  await transport.sendMail({
+    from: `"lostbae" <${process.env.GMAIL_USER}>`,
+    to,
+    subject: `${items.length} review${items.length !== 1 ? "s" : ""} waiting for you today`,
+    html: `
+      <!DOCTYPE html>
+      <html>
+        <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f1f5f2; margin: 0; padding: 40px 20px;">
+          <div style="max-width: 480px; margin: 0 auto; background: #ffffff; border-radius: 16px; padding: 40px; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+            <h1 style="margin: 0 0 8px; font-size: 20px; font-weight: 700; color: #1c2e1a;">Hi ${name}, time to revise 🧠</h1>
+            <p style="color: #4a5568; font-size: 14px; line-height: 1.6; margin: 0 0 20px;">
+              Spaced repetition only works when you show up — here's what's due:
+            </p>
+            <table style="width: 100%; border-collapse: collapse; margin-bottom: 24px;">${rows}</table>
+            ${more}
+            <div style="text-align: center; margin: 28px 0 8px;">
+              <a href="${appUrl}/dashboard" style="display: inline-block; background: #059669; color: #ffffff; font-size: 15px; font-weight: 600; text-decoration: none; padding: 13px 30px; border-radius: 10px;">
+                Start reviewing
+              </a>
+            </div>
+            <p style="color: #a0aec0; font-size: 12px; margin: 24px 0 0; border-top: 1px solid #e2e8f0; padding-top: 14px;">
+              You can turn these reminders off in Settings → Profile.
+            </p>
+          </div>
+        </body>
+      </html>
+    `,
+  });
 }

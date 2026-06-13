@@ -10,6 +10,7 @@ import {
 import { SharedDocumentEditor } from "@/components/features/shared-document-editor";
 import { Button } from "@/components/ui/button";
 import { ObjectId } from "mongodb";
+import type { Metadata } from "next";
 import type { DocumentTreeNode } from "@/types";
 
 interface SharedPageProps {
@@ -17,8 +18,37 @@ interface SharedPageProps {
   searchParams: Promise<{ page?: string }>;
 }
 
+// Rich preview when a share link is pasted (iMessage/Slack/social), but kept
+// out of search indexes since it's private-by-token.
+export async function generateMetadata({ params }: SharedPageProps): Promise<Metadata> {
+  const { token } = await params;
+  const share = await getShareByToken(token);
+  if (!share) return { title: "Shared document", robots: { index: false, follow: false } };
+  const docs = await getDocumentsCollection();
+  const doc = await docs.findOne({ _id: new ObjectId(share.docId.toString()) });
+  const title = doc?.title ?? "Shared document";
+  return {
+    title,
+    description: `${title} — shared with you on lostbae.`,
+    robots: { index: false, follow: false },
+    openGraph: { title: `${title} — shared on lostbae`, type: "article" },
+    twitter: { card: "summary_large_image", title: `${title} — shared on lostbae` },
+  };
+}
+
 function flattenTree(nodes: DocumentTreeNode[]): DocumentTreeNode[] {
   return nodes.flatMap((n) => [n, ...flattenTree(n.children)]);
+}
+
+// Flatten while preserving nesting depth for sidebar indentation.
+function flattenWithDepth(
+  nodes: DocumentTreeNode[],
+  depth = 0
+): { node: DocumentTreeNode; depth: number }[] {
+  return nodes.flatMap((n) => [
+    { node: n, depth },
+    ...flattenWithDepth(n.children, depth + 1),
+  ]);
 }
 
 function isDescendantOf(docId: string, tree: DocumentTreeNode[]): boolean {
@@ -79,49 +109,73 @@ export default async function SharedDocumentPage({ params, searchParams }: Share
   const activeDocSerialized = serializeDoc(activeDoc);
   const hasSubPages = allPages.length > 1;
   const isWrite = accessLevel === "write";
+  const pagesWithDepth = flattenWithDepth(tree);
 
   return (
-    <div className="flex min-h-screen bg-surface">
-      {/* Sidebar — only when there are sub-pages */}
+    <div className="flex h-screen overflow-hidden bg-canvas">
+      {/* Sidebar — only when there are sub-pages. Stays fixed while content scrolls. */}
       {hasSubPages && (
-        <aside className="hidden md:flex w-56 shrink-0 flex-col border-r border-border bg-white/60 px-3 py-6 gap-1">
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-mossy-gray mb-2 px-2">Pages</p>
-          {allPages.map((page) => {
-            const isActive = page.id === activeDocSerialized.id;
-            return (
-              <Link
-                key={page.id}
-                href={`/shared/${token}${page.id !== rootDocId ? `?page=${page.id}` : ""}`}
-                className={`flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm transition-colors ${
-                  isActive
-                    ? "bg-state-today/10 text-state-today font-medium"
-                    : "text-mossy-gray hover:bg-muted hover:text-forest-slate"
-                }`}
-              >
-                <FileText className="h-3.5 w-3.5 shrink-0" />
-                <span className="truncate">{page.title}</span>
-              </Link>
-            );
-          })}
+        <aside className="hidden md:flex h-full w-64 shrink-0 flex-col overflow-hidden border-r border-border bg-surface">
+          {/* Brand */}
+          <div className="flex items-center gap-2 border-b border-border px-4 py-3.5">
+            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-state-today/10 text-sm font-bold text-state-today">l</span>
+            <span className="font-serif text-base font-bold text-forest-slate">lostbae</span>
+          </div>
+          {/* Root title */}
+          <div className="px-4 pt-4 pb-1">
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-mossy-gray">Shared document</p>
+            <p className="mt-1 truncate text-sm font-semibold text-forest-slate" title={rootDoc.title}>{rootDoc.title}</p>
+            <p className="mt-0.5 text-[11px] text-mossy-gray">{allPages.length} pages</p>
+          </div>
+          <nav className="flex-1 overflow-y-auto px-2 py-2">
+            {pagesWithDepth.map(({ node: page, depth }) => {
+              const isActive = page.id === activeDocSerialized.id;
+              return (
+                <Link
+                  key={page.id}
+                  href={`/shared/${token}${page.id !== rootDocId ? `?page=${page.id}` : ""}`}
+                  style={{ paddingLeft: `${depth * 0.85 + 0.5}rem` }}
+                  className={`flex items-center gap-2 rounded-lg py-1.5 pr-2 text-sm transition-colors ${
+                    isActive
+                      ? "bg-state-today/10 text-state-today font-medium"
+                      : "text-mossy-gray hover:bg-canvas hover:text-forest-slate"
+                  }`}
+                >
+                  <FileText className="h-3.5 w-3.5 shrink-0" />
+                  <span className="truncate">{page.title}</span>
+                </Link>
+              );
+            })}
+          </nav>
         </aside>
       )}
 
       {/* Main content */}
       <div className="flex-1 min-w-0 flex flex-col">
         {/* Header bar */}
-        <div className="sticky top-0 z-10 flex h-12 shrink-0 items-center justify-between gap-2 border-b border-border bg-canvas/80 px-4 backdrop-blur-md">
-          <h1 className="min-w-0 flex-1 truncate text-base font-semibold text-forest-slate">
-            {activeDocSerialized.title}
-          </h1>
-          <div className="flex shrink-0 items-center gap-2">
-            {isWrite && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-state-today/10 px-2 py-0.5 text-[11px] font-medium text-state-today">
-                <Pencil className="h-2.5 w-2.5" />
-                Can edit
-              </span>
+        <div className="sticky top-0 z-10 flex h-14 shrink-0 items-center justify-between gap-2 border-b border-border bg-surface/80 px-4 backdrop-blur-md md:px-8">
+          <div className="flex min-w-0 items-center gap-2.5">
+            {!hasSubPages && (
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-state-today/10 text-sm font-bold text-state-today">l</span>
             )}
-            <Link href="/register" className="text-xs text-mossy-gray hover:text-forest-slate transition-colors">
-              Powered by lostbae ↗
+            <h1 className="min-w-0 flex-1 truncate text-base font-semibold text-forest-slate">
+              {activeDocSerialized.title}
+            </h1>
+          </div>
+          <div className="flex shrink-0 items-center gap-3">
+            <span
+              className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ${
+                isWrite ? "bg-state-today/10 text-state-today" : "bg-muted text-mossy-gray"
+              }`}
+            >
+              <Pencil className="h-2.5 w-2.5" />
+              {isWrite ? "Can edit" : "Read only"}
+            </span>
+            <Link
+              href="/register"
+              className="hidden items-center gap-1 rounded-full border border-border bg-canvas px-3 py-1 text-xs font-medium text-forest-slate transition-colors hover:bg-muted sm:inline-flex"
+            >
+              Try lostbae ↗
             </Link>
           </div>
         </div>
@@ -151,8 +205,12 @@ export default async function SharedDocumentPage({ params, searchParams }: Share
 
         {/* Document content */}
         <div className="flex-1 overflow-y-auto px-4 py-6 md:px-10 md:py-8">
+          <div className="mx-auto w-full max-w-4xl">
           {activeDocSerialized.mediaType === "native-doc" ? (
             <SharedDocumentEditor
+              // key forces a fresh editor per page — without it, Tiptap keeps the
+              // first page's content when navigating sub-pages via ?page=.
+              key={activeDocSerialized.id}
               token={token}
               docId={activeDocSerialized.id}
               initialContent={activeDocSerialized.content || ""}
@@ -174,6 +232,7 @@ export default async function SharedDocumentPage({ params, searchParams }: Share
           ) : (
             <p className="text-mossy-gray text-sm">This document type cannot be previewed.</p>
           )}
+          </div>
         </div>
       </div>
     </div>

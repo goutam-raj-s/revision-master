@@ -82,7 +82,7 @@ export async function getTaskQueue(filter: TaskFilter = "today"): Promise<AnyTas
   const ytRepList = await ytReps.find(repQuery).sort({ nextReviewDate: 1 }).toArray();
   const youtubeTasks: YoutubeTaskItem[] = [];
   for (const rep of ytRepList) {
-    const session = await ytSessions.findOne({ _id: rep.docId, userId });
+    const session = await ytSessions.findOne({ _id: rep.docId, userId, status: { $ne: "completed" } });
     if (!session) continue;
     youtubeTasks.push({
       source: "youtube",
@@ -132,7 +132,14 @@ export async function getTaskQueueStats(): Promise<{
   const allDocReps = await reps
     .find({ userId, docId: { $in: activeTopLevelDocIds } })
     .toArray();
-  const allYtReps = await ytReps.find({ userId }).toArray();
+
+  const ytSessions = await getYoutubeSessionsCollection();
+  const activeYtSessionIds = await ytSessions
+    .find({ userId, status: { $ne: "completed" } })
+    .project({ _id: 1 })
+    .toArray()
+    .then((ss) => ss.map((s) => s._id));
+  const allYtReps = await ytReps.find({ userId, docId: { $in: activeYtSessionIds } }).toArray();
   const allReps = [...allDocReps, ...allYtReps];
 
   const overdueCount = allReps.filter((r) => r.nextReviewDate < todayStart).length;

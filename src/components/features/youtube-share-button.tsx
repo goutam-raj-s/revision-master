@@ -115,20 +115,20 @@ export function YoutubeShareButton({ resourceType, resourceId, title }: YoutubeS
 
           {/* Access level */}
           <div className="flex gap-1 rounded-lg border border-border bg-muted/40 p-1">
-            <button onClick={() => setAccessLevel("read")} className={`flex flex-1 items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${accessLevel === "read" ? "bg-white shadow-sm text-forest-slate" : "text-mossy-gray hover:text-forest-slate"}`}>
+            <button onClick={() => setAccessLevel("read")} className={`flex flex-1 items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${accessLevel === "read" ? "bg-surface shadow-sm text-forest-slate" : "text-mossy-gray hover:text-forest-slate"}`}>
               <Eye className="h-3.5 w-3.5" /> Read only
             </button>
-            <button onClick={() => setAccessLevel("write")} className={`flex flex-1 items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${accessLevel === "write" ? "bg-white shadow-sm text-forest-slate" : "text-mossy-gray hover:text-forest-slate"}`}>
+            <button onClick={() => setAccessLevel("write")} className={`flex flex-1 items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${accessLevel === "write" ? "bg-surface shadow-sm text-forest-slate" : "text-mossy-gray hover:text-forest-slate"}`}>
               <Pencil className="h-3.5 w-3.5" /> Can edit
             </button>
           </div>
 
           {/* Share type tabs */}
           <div className="flex gap-1 rounded-lg bg-muted p-1">
-            <button onClick={() => setTab("public")} className={`flex flex-1 items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${tab === "public" ? "bg-white shadow-sm text-forest-slate" : "text-mossy-gray hover:text-forest-slate"}`}>
+            <button onClick={() => setTab("public")} className={`flex flex-1 items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${tab === "public" ? "bg-surface shadow-sm text-forest-slate" : "text-mossy-gray hover:text-forest-slate"}`}>
               <Globe className="h-3.5 w-3.5" /> Public Link
             </button>
-            <button onClick={() => setTab("email")} className={`flex flex-1 items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${tab === "email" ? "bg-white shadow-sm text-forest-slate" : "text-mossy-gray hover:text-forest-slate"}`}>
+            <button onClick={() => setTab("email")} className={`flex flex-1 items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${tab === "email" ? "bg-surface shadow-sm text-forest-slate" : "text-mossy-gray hover:text-forest-slate"}`}>
               <Mail className="h-3.5 w-3.5" /> Email Invite
             </button>
           </div>

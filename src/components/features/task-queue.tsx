@@ -6,13 +6,15 @@ import { TaskRow, YoutubeTaskRow } from "./task-row";
 import { GlassModal } from "./glass-modal";
 import { InboxZero } from "./inbox-zero";
 import { completeReviewAction, deleteDocumentAction, rescheduleDocAction } from "@/actions/documents";
+import { rescheduleYoutubeAction, markYoutubeCompletedAction } from "@/actions/youtube";
 import { toast } from "@/components/ui/toast";
-import type { TaskItem, TaskFilter } from "@/types";
+import type { TaskItem, YoutubeTaskItem, TaskFilter } from "@/types";
 import type { AnyTaskItem } from "@/actions/queue";
 
 interface TaskQueueProps {
   initialTasks: AnyTaskItem[];
   filter: TaskFilter;
+  streak?: number;
 }
 
 function getTaskId(task: AnyTaskItem): string {
@@ -22,7 +24,7 @@ function getTaskId(task: AnyTaskItem): string {
   return (task as TaskItem).doc.id;
 }
 
-export function TaskQueue({ initialTasks, filter }: TaskQueueProps) {
+export function TaskQueue({ initialTasks, filter, streak }: TaskQueueProps) {
   const router = useRouter();
   const [tasks, setTasks] = React.useState(initialTasks);
   const [expandedId, setExpandedId] = React.useState<string | null>(null);
@@ -91,6 +93,19 @@ export function TaskQueue({ initialTasks, filter }: TaskQueueProps) {
     router.refresh();
   }
 
+  async function handleYoutubeReschedule(sessionId: string, days: number) {
+    await rescheduleYoutubeAction(sessionId, days);
+    toast(`Rescheduled +${days} days`, { variant: "success" });
+    router.refresh();
+  }
+
+  async function handleYoutubeComplete(sessionId: string) {
+    await markYoutubeCompletedAction(sessionId);
+    setTasks((prev) => prev.filter((t) => !("source" in t) || (t as YoutubeTaskItem).session.id !== sessionId));
+    toast("Video marked complete!", { variant: "success" });
+    router.refresh();
+  }
+
   async function handleDelete(docId: string) {
     const result = await deleteDocumentAction(docId);
     if (result.success) {
@@ -126,6 +141,7 @@ export function TaskQueue({ initialTasks, filter }: TaskQueueProps) {
       <div className="space-y-2.5">
         {sortedTasks.length === 0 ? (
           <InboxZero
+            streak={streak}
             nextDate={
               filter === "today"
                 ? "No upcoming reviews found"
@@ -142,6 +158,8 @@ export function TaskQueue({ initialTasks, filter }: TaskQueueProps) {
                   task={task}
                   isExpanded={expandedId === id}
                   onToggleExpand={() => handleToggleExpand(id)}
+                  onReschedule={handleYoutubeReschedule}
+                  onComplete={handleYoutubeComplete}
                 />
               );
             }

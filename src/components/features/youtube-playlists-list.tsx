@@ -83,7 +83,7 @@ export function YoutubePlaylistsList({ initialPlaylists }: { initialPlaylists: Y
       </div>
 
       {playlists.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-border bg-white/70 px-4 py-6 text-center">
+        <div className="rounded-xl border border-dashed border-border bg-surface/70 px-4 py-6 text-center">
           <ListVideo className="mx-auto mb-2 h-7 w-7 text-mossy-gray/40" />
           <p className="text-sm font-medium text-forest-slate">No playlists yet</p>
           <p className="mt-1 text-xs text-mossy-gray">Create one here, then add videos from any YouTube study session.</p>
@@ -93,7 +93,7 @@ export function YoutubePlaylistsList({ initialPlaylists }: { initialPlaylists: Y
           {playlists.map((playlist) => {
             const firstItem = playlist.items[0];
             return (
-              <div key={playlist.id} className="group relative flex gap-3 rounded-xl border border-border bg-white p-3 shadow-sm transition-all hover:shadow-md">
+              <div key={playlist.id} className="group relative flex gap-3 rounded-xl border border-border bg-surface p-3 shadow-sm transition-all hover:shadow-md">
                 <Link href={`/study/youtube?yp=${playlist.id}`} className="flex gap-3 flex-1 min-w-0">
                   <div className="relative h-16 w-28 shrink-0 overflow-hidden rounded-lg border border-border/50 bg-muted">
                     {firstItem?.thumbnailUrl ? (

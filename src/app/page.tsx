@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Brain, Repeat2, Zap, BookOpen, BarChart3, Sparkles, ArrowRight } from "lucide-react";
+import { Brain, Repeat2, Zap, BookOpen, BarChart3, Sparkles, ArrowRight, Download, Globe } from "lucide-react";
 
 const FEATURES = [
   {
@@ -34,9 +34,25 @@ const FEATURES = [
   },
 ];
 
+const JSON_LD = {
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  name: "lostbae",
+  applicationCategory: "EducationalApplication",
+  operatingSystem: "Web, macOS, Windows",
+  description:
+    "Spaced repetition and active recall for your Google Docs, notes and YouTube lessons.",
+  offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+  url: (process.env.NEXT_PUBLIC_APP_URL ?? "https://www.lostbae.com").replace(/\/$/, ""),
+};
+
 export default function HomePage() {
   return (
     <div className="min-h-screen bg-canvas text-forest-slate flex flex-col">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(JSON_LD) }}
+      />
       {/* Nav */}
       <header className="sticky top-0 z-50 border-b border-border/50 bg-canvas/80 backdrop-blur-sm">
         <div className="max-w-5xl mx-auto px-6 h-14 flex items-center justify-between">
@@ -46,7 +62,13 @@ export default function HomePage() {
             </div>
             <span className="font-bold text-forest-slate tracking-tight">Lostbae</span>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-4">
+            <Link
+              href="/blog"
+              className="hidden text-sm font-medium text-mossy-gray transition-colors hover:text-forest-slate sm:inline"
+            >
+              Blog
+            </Link>
             <Link
               href="/login"
               className="text-sm font-medium text-mossy-gray hover:text-forest-slate transition-colors"
@@ -142,6 +164,77 @@ export default function HomePage() {
           </div>
         </section>
 
+        {/* Available everywhere */}
+        <section className="border-t border-border/50 bg-surface/40">
+          <div className="mx-auto max-w-5xl px-6 py-20">
+            <div className="text-center">
+              <p className="text-sm font-semibold uppercase tracking-wide text-state-today">Use it everywhere</p>
+              <h2 className="mt-2 text-2xl font-bold text-forest-slate sm:text-3xl">
+                On your desktop, or any browser
+              </h2>
+              <p className="mx-auto mt-3 max-w-lg text-mossy-gray">
+                Install the native app for macOS or Windows, or just open it on the web — your library
+                stays in sync everywhere.
+              </p>
+            </div>
+
+            <div className="mt-10 grid gap-4 sm:grid-cols-3">
+              {/* macOS */}
+              <a
+                href="https://github.com/goutam-raj-s/revision-master/releases/latest"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group flex flex-col items-center gap-3 rounded-2xl border border-border bg-surface p-6 text-center shadow-card transition-all hover:-translate-y-1 hover:shadow-hover"
+              >
+                <svg viewBox="0 0 24 24" className="h-9 w-9 fill-forest-slate" aria-hidden="true">
+                  <path d="M16.365 1.43c0 1.14-.493 2.27-1.177 3.08-.744.9-1.99 1.57-2.987 1.57-.12 0-.23-.02-.3-.03-.01-.06-.04-.22-.04-.39 0-1.15.572-2.27 1.206-2.98.804-.94 2.142-1.64 3.248-1.68.03.13.05.28.05.43zm4.565 15.71c-.03.07-.463 1.58-1.518 3.12-.945 1.34-1.94 2.71-3.43 2.71-1.517 0-1.9-.88-3.63-.88-1.661 0-2.256.91-3.642.91-1.387 0-2.412-1.24-3.355-2.53-1.211-1.66-2.18-4.04-2.18-6.32 0-3.71 2.41-5.68 4.79-5.68 1.32 0 2.42.88 3.246.88.79 0 2.03-.94 3.554-.94.578 0 2.648.05 4.012 1.92-.106.06-2.27 1.33-2.27 3.96 0 3.03 2.65 4.1 2.74 4.14z" />
+                </svg>
+                <div>
+                  <div className="text-sm font-semibold text-forest-slate">Download for Mac</div>
+                  <div className="text-xs text-mossy-gray">Intel &amp; Apple Silicon</div>
+                </div>
+                <span className="mt-1 inline-flex items-center gap-1.5 rounded-full bg-state-today/10 px-3 py-1 text-xs font-medium text-state-today transition-colors group-hover:bg-state-today/15">
+                  <Download className="h-3 w-3" /> .dmg
+                </span>
+              </a>
+
+              {/* Windows */}
+              <a
+                href="https://github.com/goutam-raj-s/revision-master/releases/latest"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group flex flex-col items-center gap-3 rounded-2xl border border-border bg-surface p-6 text-center shadow-card transition-all hover:-translate-y-1 hover:shadow-hover"
+              >
+                <svg viewBox="0 0 24 24" className="h-9 w-9 fill-forest-slate" aria-hidden="true">
+                  <path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801" />
+                </svg>
+                <div>
+                  <div className="text-sm font-semibold text-forest-slate">Download for Windows</div>
+                  <div className="text-xs text-mossy-gray">Windows 10 &amp; 11</div>
+                </div>
+                <span className="mt-1 inline-flex items-center gap-1.5 rounded-full bg-state-today/10 px-3 py-1 text-xs font-medium text-state-today transition-colors group-hover:bg-state-today/15">
+                  <Download className="h-3 w-3" /> .exe
+                </span>
+              </a>
+
+              {/* Web */}
+              <Link
+                href="/register"
+                className="group flex flex-col items-center gap-3 rounded-2xl border border-border bg-surface p-6 text-center shadow-card transition-all hover:-translate-y-1 hover:shadow-hover"
+              >
+                <Globe className="h-9 w-9 text-forest-slate" strokeWidth={1.5} />
+                <div>
+                  <div className="text-sm font-semibold text-forest-slate">Use on the web</div>
+                  <div className="text-xs text-mossy-gray">Any modern browser</div>
+                </div>
+                <span className="mt-1 inline-flex items-center gap-1.5 rounded-full bg-state-today/10 px-3 py-1 text-xs font-medium text-state-today transition-colors group-hover:bg-state-today/15">
+                  Open app
+                </span>
+              </Link>
+            </div>
+          </div>
+        </section>
+
         {/* CTA */}
         <section className="bg-forest-slate">
           <div className="max-w-5xl mx-auto px-6 py-16 text-center">
@@ -173,7 +266,19 @@ export default function HomePage() {
             <span className="text-border">·</span>
             <span>© {new Date().getFullYear()}</span>
           </div>
-          <nav className="flex items-center gap-6">
+          <nav className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
+            <Link href="/blog" className="hover:text-forest-slate transition-colors">
+              Blog
+            </Link>
+            <Link href="/for/coding-interviews" className="hover:text-forest-slate transition-colors">
+              For interviews
+            </Link>
+            <Link href="/for/medical-students" className="hover:text-forest-slate transition-colors">
+              For med school
+            </Link>
+            <Link href="/for/language-learning" className="hover:text-forest-slate transition-colors">
+              For languages
+            </Link>
             <Link href="/privacy" className="hover:text-forest-slate transition-colors">
               Privacy Policy
             </Link>

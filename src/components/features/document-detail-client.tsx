@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Plus, Trash2, Check, Loader2, BookText, FileText, X, Save, Search, Copy, CalendarDays } from "lucide-react";
 import { SimpleTooltip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { pushRecentDoc } from "@/components/features/command-palette";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -20,7 +21,8 @@ import {
 } from "@/actions/notes";
 import { ImagePreviewThumbnail } from "@/components/features/image-preview-thumbnail";
 import { ImagePickerButton } from "@/components/features/image-picker-button";
-import { updateDocumentAction } from "@/actions/documents";
+import { updateDocumentAction, rescheduleDocAction, completeReviewAction, markDocCompletedAction } from "@/actions/documents";
+import { ReviewScheduleControls } from "@/components/features/review-schedule-controls";
 import type { Document, Repetition, Note, Term, Difficulty } from "@/types";
 
 interface DocumentDetailClientProps {
@@ -32,6 +34,12 @@ interface DocumentDetailClientProps {
 
 export function DocumentDetailClient({ doc, rep, initialNotes, initialTerms }: DocumentDetailClientProps) {
   const router = useRouter();
+
+  // Record this doc as recently opened, for the command palette "Recent" group.
+  React.useEffect(() => {
+    pushRecentDoc(doc.id);
+  }, [doc.id]);
+
   const [notes, setNotes] = React.useState(initialNotes);
   const [terms, setTerms] = React.useState(initialTerms);
   const [newNote, setNewNote] = React.useState("");
@@ -466,25 +474,26 @@ export function DocumentDetailClient({ doc, rep, initialNotes, initialTerms }: D
           )}
         </div>
 
-        {/* Review info */}
+        {/* Review schedule + controls */}
         {rep && (
-          <div className="bg-surface rounded-2xl border border-border p-4 space-y-2 shadow-card">
-            <Label className="text-xs uppercase tracking-wide text-mossy-gray">Review Schedule</Label>
-            <div className="space-y-1.5 text-sm">
-              <div className="flex justify-between">
-                <span className="text-mossy-gray">Next review</span>
-                <span className="font-mono text-xs text-forest-slate">{new Date(rep.nextReviewDate).toLocaleDateString()}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-mossy-gray">Interval</span>
-                <span className="font-mono text-xs text-forest-slate">{rep.intervalDays}d</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-mossy-gray">Reviews done</span>
-                <span className="font-mono text-xs text-forest-slate">{rep.reviewCount}</span>
-              </div>
-            </div>
-          </div>
+          <ReviewScheduleControls
+            rep={rep}
+            onReschedule={async (days) => {
+              const res = await rescheduleDocAction(doc.id, days);
+              if (res.success) router.refresh();
+              return res;
+            }}
+            onCompleteReview={async () => {
+              const res = await completeReviewAction(doc.id);
+              if (res.success) router.refresh();
+              return res;
+            }}
+            onMarkCompleted={async () => {
+              const res = await markDocCompletedAction(doc.id);
+              if (res.success) router.refresh();
+              return res;
+            }}
+          />
         )}
       </div>
     </div>

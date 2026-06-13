@@ -6,7 +6,13 @@ import {
   getDocumentsCollection,
   getRepetitionsCollection,
 } from "@/lib/db/collections";
+import { computeStreak, type StreakData } from "@/lib/streak";
 import type { DashboardStats } from "@/types";
+
+export async function getStreakAction(): Promise<StreakData> {
+  const user = await requireAuth();
+  return computeStreak(new ObjectId(user.id));
+}
 
 function topLevelDocumentMatch(userId: ObjectId) {
   return {
@@ -86,8 +92,10 @@ export async function getDashboardStats(): Promise<DashboardStats> {
       {
         $group: {
           _id: "$tags",
+          // Fall back to when the doc was added (not epoch 0) so never-reviewed
+          // items show a real "days since added", not ~56 years.
           lastReviewedAt: {
-            $max: { $ifNull: ["$rep.lastReviewedAt", new Date(0)] },
+            $max: { $ifNull: ["$rep.lastReviewedAt", "$createdAt"] },
           },
         },
       },

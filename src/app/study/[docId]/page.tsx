@@ -18,6 +18,12 @@ import type { DocumentTreeNode } from "@/types";
 const DOC_SHORTCUTS = [
   { keys: "Cmd+]", label: "Toggle study panel open/closed" },
   { keys: "Cmd+S", label: "Save document" },
+  { keys: "/", label: "Slash menu — insert any block (headings, lists, table, code…)" },
+  { keys: "@", label: "Mention & link your own docs / terms" },
+  { keys: "Cmd+F", label: "Find & replace in document" },
+  { keys: "Select text", label: "Bubble toolbar — inline formatting & table controls" },
+  { keys: "Outline icon", label: "Document outline / jump to headings" },
+  { keys: "Task list", label: "Checklists with checkboxes" },
   { keys: "Cmd+B", label: "Bold" },
   { keys: "Cmd+I", label: "Italic" },
   { keys: "Cmd+U", label: "Underline" },

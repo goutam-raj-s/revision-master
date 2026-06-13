@@ -174,7 +174,7 @@ export function GlassModal({ task, onClose, onComplete }: GlassModalProps) {
           className="h-full"
         >
         {/* Left pane — Google Doc */}
-        <div className="h-full relative bg-white/60 border-r border-border/50">
+        <div className="h-full relative bg-surface/60 border-r border-border/50">
           {!iframeLoaded && (
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="shimmer-bg absolute inset-0" />

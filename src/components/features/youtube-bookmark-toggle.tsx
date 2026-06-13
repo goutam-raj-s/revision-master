@@ -5,6 +5,7 @@ import { Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toggleYoutubeBookmark } from "@/actions/youtube-bookmarks";
 import { cn } from "@/lib/utils";
+import type { PlaylistVideo } from "@/types";
 
 interface YoutubeBookmarkToggleProps {
   youtubeId: string;
@@ -12,6 +13,8 @@ interface YoutubeBookmarkToggleProps {
   title: string;
   thumbnailUrl: string;
   initialIsBookmarked: boolean;
+  /** For playlists: persisted with the bookmark so it survives fetch glitches. */
+  videos?: PlaylistVideo[];
 }
 
 export function YoutubeBookmarkToggle({
@@ -20,6 +23,7 @@ export function YoutubeBookmarkToggle({
   title,
   thumbnailUrl,
   initialIsBookmarked,
+  videos,
 }: YoutubeBookmarkToggleProps) {
   const [isPending, startTransition] = useTransition();
   const [isBookmarked, setIsBookmarked] = useState(initialIsBookmarked);
@@ -30,7 +34,7 @@ export function YoutubeBookmarkToggle({
     setIsBookmarked(nextState);
 
     startTransition(async () => {
-      const result = await toggleYoutubeBookmark(youtubeId, type, title, thumbnailUrl);
+      const result = await toggleYoutubeBookmark(youtubeId, type, title, thumbnailUrl, videos);
       if (!result.success) {
         // Revert on error
         setIsBookmarked(!nextState);

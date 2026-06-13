@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import {
-  Plus, Trash2, Check, Loader2, BookText, X, RotateCcw, PanelRightClose,
+  Plus, Trash2, Check, CheckCheck, Loader2, BookText, X, RotateCcw, PanelRightClose,
   Search, Copy, StickyNote, Tags, CalendarDays, LayoutList,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -20,7 +20,7 @@ import {
   createNoteAction, createTermAction, deleteNoteAction,
   markNoteDoneAction, deleteTermAction,
 } from "@/actions/notes";
-import { updateDocumentAction, rescheduleDocAction } from "@/actions/documents";
+import { updateDocumentAction, rescheduleDocAction, markDocCompletedAction } from "@/actions/documents";
 import type { Document, Repetition, Note, Term, Difficulty } from "@/types";
 
 type SidebarTab = "overview" | "notes" | "terms";
@@ -53,6 +53,7 @@ export function StudySidebarPanel({
   const [savingTags, setSavingTags] = React.useState(false);
   const [rescheduleDays, setRescheduleDays] = React.useState(7);
   const [rescheduling, setRescheduling] = React.useState(false);
+  const [completing, setCompleting] = React.useState(false);
 
   // Notes state
   const [notes, setNotes] = React.useState<Note[]>(initialNotes);
@@ -150,6 +151,14 @@ export function StudySidebarPanel({
     await rescheduleDocAction(doc.id, rescheduleDays);
     toast(`Rescheduled +${rescheduleDays} days`, { variant: "success" });
     setRescheduling(false);
+  }
+
+  async function handleMarkComplete() {
+    setCompleting(true);
+    const res = await markDocCompletedAction(doc.id);
+    setCompleting(false);
+    if (res.success) toast("Marked complete", { variant: "success" });
+    else toast(res.error ?? "Could not complete", { variant: "error" });
   }
 
   // ─── Notes handlers ─────────────────────────────────────────────────────────
@@ -454,6 +463,20 @@ export function StudySidebarPanel({
                     </Button>
                   </SimpleTooltip>
                 </div>
+
+                {/* Mark complete */}
+                <Button
+                  size="sm"
+                  className="w-full gap-1.5"
+                  onClick={handleMarkComplete}
+                  disabled={completing}
+                >
+                  {completing
+                    ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    : <CheckCheck className="h-3.5 w-3.5" />
+                  }
+                  Mark complete
+                </Button>
               </div>
             ) : (
               <p className="text-xs text-mossy-gray">No review schedule yet.</p>

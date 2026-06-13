@@ -17,6 +17,8 @@ export interface DbUser {
   geminiApiKeyEncrypted?: string;
   provider?: "email" | "google" | "github" | "discord";
   providerAccountId?: string;
+  emailReminders?: boolean;
+  lastReminderSentAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -27,6 +29,16 @@ export interface DbPasswordResetToken {
   token: string;
   expiresAt: Date;
   createdAt: Date;
+}
+
+export interface DbReviewEvent {
+  _id: ObjectId;
+  userId: ObjectId;
+  docId?: ObjectId;
+  source: "document" | "youtube";
+  reviewedAt: Date;
+  /** Local calendar day key (YYYY-MM-DD) for streak/heatmap aggregation. */
+  dayKey: string;
 }
 
 export interface DbLoginRecord {
@@ -252,6 +264,7 @@ export interface DbYoutubeSession {
   notes: string;
   tags: string[];
   difficulty: Difficulty;
+  status?: "active" | "completed";
   createdAt: Date;
   updatedAt: Date;
 }
@@ -271,6 +284,12 @@ export interface YoutubeSession {
   updatedAt: string;
 }
 
+export interface PlaylistVideo {
+  videoId: string;
+  title: string;
+  thumbnailUrl: string;
+}
+
 export interface DbYoutubeBookmark {
   _id: ObjectId;
   userId: ObjectId;
@@ -278,6 +297,8 @@ export interface DbYoutubeBookmark {
   youtubeId: string;
   title: string;
   thumbnailUrl: string;
+  /** For playlists: the persisted video list so it survives YouTube fetch glitches. */
+  videos?: PlaylistVideo[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -288,6 +309,7 @@ export interface YoutubeBookmark {
   youtubeId: string;
   title: string;
   thumbnailUrl: string;
+  videos?: PlaylistVideo[];
   createdAt: string;
   updatedAt: string;
 }

@@ -12,11 +12,24 @@ import { TableCell } from "@tiptap/extension-table-cell";
 import { TableHeader } from "@tiptap/extension-table-header";
 import Placeholder from "@tiptap/extension-placeholder";
 import TextAlign from "@tiptap/extension-text-align";
+import TaskList from "@tiptap/extension-task-list";
+import TaskItem from "@tiptap/extension-task-item";
+import { TextStyle } from "@tiptap/extension-text-style";
+import { Color } from "@tiptap/extension-color";
+import { CodeBlockLowlight } from "@tiptap/extension-code-block-lowlight";
+import { createLowlight, common } from "lowlight";
 import { CollapsibleImage } from "./extensions/CollapsibleImage";
 import { FontSize } from "./extensions/FontSize";
 import { PageBreak } from "./extensions/PageBreak";
+import { SlashCommand } from "./extensions/SlashCommand";
+import { SearchReplace } from "./extensions/SearchReplace";
+import { MentionExtension } from "./extensions/MentionExtension";
+
+const lowlight = createLowlight(common);
 import { uploadImageAction } from "@/actions/upload";
 import { EditorToolbar } from "./EditorToolbar";
+import { EditorBubbleMenu } from "./EditorBubbleMenu";
+import { EditorSearch } from "./EditorSearch";
 import { Button } from "@/components/ui/button";
 import { AlertCircle, CheckCircle2, Download, FileText, Loader2, Save, UploadCloud } from "lucide-react";
 
@@ -244,12 +257,20 @@ export function RichTextEditor({
   const editorConfig = {
     immediatelyRender: false,
     extensions: [
-      StarterKit,
+      StarterKit.configure({ codeBlock: false }),
       Underline,
       Highlight.configure({ multicolor: true }),
+      TextStyle,
+      Color,
       FontSize,
       CollapsibleImage,
       PageBreak,
+      TaskList,
+      TaskItem.configure({ nested: true }),
+      CodeBlockLowlight.configure({ lowlight }),
+      SlashCommand,
+      SearchReplace,
+      MentionExtension,
       Link.configure({
         openOnClick: false,
         HTMLAttributes: {
@@ -454,6 +475,7 @@ export function RichTextEditor({
             : "h-full rounded-2xl"
       )}
     >
+      {!readOnly && <EditorSearch editor={editor} />}
       {!readOnly && (
         <EditorToolbar
           editor={editor}
@@ -525,12 +547,13 @@ export function RichTextEditor({
               </div>
             ))}
 
+          {!readOnly && <EditorBubbleMenu editor={editor} />}
           <EditorContent editor={editor} />
         </div>
 
         {isDragActive && (
           <div className="pointer-events-none absolute inset-4 z-20 flex items-center justify-center rounded-2xl border-2 border-dashed border-state-today/60 bg-state-today/8 text-state-today shadow-inner">
-            <div className="flex items-center gap-2 rounded-full bg-white/90 px-4 py-2 text-sm font-medium shadow-soft">
+            <div className="flex items-center gap-2 rounded-full bg-surface/90 px-4 py-2 text-sm font-medium shadow-soft">
               <UploadCloud className="h-4 w-4" />
               Drop image to insert it here
             </div>
@@ -539,7 +562,7 @@ export function RichTextEditor({
       </div>
 
       {!readOnly && !compact && (
-        <div className={cn("flex items-center justify-between gap-2 border-t border-border bg-canvas/60 px-2 py-1.5 sm:gap-3 sm:p-3", focusMode && "bg-white/90")}>
+        <div className={cn("flex items-center justify-between gap-2 border-t border-border bg-canvas/60 px-2 py-1.5 sm:gap-3 sm:p-3", focusMode && "bg-surface/90")}>
           <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-mossy-gray sm:gap-x-3 sm:text-xs">
             <span className={cn("inline-flex items-center gap-1.5 font-medium", saveState === "error" && "text-destructive", saveState === "unsaved" && "text-state-stale")}>
               {saveState === "saving" ? (

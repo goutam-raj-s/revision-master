@@ -10,7 +10,8 @@ import {
   serializeYoutubeSession,
   serializeRepetition,
 } from "@/lib/db/collections";
-import { getCustomNextReviewDate } from "@/lib/srs/engine";
+import { getCustomNextReviewDate, getNextReviewDate } from "@/lib/srs/engine";
+import { logReviewEvent } from "@/lib/streak";
 import type { ActionResult, Difficulty, YoutubeSession, Repetition } from "@/types";
 import { extractYoutubeVideoId } from "@/lib/youtube-utils";
 import play from "play-dl";
@@ -87,10 +88,13 @@ function readThumbnailUrl(value: unknown): string {
 
 function collectPlaylistVideosFromInitialData(data: unknown): YoutubePlaylistVideoPreview[] {
   const videos = new Map<string, YoutubePlaylistVideoPreview>();
-  const stack: unknown[] = [data];
+  // FIFO breadth-first traversal so playlist videos keep their original order.
+  // (A LIFO stack reverses sibling arrays — the playlist would appear backwards.)
+  const queue: unknown[] = [data];
+  let head = 0;
 
-  while (stack.length > 0) {
-    const current = stack.pop();
+  while (head < queue.length) {
+    const current = queue[head++];
     const record = asRecord(current);
     if (!record) continue;
 
@@ -105,7 +109,7 @@ function collectPlaylistVideosFromInitialData(data: unknown): YoutubePlaylistVid
     }
 
     for (const value of Object.values(record)) {
-      if (value && typeof value === "object") stack.push(value);
+      if (value && typeof value === "object") queue.push(value);
     }
   }
 
@@ -168,9 +172,66 @@ export async function fetchYoutubeMetadata(
   }
 }
 
+/**
+ * Reliable enumeration via the official YouTube Data API v3 (paginated, in order).
+ * Returns null when no API key is configured or the request fails, so callers
+ * can fall back to scraping. Costs ~1 quota unit per 50 videos.
+ */
+async function fetchPlaylistViaDataApi(playlistId: string): Promise<YoutubePlaylistData | null> {
+  const key = process.env.YOUTUBE_API_KEY;
+  if (!key) return null;
+
+  try {
+    let title = "YouTube Playlist";
+    const pRes = await fetch(
+      `https://www.googleapis.com/youtube/v3/playlists?part=snippet&id=${playlistId}&key=${key}`,
+      { cache: "no-store" }
+    );
+    if (pRes.ok) {
+      const pData = await pRes.json();
+      title = pData.items?.[0]?.snippet?.title || title;
+    }
+
+    const videos: YoutubePlaylistVideoPreview[] = [];
+    let pageToken = "";
+    do {
+      const url =
+        `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&maxResults=50&playlistId=${playlistId}&key=${key}` +
+        (pageToken ? `&pageToken=${pageToken}` : "");
+      const res = await fetch(url, { cache: "no-store" });
+      if (!res.ok) break;
+      const data = await res.json();
+      for (const item of data.items ?? []) {
+        const s = item.snippet;
+        const videoId = s?.resourceId?.videoId;
+        if (!videoId) continue;
+        // Skip private/deleted entries that can't be played.
+        if (s.title === "Private video" || s.title === "Deleted video") continue;
+        videos.push({
+          videoId,
+          title: s.title || "Untitled",
+          thumbnailUrl:
+            s.thumbnails?.medium?.url || s.thumbnails?.default?.url || `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`,
+        });
+      }
+      pageToken = data.nextPageToken || "";
+    } while (pageToken);
+
+    return videos.length > 0 ? { playlistId, title, videos } : null;
+  } catch (err) {
+    console.error("YouTube Data API playlist fetch failed", err);
+    return null;
+  }
+}
+
 export async function fetchYoutubePlaylist(
   playlistId: string
 ): Promise<YoutubePlaylistData> {
+  // 1) Official Data API — reliable, ordered, quota-friendly.
+  const viaApi = await fetchPlaylistViaDataApi(playlistId);
+  if (viaApi) return viaApi;
+
+  // 2) play-dl fallback.
   try {
     const playlist = await play.playlist_info(`https://www.youtube.com/playlist?list=${playlistId}`, { incomplete: true });
     const videos = await playlist.all_videos();
@@ -181,9 +242,9 @@ export async function fetchYoutubePlaylist(
     })).filter((v) => v.videoId);
 
     if (playlistVideos.length === 0) {
-      return fetchYoutubePlaylistFromPage(playlistId, playlist.title || "YouTube Playlist");
+      return await fetchYoutubePlaylistFromPage(playlistId, playlist.title || "YouTube Playlist");
     }
-    
+
     return {
       playlistId,
       title: playlist.title || "YouTube Playlist",
@@ -191,7 +252,13 @@ export async function fetchYoutubePlaylist(
     };
   } catch (error) {
     console.error("play-dl failed to fetch playlist; trying page fallback", error);
-    return fetchYoutubePlaylistFromPage(playlistId);
+    // 3) Page-scrape fallback.
+    try {
+      return await fetchYoutubePlaylistFromPage(playlistId);
+    } catch (fallbackError) {
+      console.error("playlist page fallback also failed", fallbackError);
+      return { playlistId, title: "YouTube Playlist", videos: [] };
+    }
   }
 }
 
@@ -426,6 +493,64 @@ export async function getYoutubeSessionRepetition(sessionId: string): Promise<Re
     return null;
   }
 }
+
+/** Reschedule a YouTube session's next review to +N days from now. */
+export async function rescheduleYoutubeAction(
+  sessionId: string,
+  daysFromNow: number
+): Promise<ActionResult> {
+  const user = await requireAuth();
+  const userId = new ObjectId(user.id);
+  const reps = await getYoutubeRepetitionsCollection();
+  const res = await reps.updateOne(
+    { docId: new ObjectId(sessionId), userId },
+    { $set: { nextReviewDate: getCustomNextReviewDate(daysFromNow), intervalDays: daysFromNow, updatedAt: new Date() } }
+  );
+  if (res.matchedCount === 0) return { success: false, error: "Review record not found." };
+  revalidatePath("/dashboard");
+  return { success: true };
+}
+
+/** Advance a YouTube session through its SRS schedule (a completed review). */
+export async function completeYoutubeReviewAction(sessionId: string): Promise<ActionResult> {
+  const user = await requireAuth();
+  const userId = new ObjectId(user.id);
+  const sessionObjId = new ObjectId(sessionId);
+  const reps = await getYoutubeRepetitionsCollection();
+  const sessions = await getYoutubeSessionsCollection();
+
+  const rep = await reps.findOne({ docId: sessionObjId, userId });
+  if (!rep) return { success: false, error: "Review record not found." };
+  const session = await sessions.findOne({ _id: sessionObjId, userId });
+  if (!session) return { success: false, error: "Video session not found." };
+
+  const newReviewCount = rep.reviewCount + 1;
+  const nextReviewDate = getNextReviewDate(session.difficulty, newReviewCount);
+
+  await reps.updateOne(
+    { docId: sessionObjId, userId },
+    { $set: { nextReviewDate, reviewCount: newReviewCount, lastReviewedAt: new Date(), updatedAt: new Date() } }
+  );
+  await logReviewEvent(userId, sessionObjId, "youtube");
+
+  revalidatePath("/dashboard");
+  return { success: true };
+}
+
+/** Mark a YouTube session fully completed (removes it from the review queue). */
+export async function markYoutubeCompletedAction(sessionId: string): Promise<ActionResult> {
+  const user = await requireAuth();
+  const userId = new ObjectId(user.id);
+  const sessions = await getYoutubeSessionsCollection();
+  const res = await sessions.updateOne(
+    { _id: new ObjectId(sessionId), userId },
+    { $set: { status: "completed", updatedAt: new Date() } }
+  );
+  if (res.matchedCount === 0) return { success: false, error: "Video session not found." };
+  revalidatePath("/dashboard");
+  return { success: true };
+}
+
 export async function searchYoutubeVideos(
   query: string,
   limit = 5

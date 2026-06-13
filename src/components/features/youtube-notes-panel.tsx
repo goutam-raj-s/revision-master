@@ -1,10 +1,21 @@
 "use client";
 
 import * as React from "react";
-import { MapPin, Check, AlertTriangle, ChevronLeft, ChevronRight } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { MapPin, Check, AlertTriangle, ChevronLeft, ChevronRight, CalendarClock, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { updateYoutubeSessionNotes } from "@/actions/youtube";
+import {
+  updateYoutubeSessionNotes,
+  getYoutubeSessionRepetition,
+  rescheduleYoutubeAction,
+  completeYoutubeReviewAction,
+  markYoutubeCompletedAction,
+  renameYoutubeSession,
+} from "@/actions/youtube";
+import { toast } from "@/components/ui/toast";
 import { RichTextEditorDynamic } from "@/components/features/editor/RichTextEditorDynamic";
+import { ReviewScheduleControls } from "@/components/features/review-schedule-controls";
+import type { Repetition } from "@/types";
 import type { YoutubePlayerHandle } from "./youtube-player";
 
 interface YoutubeNotesPanelProps {
@@ -39,8 +50,53 @@ export function YoutubeNotesPanel({
   isCollapsed,
   onToggleCollapse,
 }: YoutubeNotesPanelProps) {
+  const router = useRouter();
   const [saveStatus, setSaveStatus] = React.useState<SaveStatus>("idle");
   const insertContentRef = React.useRef<((text: string) => void) | null>(null);
+
+  // Review schedule for this video session (skipped for unsaved preview sessions).
+  const isPreview = sessionId.startsWith("external-preview-");
+  const [rep, setRep] = React.useState<Repetition | null>(null);
+  const [showSchedule, setShowSchedule] = React.useState(false);
+
+  React.useEffect(() => {
+    if (isPreview) return;
+    getYoutubeSessionRepetition(sessionId).then(setRep).catch(() => {});
+  }, [sessionId, isPreview]);
+
+  // Inline-editable title (like documents).
+  const [displayTitle, setDisplayTitle] = React.useState(videoTitle);
+  const [titleEditing, setTitleEditing] = React.useState(false);
+  const [titleDraft, setTitleDraft] = React.useState(videoTitle);
+  const [savingTitle, setSavingTitle] = React.useState(false);
+  const titleInputRef = React.useRef<HTMLInputElement>(null);
+
+  React.useEffect(() => {
+    if (titleEditing) {
+      titleInputRef.current?.focus();
+      titleInputRef.current?.select();
+    }
+  }, [titleEditing]);
+
+  async function commitTitle() {
+    const trimmed = titleDraft.trim();
+    if (!trimmed || trimmed === displayTitle) {
+      setTitleEditing(false);
+      setTitleDraft(displayTitle);
+      return;
+    }
+    setSavingTitle(true);
+    const res = await renameYoutubeSession(sessionId, trimmed);
+    setSavingTitle(false);
+    if (res.success) {
+      setDisplayTitle(trimmed);
+      setTitleEditing(false);
+      toast("Title updated", { variant: "success" });
+      router.refresh();
+    } else {
+      toast(res.error ?? "Failed to rename", { variant: "error" });
+    }
+  }
 
   // Listen for global timestamp event (triggered by T key from parent)
   React.useEffect(() => {
@@ -102,9 +158,40 @@ export function YoutubeNotesPanel({
           />
         )}
         <div className="flex-1 min-w-0">
-          <h2 className="text-sm font-semibold text-forest-slate line-clamp-2 leading-snug">
-            {videoTitle}
-          </h2>
+          {titleEditing ? (
+            <input
+              ref={titleInputRef}
+              value={titleDraft}
+              onChange={(e) => setTitleDraft(e.target.value)}
+              onBlur={commitTitle}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") { e.preventDefault(); commitTitle(); }
+                if (e.key === "Escape") { setTitleEditing(false); setTitleDraft(displayTitle); }
+              }}
+              disabled={savingTitle}
+              className="w-full bg-transparent border-b-2 border-state-today/50 text-sm font-semibold text-forest-slate leading-snug outline-none focus:border-state-today disabled:opacity-60"
+              aria-label="Video title"
+            />
+          ) : (
+            <div className="group/yt-title flex items-start gap-1.5">
+              <h2
+                onDoubleClick={() => { if (!isPreview) { setTitleDraft(displayTitle); setTitleEditing(true); } }}
+                title={isPreview ? undefined : "Double-click to rename"}
+                className="text-sm font-semibold text-forest-slate line-clamp-2 leading-snug cursor-text"
+              >
+                {displayTitle}
+              </h2>
+              {!isPreview && (
+                <button
+                  onClick={() => { setTitleDraft(displayTitle); setTitleEditing(true); }}
+                  className="mt-0.5 shrink-0 opacity-0 group-hover/yt-title:opacity-100 transition-opacity p-0.5 rounded text-mossy-gray hover:text-forest-slate"
+                  aria-label="Rename video"
+                >
+                  <Pencil className="h-3 w-3" />
+                </button>
+              )}
+            </div>
+          )}
           {/* Save indicator */}
           <div className="mt-1 text-xs">
             {saveStatus === "saving" && (
@@ -149,7 +236,42 @@ export function YoutubeNotesPanel({
           Timestamp
         </Button>
         <span className="text-xs text-mossy-gray">or press T</span>
+        {rep && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowSchedule((s) => !s)}
+            className="ml-auto gap-1.5 text-xs"
+          >
+            <CalendarClock className="h-3.5 w-3.5" />
+            Review
+          </Button>
+        )}
       </div>
+
+      {rep && showSchedule && (
+        <div className="shrink-0 px-3 py-2 border-b border-border/50">
+          <ReviewScheduleControls
+            rep={rep}
+            onReschedule={async (days) => {
+              const res = await rescheduleYoutubeAction(sessionId, days);
+              if (res.success) setRep(await getYoutubeSessionRepetition(sessionId));
+              return res;
+            }}
+            onCompleteReview={async () => {
+              const res = await completeYoutubeReviewAction(sessionId);
+              if (res.success) setRep(await getYoutubeSessionRepetition(sessionId));
+              return res;
+            }}
+            onMarkCompleted={async () => {
+              const res = await markYoutubeCompletedAction(sessionId);
+              if (res.success) setShowSchedule(false);
+              return res;
+            }}
+          />
+        </div>
+      )}
 
       {/* Rich text editor */}
       <div className="flex-1 min-h-0 overflow-hidden">

@@ -24,7 +24,7 @@ export function YoutubeBookmarksList({ bookmarks }: { bookmarks: YoutubeBookmark
             <Link
               key={bookmark.id}
               href={href}
-              className="group flex gap-3 p-3 bg-white rounded-xl border border-border shadow-sm hover:shadow-md transition-all"
+              className="group flex gap-3 p-3 bg-surface rounded-xl border border-border shadow-sm hover:shadow-md transition-all"
             >
               <div className="relative h-16 w-28 shrink-0 rounded-lg overflow-hidden bg-muted border border-border/50">
                 {bookmark.thumbnailUrl ? (

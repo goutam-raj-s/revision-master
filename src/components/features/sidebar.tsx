@@ -22,6 +22,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { logoutAction } from "@/actions/auth";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 import type { User } from "@/types";
 
 interface SidebarProps {
@@ -112,6 +113,9 @@ export function Sidebar({ user }: SidebarProps) {
 
       {/* User */}
       <div className={cn("border-t border-border", collapsed ? "p-2" : "p-3")}>
+        <div className={cn("mb-1 flex", collapsed ? "justify-center" : "px-1")}>
+          <ThemeToggle showLabel={!collapsed} />
+        </div>
         <button
           type="button"
           onClick={() => setDesktopCollapsed((current) => !current)}

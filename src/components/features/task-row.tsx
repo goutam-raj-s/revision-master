@@ -35,10 +35,24 @@ interface YoutubeTaskRowProps {
   task: YoutubeTaskItem;
   isExpanded: boolean;
   onToggleExpand: () => void;
+  onReschedule: (sessionId: string, days: number) => Promise<void>;
+  onComplete: (sessionId: string) => Promise<void>;
 }
 
-export function YoutubeTaskRow({ task, isExpanded, onToggleExpand }: YoutubeTaskRowProps) {
+export function YoutubeTaskRow({ task, isExpanded, onToggleExpand, onReschedule, onComplete }: YoutubeTaskRowProps) {
   const urgency = urgencyConfig[task.urgency];
+  const [busy, setBusy] = React.useState(false);
+
+  async function reschedule(days: number) {
+    setBusy(true);
+    await onReschedule(task.session.id, days);
+    setBusy(false);
+  }
+  async function complete() {
+    setBusy(true);
+    await onComplete(task.session.id);
+    setBusy(false);
+  }
   return (
     <div
       className={cn(
@@ -100,11 +114,35 @@ export function YoutubeTaskRow({ task, isExpanded, onToggleExpand }: YoutubeTask
               <Badge key={tag} variant="tag">#{tag}</Badge>
             ))}
           </div>
-          <div className="flex justify-end">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs text-mossy-gray mr-0.5">Reschedule</span>
+              {[1, 3, 7].map((d) => (
+                <Button
+                  key={d}
+                  variant="outline"
+                  size="sm"
+                  className="h-7 px-2 text-xs"
+                  disabled={busy}
+                  onClick={() => reschedule(d)}
+                >
+                  +{d}d
+                </Button>
+              ))}
+              <Button
+                size="sm"
+                className="h-7 gap-1 px-2 text-xs"
+                disabled={busy}
+                onClick={complete}
+              >
+                <CheckCircle2 className="h-3.5 w-3.5" />
+                Done
+              </Button>
+            </div>
             <Link href={`/study/youtube?v=${task.session.videoId}`} tabIndex={-1}>
               <Button variant="ghost" size="sm" className="text-xs gap-1.5">
                 <Youtube className="h-3.5 w-3.5 text-destructive" />
-                Open Session
+                Open
               </Button>
             </Link>
           </div>
