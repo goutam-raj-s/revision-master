@@ -212,6 +212,36 @@ body {
   0%, 100% { transform: rotate(0deg); }
   50%      { transform: rotate(-8deg); }
 }
+/* Stat-card mascot animations */
+@keyframes stat-wiggle {
+  0%, 100% { transform: rotate(0deg); }
+  25%      { transform: rotate(-9deg); }
+  75%      { transform: rotate(9deg); }
+}
+@keyframes stat-tick {
+  0%, 100% { transform: rotate(0deg); }
+  50%      { transform: rotate(40deg); }
+}
+@keyframes stat-flicker {
+  0%, 100% { transform: scaleY(1); opacity: 0.9; }
+  50%      { transform: scaleY(1.25); opacity: 1; }
+}
+@keyframes stat-shine {
+  0%, 100% { opacity: 0.2; }
+  50%      { opacity: 0.85; }
+}
+@keyframes stat-tag {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-2px); }
+}
+.stat-bob     { animation: scene-bob 4s ease-in-out infinite; transform-origin: center; }
+.stat-wiggle  { animation: stat-wiggle 2.2s ease-in-out infinite; }
+.stat-tick    { animation: stat-tick 3s steps(1) infinite; }
+.stat-flicker { animation: stat-flicker 0.9s ease-in-out infinite; }
+.stat-shine   { animation: stat-shine 2.5s ease-in-out infinite; }
+.stat-tag     { animation: stat-tag 2.8s ease-in-out infinite; transform-origin: center; }
+.stat-twinkle { animation: inbox-twinkle 2.5s ease-in-out infinite; }
+
 .scene-bob     { animation: scene-bob 4s ease-in-out infinite; transform-origin: center; }
 .scene-glow    { animation: scene-glow 3s ease-in-out infinite; }
 .scene-steam   { animation: scene-steam 3s ease-in-out infinite; }
@@ -221,7 +251,8 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   .inbox-pop, .inbox-breathe, .inbox-float, .inbox-twinkle,
-  .scene-bob, .scene-glow, .scene-steam, .scene-z, .scene-tail, .scene-twinkle { animation: none; }
+  .scene-bob, .scene-glow, .scene-steam, .scene-z, .scene-tail, .scene-twinkle,
+  .stat-bob, .stat-wiggle, .stat-tick, .stat-flicker, .stat-shine, .stat-tag, .stat-twinkle { animation: none; }
 }
 
 /* Custom utility classes */

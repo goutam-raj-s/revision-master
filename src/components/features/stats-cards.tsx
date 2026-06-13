@@ -5,6 +5,7 @@ import Link from "next/link";
 import { BookOpen, Clock, CheckCircle2, TrendingUp, ArrowUpRight } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { StatArt, type StatArtKind } from "@/components/features/stat-card-art";
 import type { DashboardStats } from "@/types";
 
 interface StatsCardsProps {
@@ -38,6 +39,7 @@ function StatCard({
   color,
   bg,
   pulse,
+  art,
   delay,
 }: {
   label: string;
@@ -48,6 +50,7 @@ function StatCard({
   color: string;
   bg: string;
   pulse?: boolean;
+  art: StatArtKind;
   delay: number;
 }) {
   const display = useCountUp(value);
@@ -58,7 +61,12 @@ function StatCard({
         className="relative overflow-hidden shadow-card transition-all duration-300 animate-slide-up hover:-translate-y-1 hover:shadow-hover group-focus-visible:ring-2 group-focus-visible:ring-state-today/50"
         style={{ animationDelay: `${delay}ms`, animationFillMode: "backwards" }}
       >
-        <CardContent className="p-3 sm:p-5">
+        {/* Mascot — lives on the right, gently animated */}
+        <StatArt
+          kind={art}
+          className="pointer-events-none absolute -right-1 bottom-1 h-16 w-16 opacity-90 transition-transform duration-300 group-hover:scale-110 sm:right-2 sm:top-1/2 sm:bottom-auto sm:h-20 sm:w-20 sm:-translate-y-1/2"
+        />
+        <CardContent className="relative p-3 sm:p-5">
           <div className="mb-2 flex items-start justify-between sm:mb-3">
             <div className={cn("relative rounded-lg p-1.5 transition-transform duration-300 group-hover:scale-110 sm:rounded-xl sm:p-2", bg)}>
               <Icon className={cn("h-3.5 w-3.5 sm:h-4 sm:w-4", color)} />
@@ -92,6 +100,7 @@ export function StatsCards({ stats }: StatsCardsProps) {
       bg: "bg-state-upcoming/10",
       description: "in your library",
       href: "/documents",
+      art: "documents" as const,
     },
     {
       label: "Due Today",
@@ -102,6 +111,7 @@ export function StatsCards({ stats }: StatsCardsProps) {
       description: stats.pendingRevisions === 1 ? "revision pending" : "revisions pending",
       href: "/dashboard?filter=pending",
       pulse: stats.pendingRevisions > 0,
+      art: "due" as const,
     },
     {
       label: "Completed",
@@ -111,6 +121,7 @@ export function StatsCards({ stats }: StatsCardsProps) {
       bg: "bg-state-completed/10",
       description: "mastered",
       href: "/documents?status=completed",
+      art: "completed" as const,
     },
     {
       label: "Active",
@@ -120,6 +131,7 @@ export function StatsCards({ stats }: StatsCardsProps) {
       bg: "bg-state-stale/10",
       description: "in rotation",
       href: "/documents",
+      art: "active" as const,
     },
   ];
 
