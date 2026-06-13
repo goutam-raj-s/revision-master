@@ -265,6 +265,34 @@ function createMenu() {
   Menu.setApplicationMenu(Menu.buildFromTemplate(template));
 }
 
+// Poll the app's /api/badge endpoint (authed via the shared session cookie
+// in the window's net session) and reflect the due-review count on the dock
+// badge (macOS) and tray tooltip. Best-effort: failures are ignored.
+function startBadgePolling() {
+  const poll = async () => {
+    try {
+      // Use the window's own session.fetch so the rm_session cookie rides along.
+      const ses = mainWindow?.webContents.session ?? session.defaultSession;
+      const res = await ses.fetch(`${targetUrl}/api/badge`);
+      if (!res.ok) return;
+      const data = (await res.json()) as { due?: number; authenticated?: boolean };
+      const due = data.authenticated ? data.due ?? 0 : 0;
+
+      if (process.platform === "darwin" && app.dock) {
+        app.dock.setBadge(due > 0 ? String(due) : "");
+      }
+      if (tray) {
+        tray.setToolTip(due > 0 ? `lostbae — ${due} review${due !== 1 ? "s" : ""} due` : "lostbae");
+      }
+    } catch {
+      // offline or not signed in — leave badge as-is
+    }
+  };
+
+  poll();
+  setInterval(poll, 5 * 60 * 1000); // every 5 minutes
+}
+
 app.whenReady().then(() => {
   // Clipboard works for copy buttons / CollapsibleImage "Copy"; everything
   // else (camera, mic, geolocation…) is denied — the web app doesn't use them.
@@ -281,6 +309,7 @@ app.whenReady().then(() => {
     // Tray is non-critical; never block startup on it.
     console.error("Tray init failed:", err);
   }
+  startBadgePolling();
 
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
