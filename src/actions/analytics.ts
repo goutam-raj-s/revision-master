@@ -7,7 +7,53 @@ import {
   getRepetitionsCollection,
 } from "@/lib/db/collections";
 import { computeStreak, type StreakData } from "@/lib/streak";
+import {
+  getReviewEventsCollection,
+  getYoutubeSessionsCollection,
+} from "@/lib/db/collections";
 import type { DashboardStats } from "@/types";
+
+export interface ActivityItem {
+  title: string;
+  source: "document" | "youtube";
+  reviewedAt: string;
+  confidence?: "easy" | "okay" | "struggled";
+}
+
+/** Recent review activity (newest first) for the activity feed. */
+export async function getRecentActivityAction(limit = 8): Promise<ActivityItem[]> {
+  const user = await requireAuth();
+  const userId = new ObjectId(user.id);
+  const events = await getReviewEventsCollection();
+  const recent = await events.find({ userId }).sort({ reviewedAt: -1 }).limit(limit).toArray();
+  if (recent.length === 0) return [];
+
+  const docs = await getDocumentsCollection();
+  const ytSessions = await getYoutubeSessionsCollection();
+  const docIds = recent.filter((r) => r.docId).map((r) => r.docId!) as ObjectId[];
+
+  const [docRows, ytRows] = await Promise.all([
+    docs.find({ _id: { $in: docIds } }).project({ title: 1 }).toArray(),
+    ytSessions.find({ _id: { $in: docIds } }).project({ videoTitle: 1 }).toArray(),
+  ]);
+  const docTitle = new Map(docRows.map((d) => [d._id.toString(), d.title as string]));
+  const ytTitle = new Map(ytRows.map((s) => [s._id.toString(), s.videoTitle as string]));
+
+  return recent.map((r) => {
+    const id = r.docId?.toString();
+    const title =
+      (r.source === "youtube" ? ytTitle.get(id ?? "") : docTitle.get(id ?? "")) ??
+      docTitle.get(id ?? "") ??
+      ytTitle.get(id ?? "") ??
+      "A review";
+    return {
+      title,
+      source: r.source,
+      reviewedAt: r.reviewedAt.toISOString(),
+      confidence: r.confidence,
+    };
+  });
+}
 
 export async function getStreakAction(): Promise<StreakData> {
   const user = await requireAuth();

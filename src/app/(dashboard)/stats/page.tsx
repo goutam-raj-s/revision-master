@@ -1,5 +1,6 @@
 import { TrendingUp, Flame, Trophy, CalendarCheck } from "lucide-react";
-import { getDashboardStats, getReviewTrendAction, getStreakAction } from "@/actions/analytics";
+import { getDashboardStats, getReviewTrendAction, getStreakAction, getRecentActivityAction } from "@/actions/analytics";
+import { ActivityFeed } from "@/components/features/activity-feed";
 import { StreakCard } from "@/components/features/streak-card";
 import { StatsCards } from "@/components/features/stats-cards";
 import { AnalyticsInsights } from "@/components/features/analytics-insights";
@@ -11,10 +12,11 @@ import { ShareStatsButton } from "@/components/features/share-stats-button";
 export const metadata = { title: "Your Stats" };
 
 export default async function StatsPage() {
-  const [stats, trend, streak] = await Promise.all([
+  const [stats, trend, streak, activity] = await Promise.all([
     getDashboardStats(),
     getReviewTrendAction(),
     getStreakAction(),
+    getRecentActivityAction(),
   ]);
 
   const weekTotal = trend.reduce((s, d) => s + d.count, 0);
@@ -68,6 +70,8 @@ export default async function StatsPage() {
         </div>
         <AnalyticsInsights stats={stats} />
       </div>
+
+      <ActivityFeed items={activity} />
     </div>
   );
 }

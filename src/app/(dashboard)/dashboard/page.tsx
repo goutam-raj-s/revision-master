@@ -6,6 +6,8 @@ import { StreakCard } from "@/components/features/streak-card";
 import { DashboardBrief } from "@/components/features/dashboard-brief";
 import { DailyGoalRing } from "@/components/features/daily-goal-ring";
 import { RecentDocs } from "@/components/features/recent-docs";
+import { OnboardingChecklist } from "@/components/features/onboarding-checklist";
+import { getAllTerms } from "@/actions/notes";
 import { TaskQueue } from "@/components/features/task-queue";
 import { StatsCards } from "@/components/features/stats-cards";
 import { AnalyticsInsights } from "@/components/features/analytics-insights";
@@ -82,11 +84,12 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   const params = await searchParams;
   const filter = (params.filter as TaskFilter) || "today";
 
-  const [tasks, stats, trend, streak] = await Promise.all([
+  const [tasks, stats, trend, streak, terms] = await Promise.all([
     getTaskQueue(filter),
     getDashboardStats(),
     getReviewTrendAction(),
     getStreakAction(),
+    getAllTerms(),
   ]);
 
   // Reviews logged today (last entry in the heatmap is today).
@@ -133,6 +136,13 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
 
       {/* Daily goal — second */}
       {stats.totalDocs > 0 && <DailyGoalRing done={todayReviews} />}
+
+      {/* Getting-started checklist (hides when complete/dismissed) */}
+      <OnboardingChecklist
+        hasDocs={stats.totalDocs > 0}
+        hasReviewed={streak.totalReviews > 0}
+        hasTerms={terms.length > 0}
+      />
 
       {/* Continue where you left off */}
       <RecentDocs />
