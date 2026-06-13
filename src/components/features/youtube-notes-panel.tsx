@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { MapPin, Check, AlertTriangle, ChevronLeft, ChevronRight, CalendarClock, Pencil } from "lucide-react";
+import { MapPin, Check, AlertTriangle, ChevronLeft, ChevronRight, CalendarClock, Pencil, ListOrdered } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   updateYoutubeSessionNotes,
@@ -117,7 +117,27 @@ export function YoutubeNotesPanel({
     insertContentRef.current?.(ts);
   };
 
+  // Track notes content so the timestamp list updates as you write.
+  const [notesContent, setNotesContent] = React.useState(initialNotes);
+  const [showTimestamps, setShowTimestamps] = React.useState(false);
+
+  const timestamps = React.useMemo(() => {
+    const found: { label: string; seconds: number }[] = [];
+    const seen = new Set<number>();
+    const re = /\[(\d{1,2}):(\d{2})\]/g;
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(notesContent)) !== null) {
+      const seconds = parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
+      if (!seen.has(seconds)) {
+        seen.add(seconds);
+        found.push({ label: `${m[1]}:${m[2]}`, seconds });
+      }
+    }
+    return found.sort((a, b) => a.seconds - b.seconds);
+  }, [notesContent]);
+
   const handleSave = React.useCallback(async (content: string) => {
+    setNotesContent(content);
     setSaveStatus("saving");
     if (localStorageKey) {
       window.localStorage.setItem(localStorageKey, content);
@@ -236,6 +256,18 @@ export function YoutubeNotesPanel({
           Timestamp
         </Button>
         <span className="text-xs text-mossy-gray">or press T</span>
+        {timestamps.length > 0 && (
+          <Button
+            type="button"
+            variant={showTimestamps ? "secondary" : "ghost"}
+            size="sm"
+            onClick={() => setShowTimestamps((s) => !s)}
+            className="gap-1.5 text-xs"
+          >
+            <ListOrdered className="h-3.5 w-3.5" />
+            {timestamps.length}
+          </Button>
+        )}
         {rep && (
           <Button
             type="button"
@@ -249,6 +281,24 @@ export function YoutubeNotesPanel({
           </Button>
         )}
       </div>
+
+      {/* Timestamp navigation — jump to any [mm:ss] in your notes */}
+      {showTimestamps && timestamps.length > 0 && (
+        <div className="shrink-0 max-h-40 overflow-y-auto border-b border-border/50 px-3 py-2 custom-scrollbar">
+          <div className="flex flex-wrap gap-1.5">
+            {timestamps.map((t) => (
+              <button
+                key={t.seconds}
+                onClick={() => playerRef.current?.seekTo(t.seconds)}
+                className="rounded-md border border-border bg-canvas px-2 py-1 font-mono text-xs text-state-today transition-colors hover:bg-state-today/10"
+                title={`Jump to ${t.label}`}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {rep && showSchedule && (
         <div className="shrink-0 px-3 py-2 border-b border-border/50">

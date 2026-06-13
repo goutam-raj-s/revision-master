@@ -49,9 +49,37 @@ export function YoutubeStudyClient({ session }: YoutubeStudyClientProps) {
   const [isFullscreen, setIsFullscreen] = React.useState(false);
   const [isNotesOpen, setIsNotesOpen] = React.useState(true);
 
-  const localNotesKey = session.id.startsWith("external-preview-")
-    ? `rm:${session.id}:notes`
-    : undefined;
+  const isPreview = session.id.startsWith("external-preview-");
+  const localNotesKey = isPreview ? `rm:${session.id}:notes` : undefined;
+
+  // Watch progress + resume (per video, localStorage).
+  const posKey = `lostbae-yt-pos:${session.videoId}`;
+  const [resumeAt, setResumeAt] = React.useState<number | null>(null);
+
+  React.useEffect(() => {
+    if (isPreview) return;
+    const saved = Number(window.localStorage.getItem(posKey));
+    if (saved > 15) setResumeAt(saved);
+    const id = window.setInterval(() => {
+      const t = playerRef.current?.getCurrentTime?.() ?? 0;
+      if (t > 5) window.localStorage.setItem(posKey, String(Math.floor(t)));
+    }, 5000);
+    return () => window.clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function resume() {
+    if (resumeAt != null) {
+      playerRef.current?.seekTo(resumeAt);
+      setResumeAt(null);
+    }
+  }
+
+  function fmtTime(s: number) {
+    const m = Math.floor(s / 60);
+    const sec = Math.floor(s % 60);
+    return `${m}:${String(sec).padStart(2, "0")}`;
+  }
 
   // Load persisted notes-open state
   React.useEffect(() => {
@@ -100,7 +128,16 @@ export function YoutubeStudyClient({ session }: YoutubeStudyClientProps) {
   }, []);
 
   const playerEl = (
-    <div className={cn("w-full bg-black flex items-center justify-center", isFullscreen ? "h-full" : "aspect-video")}>
+    <div className={cn("relative w-full bg-black flex items-center justify-center", isFullscreen ? "h-full" : "aspect-video")}>
+      {resumeAt != null && (
+        <button
+          onClick={resume}
+          className="absolute left-3 top-3 z-20 flex items-center gap-1.5 rounded-full bg-forest-slate/85 px-3 py-1.5 text-xs font-medium text-white shadow-soft backdrop-blur transition-transform hover:scale-105"
+        >
+          <SkipForward className="h-3.5 w-3.5" />
+          Resume from {fmtTime(resumeAt)}
+        </button>
+      )}
       {session.sourceType === "external" ? (
         <ExternalVideoPlayer
           ref={playerRef}
