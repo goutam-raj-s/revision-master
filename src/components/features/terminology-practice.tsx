@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { createPortal } from "react-dom";
 import { X, RotateCcw, Eye, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { Term } from "@/types";
@@ -49,8 +50,21 @@ export function TerminologyPractice({ terms, onClose }: { terms: Term[]; onClose
     return () => window.removeEventListener("keydown", onKey);
   }, [revealed, done, onClose]);
 
-  return (
-    <div className="fixed inset-0 z-[100] flex flex-col bg-canvas">
+  // Lock background scroll and only render on the client (portal target).
+  const [mounted, setMounted] = React.useState(false);
+  React.useEffect(() => {
+    setMounted(true);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, []);
+
+  if (!mounted) return null;
+
+  return createPortal(
+    <div className="fixed inset-0 z-[120] flex flex-col bg-canvas">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-border px-4 py-3">
         <div className="text-sm font-medium text-forest-slate">
@@ -129,6 +143,7 @@ export function TerminologyPractice({ terms, onClose }: { terms: Term[]; onClose
           </div>
         )}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
