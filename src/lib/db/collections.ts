@@ -27,6 +27,7 @@ import type {
   DbReviewEvent,
   DbStatShare,
   DbTopicCollection,
+  DbPostDraft,
   DbYoutubeShare,
   YoutubeShare,
 } from "@/types";
@@ -86,6 +87,11 @@ export async function getStatSharesCollection(): Promise<Collection<DbStatShare>
 export async function getTopicCollectionsCollection(): Promise<Collection<DbTopicCollection>> {
   const db = await getDb();
   return db.collection<DbTopicCollection>("topic_collections");
+}
+
+export async function getPostDraftsCollection(): Promise<Collection<DbPostDraft>> {
+  const db = await getDb();
+  return db.collection<DbPostDraft>("post_drafts");
 }
 
 export async function getYoutubeSessionsCollection(): Promise<Collection<DbYoutubeSession>> {

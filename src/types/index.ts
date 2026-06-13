@@ -366,6 +366,33 @@ export interface DbStatShare {
   createdAt: Date;
 }
 
+export type PostPlatform = "linkedin" | "twitter" | "instagram" | "other";
+export type PostStatus = "draft" | "scheduled" | "published";
+
+export interface DbPostDraft {
+  _id: ObjectId;
+  userId: ObjectId;
+  platform: PostPlatform;
+  status: PostStatus;
+  body: string;
+  scheduledFor?: Date;
+  publishedUrl?: string;
+  docId?: ObjectId;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface PostDraft {
+  id: string;
+  platform: PostPlatform;
+  status: PostStatus;
+  body: string;
+  scheduledFor?: string;
+  publishedUrl?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface DbTopicCollection {
   _id: ObjectId;
   userId: ObjectId;

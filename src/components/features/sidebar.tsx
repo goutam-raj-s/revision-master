@@ -18,6 +18,7 @@ import {
   Film,
   BarChart3,
   FolderOpen,
+  Send,
   PanelLeftClose,
   PanelLeftOpen,
 } from "lucide-react";
@@ -38,6 +39,7 @@ const navItems = [
   { href: "/video", label: "Video", icon: Film },
   { href: "/terminology", label: "Terminology", icon: BookText },
   { href: "/collections", label: "Collections", icon: FolderOpen },
+  { href: "/posts", label: "Posts", icon: Send },
   { href: "/stats", label: "Stats", icon: BarChart3 },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
