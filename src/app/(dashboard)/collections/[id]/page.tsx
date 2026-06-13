@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, Folder } from "lucide-react";
 import { getCollectionWithDocsAction } from "@/actions/collections";
 import { CollectionDocRow } from "@/components/features/collection-doc-row";
+import { SharePackButton } from "@/components/features/share-pack-button";
 
 interface CollectionPageProps {
   params: Promise<{ id: string }>;
@@ -19,14 +20,17 @@ export default async function CollectionDetailPage({ params }: CollectionPagePro
         <ArrowLeft className="h-3.5 w-3.5" /> Collections
       </Link>
 
-      <div className="flex items-center gap-3">
-        <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-state-upcoming/10">
-          <Folder className="h-5 w-5 text-state-upcoming" />
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-state-upcoming/10">
+            <Folder className="h-5 w-5 text-state-upcoming" />
+          </div>
+          <div>
+            <h1 className="text-xl font-bold text-forest-slate sm:text-2xl">{data.name}</h1>
+            <p className="text-xs text-mossy-gray">{data.docs.length} document{data.docs.length !== 1 ? "s" : ""}</p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-xl font-bold text-forest-slate sm:text-2xl">{data.name}</h1>
-          <p className="text-xs text-mossy-gray">{data.docs.length} document{data.docs.length !== 1 ? "s" : ""}</p>
-        </div>
+        <SharePackButton collectionId={data.id} initialToken={data.publicToken} />
       </div>
 
       {data.docs.length === 0 ? (

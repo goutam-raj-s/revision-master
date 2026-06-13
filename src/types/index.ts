@@ -371,6 +371,7 @@ export interface DbTopicCollection {
   userId: ObjectId;
   name: string;
   docIds: ObjectId[];
+  publicToken?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -379,6 +380,7 @@ export interface TopicCollection {
   id: string;
   name: string;
   docCount: number;
+  publicToken?: string;
   createdAt: string;
 }
 
