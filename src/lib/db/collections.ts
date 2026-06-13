@@ -240,6 +240,7 @@ export function serializeDoc(d: DbDocument): Document {
     playCount: d.playCount ?? 0,
     lastPlayedAt: d.lastPlayedAt?.toISOString(),
     content: d.content,
+    readingProgress: d.readingProgress,
     source: d.source,
     googleDriveFileId: d.googleDriveFileId,
     googleDriveModifiedTime: d.googleDriveModifiedTime?.toISOString(),

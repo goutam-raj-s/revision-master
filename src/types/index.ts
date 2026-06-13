@@ -83,6 +83,7 @@ export interface DbDocument {
   playCount?: number;
   lastPlayedAt?: Date;
   content?: string; // For native documents (TipTap JSON/HTML)
+  readingProgress?: number; // 0–100, manual reading progress
   // Google Drive sync fields
   source?: DocumentSource;
   googleDriveFileId?: string;
@@ -184,6 +185,7 @@ export interface Document {
   playCount?: number;
   lastPlayedAt?: string;
   content?: string;
+  readingProgress?: number;
   // Google Drive sync fields
   source?: DocumentSource;
   googleDriveFileId?: string;

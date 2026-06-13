@@ -514,6 +514,44 @@ function applyConfidence(base: Date, confidence?: ReviewConfidence): Date {
   return getCustomNextReviewDate(Math.max(1, Math.round(days * 1.5))); // easy
 }
 
+/** Documents whose content @-mentions this document (incoming backlinks). */
+export async function getBacklinksAction(
+  docId: string
+): Promise<{ id: string; title: string }[]> {
+  const user = await requireAuth();
+  if (!ObjectId.isValid(docId)) return [];
+  const docs = await getDocumentsCollection();
+  // Mentions render as <a data-id="<docId>"> in stored content.
+  const rows = await docs
+    .find({
+      userId: new ObjectId(user.id),
+      _id: { $ne: new ObjectId(docId) },
+      content: { $regex: `data-id="${docId}"` },
+    })
+    .project({ title: 1 })
+    .limit(20)
+    .toArray();
+  return rows.map((r) => ({ id: r._id.toString(), title: (r.title as string) ?? "Untitled" }));
+}
+
+/** Sets a document's manual reading progress (0–100). */
+export async function setReadingProgressAction(
+  docId: string,
+  progress: number
+): Promise<ActionResult> {
+  const user = await requireAuth();
+  if (!ObjectId.isValid(docId)) return { success: false, error: "Invalid document." };
+  const clamped = Math.max(0, Math.min(100, Math.round(progress)));
+  const docs = await getDocumentsCollection();
+  const res = await docs.updateOne(
+    { _id: new ObjectId(docId), userId: new ObjectId(user.id) },
+    { $set: { readingProgress: clamped, updatedAt: new Date() } }
+  );
+  if (res.matchedCount === 0) return { success: false, error: "Document not found." };
+  revalidatePath("/documents");
+  return { success: true };
+}
+
 /** Resolves a list of recently-opened doc ids to lightweight items, preserving
  *  the given order and silently dropping any that no longer exist. */
 export async function getRecentDocsAction(
