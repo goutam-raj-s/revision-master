@@ -17,6 +17,7 @@ import { createStandaloneTermAction, deleteTermAction, updateTermAction } from "
 import { ImagePreviewThumbnail } from "@/components/features/image-preview-thumbnail";
 import { ImagePickerButton } from "@/components/features/image-picker-button";
 import { TerminologyPractice } from "@/components/features/terminology-practice";
+import { TermDetails } from "@/components/features/term-details";
 import type { Term, Document } from "@/types";
 
 interface TerminologyClientProps {
@@ -440,6 +441,7 @@ export function TerminologyClient({ terms: initialTerms, docs }: TerminologyClie
                                 {sourceDoc.title}
                               </Link>
                             )}
+                            <TermDetails term={term} />
                           </>
                         )}
                       </div>

@@ -148,6 +148,9 @@ export interface DbTerm {
   docId?: ObjectId;
   term: string;
   definition: string;
+  example?: string;
+  antiExample?: string;
+  relatedTerms?: string[];
   imageUrl?: string;
   thumbnailUrl?: string;
   isDone: boolean;
@@ -246,6 +249,9 @@ export interface Term {
   docId?: string;
   term: string;
   definition: string;
+  example?: string;
+  antiExample?: string;
+  relatedTerms?: string[];
   imageUrl?: string;
   thumbnailUrl?: string;
   isDone: boolean;

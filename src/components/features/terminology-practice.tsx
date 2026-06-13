@@ -92,6 +92,16 @@ export function TerminologyPractice({ terms, onClose }: { terms: Term[]; onClose
                 <div className="mt-6 border-t border-border pt-6 text-left">
                   <p className="text-xs font-semibold uppercase tracking-wide text-mossy-gray">Definition</p>
                   <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-forest-slate">{current.definition}</p>
+                  {current.example && (
+                    <p className="mt-3 text-sm text-mossy-gray"><span className="font-medium text-forest-slate">e.g. </span>{current.example}</p>
+                  )}
+                  {current.relatedTerms && current.relatedTerms.length > 0 && (
+                    <div className="mt-3 flex flex-wrap gap-1.5">
+                      {current.relatedTerms.map((r) => (
+                        <span key={r} className="rounded-md bg-muted px-2 py-0.5 text-xs text-mossy-gray">{r}</span>
+                      ))}
+                    </div>
+                  )}
                 </div>
               ) : (
                 <Button onClick={() => setRevealed(true)} variant="outline" className="mt-8 gap-2">

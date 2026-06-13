@@ -215,6 +215,29 @@ export async function updateTermAction(
   return { success: true };
 }
 
+/** Updates the expansion fields (example, anti-example, related terms). */
+export async function updateTermDetailsAction(
+  termId: string,
+  details: { example?: string; antiExample?: string; relatedTerms?: string[] }
+): Promise<ActionResult> {
+  const user = await requireAuth();
+  if (!ObjectId.isValid(termId)) return { success: false, error: "Invalid term." };
+  const terms = await getTermsCollection();
+  await terms.updateOne(
+    { _id: new ObjectId(termId), userId: new ObjectId(user.id) },
+    {
+      $set: {
+        example: details.example?.trim() || undefined,
+        antiExample: details.antiExample?.trim() || undefined,
+        relatedTerms: (details.relatedTerms ?? []).map((t) => t.trim()).filter(Boolean),
+        updatedAt: new Date(),
+      },
+    }
+  );
+  revalidatePath("/terminology");
+  return { success: true };
+}
+
 export async function deleteTermAction(termId: string): Promise<ActionResult> {
   const user = await requireAuth();
   const terms = await getTermsCollection();
