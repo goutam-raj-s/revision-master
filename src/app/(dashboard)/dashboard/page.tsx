@@ -128,19 +128,19 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       {/* Onboarding — only for new users with 0 docs */}
       <OnboardingBanner totalDocs={stats.totalDocs} />
 
+      {/* Stats cards — top */}
+      <StatsCards stats={stats} />
+
+      {/* Daily goal — second */}
+      {stats.totalDocs > 0 && <DailyGoalRing done={todayReviews} />}
+
       {/* Continue where you left off */}
       <RecentDocs />
 
       {/* Today's focus + weakest tags */}
       {stats.totalDocs > 0 && (
-        <div className="space-y-4">
-          <DashboardBrief next={next} dueCount={stats.pendingRevisions} weakestTags={stats.leastRevisedAreas} />
-          <DailyGoalRing done={todayReviews} />
-        </div>
+        <DashboardBrief next={next} dueCount={stats.pendingRevisions} weakestTags={stats.leastRevisedAreas} />
       )}
-
-      {/* Stats */}
-      <StatsCards stats={stats} />
 
       {/* Streak + activity heatmap */}
       <StreakCard data={streak} />
