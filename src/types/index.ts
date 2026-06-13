@@ -366,6 +366,22 @@ export interface DbStatShare {
   createdAt: Date;
 }
 
+export interface DbTopicCollection {
+  _id: ObjectId;
+  userId: ObjectId;
+  name: string;
+  docIds: ObjectId[];
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface TopicCollection {
+  id: string;
+  name: string;
+  docCount: number;
+  createdAt: string;
+}
+
 // ─── Document Shares ───────────────────────────────────────────────────────────
 
 export interface DbDocumentShare {

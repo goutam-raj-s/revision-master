@@ -24,6 +24,7 @@ import { ImagePickerButton } from "@/components/features/image-picker-button";
 import { updateDocumentAction, rescheduleDocAction, completeReviewAction, markDocCompletedAction } from "@/actions/documents";
 import { ReviewScheduleControls } from "@/components/features/review-schedule-controls";
 import { DocumentExtras } from "@/components/features/document-extras";
+import { AddToCollection } from "@/components/features/add-to-collection";
 import type { Document, Repetition, Note, Term, Difficulty } from "@/types";
 
 interface DocumentDetailClientProps {
@@ -504,6 +505,8 @@ export function DocumentDetailClient({ doc, rep, initialNotes, initialTerms }: D
           content={doc.content}
           initialProgress={doc.readingProgress ?? 0}
         />
+
+        <AddToCollection docId={doc.id} />
       </div>
     </div>
   );
