@@ -13,6 +13,7 @@ import { DashboardHeader } from "@/components/features/dashboard-header";
 import { RichTextEditorDynamic as RichTextEditor } from "@/components/features/editor/RichTextEditorDynamic";
 import { DocumentTabsSidebar } from "@/components/features/document-tabs-sidebar";
 import { QuickGuideButton } from "@/components/ui/quick-guide-button";
+import { AiAssistant } from "@/components/features/ai-assistant";
 import type { DocumentTreeNode } from "@/types";
 
 const DOC_SHORTCUTS = [
@@ -75,6 +76,7 @@ export default async function StudyPage({ params }: StudyPageProps) {
 
   return (
     <StudyPageWrapper>
+      <AiAssistant kind="document" contextId={doc.id} title={doc.title} enableSummary={Boolean(doc.content)} />
       <div className="h-screen flex flex-col bg-canvas overflow-hidden">
         {/* Dashboard Header with breadcrumbs */}
         <DashboardHeader
@@ -82,7 +84,7 @@ export default async function StudyPage({ params }: StudyPageProps) {
           customBreadcrumbs={[
             { href: "/dashboard", label: "Dashboard" },
             { href: "/documents", label: "Documents" },
-            { href: `/documents/${doc.id}`, label: doc.title },
+            { href: `/study/${doc.id}`, label: doc.title },
           ]}
           rightActions={
             <div className="flex items-center gap-3">

@@ -12,6 +12,7 @@ import { YoutubePlaylistControls } from "@/components/features/youtube-playlist-
 import { YoutubePlaylistsList } from "@/components/features/youtube-playlists-list";
 import { YoutubeSavedPlaylistPreview } from "@/components/features/youtube-saved-playlist-preview";
 import { DashboardHeader } from "@/components/features/dashboard-header";
+import { AiAssistant } from "@/components/features/ai-assistant";
 import { getYoutubePlaylists } from "@/actions/youtube-playlists";
 import { QuickGuideButton } from "@/components/ui/quick-guide-button";
 import { YoutubeSessionActions } from "@/components/features/youtube-session-actions";
@@ -311,6 +312,8 @@ export default async function YoutubeStudyPage({ searchParams }: YoutubeStudyPag
       <div className="flex-1 min-h-0">
         <YoutubeStudyClient session={session} />
       </div>
+
+      <AiAssistant kind="video" contextId={session.id} title={session.videoTitle} />
     </div>
   );
 }

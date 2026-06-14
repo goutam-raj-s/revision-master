@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toast";
+import { FocusMusicPlayer } from "@/components/features/focus-music-player";
 
 const APP_URL = (process.env.NEXT_PUBLIC_APP_URL ?? "https://www.lostbae.com").replace(/\/$/, "");
 const TITLE = "lostbae — Spaced Repetition for Your Notes, Docs & Videos";
@@ -81,6 +82,7 @@ export default function RootLayout({
       <body className="min-h-full bg-canvas font-sans antialiased">
         <NextTopLoader color="#059669" showSpinner={false} />
         {children}
+        <FocusMusicPlayer />
         <Toaster />
       </body>
     </html>

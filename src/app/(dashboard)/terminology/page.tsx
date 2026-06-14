@@ -1,6 +1,7 @@
 import { getAllTerms } from "@/actions/notes";
 import { getUserDocuments } from "@/actions/documents";
 import { TerminologyClient } from "@/components/features/terminology-client";
+import { AiAssistant } from "@/components/features/ai-assistant";
 
 export const metadata = { title: "Terminology — lostbae" };
 
@@ -16,6 +17,9 @@ export default async function TerminologyPage() {
         </p>
       </div>
       <TerminologyClient terms={terms} docs={docs} />
+      {terms.length > 0 && (
+        <AiAssistant kind="glossary" contextId="all" title="Your glossary" enableSummary={false} />
+      )}
     </div>
   );
 }

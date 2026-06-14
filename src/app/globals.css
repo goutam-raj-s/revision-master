@@ -119,6 +119,13 @@
   outline-offset: 2px;
 }
 
+/* Global density: shrink the whole UI ~20%. Tailwind sizes everything in rem,
+   so reducing the root font size scales text, spacing, padding and icons
+   together — the app is content-heavy and benefits from the extra density. */
+html {
+  font-size: 80%;
+}
+
 body {
   background-color: var(--color-canvas);
   color: var(--color-forest-slate);

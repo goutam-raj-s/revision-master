@@ -1,7 +1,16 @@
 "use client";
 
 import * as React from "react";
+import { usePathname } from "next/navigation";
 import { Music, Play, Pause, X, Volume2 } from "lucide-react";
+
+// Routes where the focus-music launcher is shown. The component is mounted once
+// at the app root and never unmounts, so playback continues across page/tab
+// navigations; we only hide the *button* outside the authenticated app.
+const APP_ROUTE_PREFIXES = [
+  "/dashboard", "/documents", "/study", "/terminology", "/collections",
+  "/posts", "/stats", "/settings", "/video", "/admin",
+];
 
 /**
  * Ambient focus-music player for the reading view — a fixed set of soundscapes
@@ -10,7 +19,7 @@ import { Music, Play, Pause, X, Volume2 } from "lucide-react";
  * "Fixed (not any)" tracks, exactly like Notion's reading music.
  */
 
-type TrackId = "rain" | "ocean" | "forest" | "drone";
+type TrackId = "chimes" | "ocean" | "forest" | "drone";
 
 interface Track {
   id: TrackId;
@@ -47,20 +56,48 @@ function noiseSource(ctx: AudioContext, kind: "white" | "brown" = "white") {
 
 const TRACKS: Track[] = [
   {
-    id: "rain",
-    label: "Rain",
-    emoji: "🌧️",
+    id: "chimes",
+    label: "Chimes",
+    emoji: "🎐",
     build: (ctx, out) => {
-      const src = noiseSource(ctx, "white");
-      const hp = ctx.createBiquadFilter();
-      hp.type = "highpass";
-      hp.frequency.value = 1000;
-      const lp = ctx.createBiquadFilter();
-      lp.type = "lowpass";
-      lp.frequency.value = 6500;
-      src.connect(hp).connect(lp).connect(out);
-      src.start();
-      return () => src.stop();
+      const stops: Array<() => void> = [];
+      let stopped = false;
+
+      // Warm low pad underneath the chimes.
+      const pad = ctx.createOscillator();
+      pad.type = "sine";
+      pad.frequency.value = 146.83; // D3
+      const padGain = ctx.createGain();
+      padGain.gain.value = 0.06;
+      pad.connect(padGain).connect(out);
+      pad.start();
+      stops.push(() => pad.stop());
+
+      // Soft, randomly-timed wind-chime tones on a pentatonic scale (no clashing).
+      const scale = [587.33, 659.25, 783.99, 880.0, 1046.5, 1174.66]; // D5–D6 pentatonic
+      function ding() {
+        if (stopped) return;
+        const freq = scale[Math.floor(Math.random() * scale.length)];
+        const osc = ctx.createOscillator();
+        osc.type = "sine";
+        osc.frequency.value = freq;
+        const g = ctx.createGain();
+        const t = ctx.currentTime;
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.exponentialRampToValueAtTime(0.12, t + 0.02);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + 2.4);
+        osc.connect(g).connect(out);
+        osc.start(t);
+        osc.stop(t + 2.5);
+        timer = window.setTimeout(ding, 900 + Math.random() * 2600);
+      }
+      let timer = window.setTimeout(ding, 400);
+      stops.push(() => clearTimeout(timer));
+
+      return () => {
+        stopped = true;
+        stops.forEach((s) => s());
+      };
     },
   },
   {
@@ -153,6 +190,10 @@ const TRACKS: Track[] = [
 ];
 
 export function FocusMusicPlayer() {
+  const pathname = usePathname();
+  const onAppRoute = APP_ROUTE_PREFIXES.some(
+    (p) => pathname === p || pathname.startsWith(p + "/")
+  );
   const [open, setOpen] = React.useState(false);
   const [active, setActive] = React.useState<TrackId | null>(null);
   const [volume, setVolume] = React.useState(0.5);
@@ -205,8 +246,12 @@ export function FocusMusicPlayer() {
     };
   }, []);
 
+  // Outside the app, hide the widget — unless music is playing, so the user can
+  // still pause it. The component stays mounted either way, so audio persists.
+  if (!onAppRoute && !active) return null;
+
   return (
-    <div className="fixed bottom-4 right-4 z-[60] print:hidden">
+    <div className="fixed bottom-4 left-4 z-[60] print:hidden">
       {open ? (
         <div className="w-64 rounded-2xl border border-border bg-surface p-3 shadow-hover">
           <div className="mb-2 flex items-center justify-between">

@@ -83,6 +83,8 @@ export interface DbDocument {
   playCount?: number;
   lastPlayedAt?: Date;
   content?: string; // For native documents (TipTap JSON/HTML)
+  aiSummary?: string; // AI-generated study summary (Markdown)
+  aiSummaryGeneratedAt?: Date;
   readingProgress?: number; // 0–100, manual reading progress
   // Google Drive sync fields
   source?: DocumentSource;
@@ -188,6 +190,8 @@ export interface Document {
   playCount?: number;
   lastPlayedAt?: string;
   content?: string;
+  aiSummary?: string;
+  aiSummaryGeneratedAt?: string;
   readingProgress?: number;
   // Google Drive sync fields
   source?: DocumentSource;
@@ -275,6 +279,9 @@ export interface DbYoutubeSession {
   tags: string[];
   difficulty: Difficulty;
   status?: "active" | "completed";
+  transcript?: string; // cached video transcript (for AI context)
+  aiSummary?: string;
+  aiSummaryGeneratedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -290,8 +297,29 @@ export interface YoutubeSession {
   notes: string;
   tags: string[];
   difficulty: Difficulty;
+  aiSummary?: string;
+  aiSummaryGeneratedAt?: string;
   createdAt: string;
   updatedAt: string;
+}
+
+// ─── AI chat (per user, per document/video/glossary) ────────────────────────
+export type AiContextKind = "document" | "video" | "glossary";
+
+export interface AiChatMessage {
+  role: "user" | "assistant";
+  content: string;
+  at: Date;
+}
+
+export interface DbAiChat {
+  _id: ObjectId;
+  userId: ObjectId;
+  contextKind: AiContextKind;
+  contextId: string;
+  messages: AiChatMessage[];
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface PlaylistVideo {

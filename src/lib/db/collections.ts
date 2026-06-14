@@ -31,6 +31,7 @@ import type {
   DbYoutubeShare,
   YoutubeShare,
   DbSocialConnection,
+  DbAiChat,
 } from "@/types";
 
 // ─── Collection accessors ──────────────────────────────────────────────────────
@@ -98,6 +99,11 @@ export async function getPostDraftsCollection(): Promise<Collection<DbPostDraft>
 export async function getSocialConnectionsCollection(): Promise<Collection<DbSocialConnection>> {
   const db = await getDb();
   return db.collection<DbSocialConnection>("social_connections");
+}
+
+export async function getAiChatsCollection(): Promise<Collection<DbAiChat>> {
+  const db = await getDb();
+  return db.collection<DbAiChat>("ai_chats");
 }
 
 export async function getYoutubeSessionsCollection(): Promise<Collection<DbYoutubeSession>> {
@@ -264,6 +270,8 @@ export function serializeDoc(d: DbDocument): Document {
     playCount: d.playCount ?? 0,
     lastPlayedAt: d.lastPlayedAt?.toISOString(),
     content: d.content,
+    aiSummary: d.aiSummary,
+    aiSummaryGeneratedAt: d.aiSummaryGeneratedAt?.toISOString(),
     readingProgress: d.readingProgress,
     source: d.source,
     googleDriveFileId: d.googleDriveFileId,
@@ -331,6 +339,8 @@ export function serializeYoutubeSession(s: DbYoutubeSession): YoutubeSession {
     notes: s.notes,
     tags: s.tags,
     difficulty: s.difficulty,
+    aiSummary: s.aiSummary,
+    aiSummaryGeneratedAt: s.aiSummaryGeneratedAt?.toISOString(),
     createdAt: s.createdAt.toISOString(),
     updatedAt: s.updatedAt.toISOString(),
   };
@@ -390,6 +400,44 @@ export async function getRootDocForDoc(id: string, userId: string): Promise<DbDo
   }
 
   return doc;
+}
+
+/**
+ * Aggregates the full text of a document INCLUDING all of its subpages.
+ * Given any doc id (root or subpage), resolves the root and concatenates the
+ * content of the root + every descendant, depth-first in creation order.
+ * Used as AI context so the assistant sees the entire document, not one tab.
+ */
+export async function getAggregatedDocumentText(
+  docId: string,
+  userId: string
+): Promise<{ rootId: string; title: string; text: string } | null> {
+  const root = await getRootDocForDoc(docId, userId);
+  if (!root) return null;
+
+  const col = await getDocumentsCollection();
+  const all = await col.find({ userId: new ObjectId(userId) }).toArray();
+
+  const childrenOf = new Map<string, DbDocument[]>();
+  for (const d of all) {
+    const p = d.parentDocId?.toString();
+    if (!p) continue;
+    const arr = childrenOf.get(p) ?? [];
+    arr.push(d);
+    childrenOf.set(p, arr);
+  }
+
+  const parts: string[] = [];
+  const visit = (d: DbDocument) => {
+    if (d.content && d.content.trim()) parts.push(`# ${d.title}\n${d.content}`);
+    const kids = (childrenOf.get(d._id.toString()) ?? []).sort(
+      (a, b) => a.createdAt.getTime() - b.createdAt.getTime()
+    );
+    kids.forEach(visit);
+  };
+  visit(root);
+
+  return { rootId: root._id.toString(), title: root.title, text: parts.join("\n\n") };
 }
 
 export async function getRepetitionByDocId(docId: string): Promise<DbRepetition | null> {

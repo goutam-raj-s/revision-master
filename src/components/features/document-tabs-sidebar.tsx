@@ -108,7 +108,7 @@ export function DocumentTabsSidebar({ subPages, currentDocId, parentId, routeBas
         {!isCollapsed ? (
           <>
             <Link
-              href={routeBase === "/study" ? `/documents/${parentId}` : "/documents"}
+              href={routeBase === "/study" ? `/study/${parentId}` : "/documents"}
               className="inline-flex items-center gap-2 text-sm text-mossy-gray hover:text-forest-slate transition-colors font-medium mb-6"
             >
               <ArrowLeft className="h-4 w-4" />
