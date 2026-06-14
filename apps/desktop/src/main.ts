@@ -240,12 +240,16 @@ function createMenu() {
     {
       label: "View",
       submenu: [
+        { role: "reload" },
+        { role: "forceReload" },
+        { type: "separator" },
         { role: "zoomIn" },
         { role: "zoomOut" },
         { role: "resetZoom" },
         { type: "separator" },
         { role: "togglefullscreen" },
-        ...(env !== "prod" ? [{ role: "toggleDevTools" as const }] : []),
+        // DevTools available in all builds so production issues can be diagnosed.
+        { role: "toggleDevTools" as const },
       ],
     },
     {
@@ -293,12 +297,22 @@ function startBadgePolling() {
   setInterval(poll, 5 * 60 * 1000); // every 5 minutes
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   // Clipboard works for copy buttons / CollapsibleImage "Copy"; everything
   // else (camera, mic, geolocation…) is denied — the web app doesn't use them.
   session.defaultSession.setPermissionRequestHandler((_wc, permission, cb) => {
     cb(["clipboard-read", "clipboard-sanitized-write"].includes(permission));
   });
+
+  // Drop the HTTP cache on every launch. The wrapper points at a frequently
+  // redeployed web app (Vercel); a cached HTML document referencing old
+  // Next.js chunk hashes that no longer exist on the server renders a blank
+  // page. Clearing the cache here makes each launch fetch the current build.
+  try {
+    await session.defaultSession.clearCache();
+  } catch {
+    // best-effort
+  }
 
   createWindow();
   createMenu();

@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ChevronRight, HeartHandshake } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CopyHistoryButton } from "@/components/ui/copy-history-button";
 
@@ -41,18 +41,16 @@ export function DashboardHeader({
       <nav aria-label="Breadcrumb" className="flex min-w-0 flex-1 items-center overflow-hidden text-sm font-medium text-mossy-gray">
         {showLogo ? (
           <Link href="/dashboard" className="mr-1 flex shrink-0 items-center gap-2 transition-opacity hover:opacity-80 sm:mr-2">
-            <div className="h-6 w-6 rounded-lg bg-state-today flex items-center justify-center shrink-0">
-              <HeartHandshake className="h-3.5 w-3.5 text-white" />
-            </div>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/mark.svg" alt="lostbae" className="h-8 w-8 rounded-lg shrink-0 ring-1 ring-state-today/40" />
             <span className="font-bold text-forest-slate text-lg tracking-tighter lowercase hidden sm:inline-block">
               lost<span className="text-state-today opacity-80">bae</span>
             </span>
           </Link>
         ) : (
           <Link href="/dashboard" className="flex shrink-0 items-center gap-1 transition-colors hover:text-forest-slate">
-            <div className="h-6 w-6 rounded-lg bg-state-today flex items-center justify-center shrink-0">
-              <HeartHandshake className="h-3.5 w-3.5 text-white" />
-            </div>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/mark.svg" alt="lostbae" className="h-8 w-8 rounded-lg shrink-0 ring-1 ring-state-today/40" />
           </Link>
         )}
         

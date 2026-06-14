@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { useActionState, Suspense } from "react";
-import { HeartHandshake, ArrowRight, Eye, EyeOff } from "lucide-react";
+import { ArrowRight, Eye, EyeOff } from "lucide-react";
 import { resetPasswordAction } from "@/actions/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,7 +28,8 @@ function ResetPasswordForm() {
         <CardHeader className="text-center pb-2">
           <div className="flex justify-center mb-4">
             <div className="h-12 w-12 rounded-2xl bg-destructive/80 flex items-center justify-center shadow-soft">
-              <HeartHandshake className="h-6 w-6 text-white" />
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/mark.svg" alt="lostbae" className="h-16 w-16 rounded-2xl shadow-soft ring-1 ring-state-today/40" />
             </div>
           </div>
           <CardTitle className="text-2xl font-bold text-forest-slate">Invalid reset link</CardTitle>
@@ -54,7 +55,8 @@ function ResetPasswordForm() {
         <CardHeader className="text-center pb-2">
           <div className="flex justify-center mb-4">
             <div className="h-12 w-12 rounded-2xl bg-destructive/80 flex items-center justify-center shadow-soft">
-              <HeartHandshake className="h-6 w-6 text-white" />
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/mark.svg" alt="lostbae" className="h-16 w-16 rounded-2xl shadow-soft ring-1 ring-state-today/40" />
             </div>
           </div>
           <CardTitle className="text-2xl font-bold text-forest-slate">Link expired</CardTitle>
@@ -79,9 +81,8 @@ function ResetPasswordForm() {
       <Card className="shadow-glass border-border/50">
         <CardHeader className="text-center pb-2">
           <div className="flex justify-center mb-4">
-            <div className="h-12 w-12 rounded-2xl bg-state-today flex items-center justify-center shadow-soft">
-              <HeartHandshake className="h-6 w-6 text-white" />
-            </div>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/mark.svg" alt="lostbae" className="h-16 w-16 rounded-2xl shadow-soft ring-1 ring-state-today/40" />
           </div>
           <CardTitle className="text-2xl font-bold text-forest-slate">Password updated!</CardTitle>
         </CardHeader>
@@ -103,9 +104,8 @@ function ResetPasswordForm() {
     <Card className="shadow-glass border-border/50">
       <CardHeader className="text-center pb-2">
         <div className="flex justify-center mb-4">
-          <div className="h-12 w-12 rounded-2xl bg-state-today flex items-center justify-center shadow-soft">
-            <HeartHandshake className="h-6 w-6 text-white" />
-          </div>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/mark.svg" alt="lostbae" className="h-16 w-16 rounded-2xl shadow-soft ring-1 ring-state-today/40" />
         </div>
         <CardTitle className="text-2xl font-bold text-forest-slate">Set new password</CardTitle>
         <CardDescription>Choose a strong password for your account.</CardDescription>

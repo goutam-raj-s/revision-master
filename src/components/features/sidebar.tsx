@@ -11,7 +11,6 @@ import {
   LogOut,
   Menu,
   X,
-  HeartHandshake,
   Tag,
   ChevronRight,
   CirclePlay,
@@ -62,9 +61,8 @@ export function Sidebar({ user }: SidebarProps) {
       {/* Logo */}
       <div className={cn("flex items-center border-b border-border", collapsed ? "justify-center px-2 py-4" : "gap-2 px-4 py-5")}>
       <Link href="/dashboard" className={cn("flex min-w-0 items-center gap-2 transition-opacity hover:opacity-80", collapsed && "justify-center")}>
-        <div className="h-7 w-7 rounded-xl bg-state-today flex items-center justify-center shrink-0">
-          <HeartHandshake className="h-4 w-4 text-white" />
-        </div>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/mark.svg" alt="lostbae" className="h-10 w-10 rounded-xl shrink-0 ring-1 ring-state-today/40" />
         <span className={cn("font-bold text-forest-slate text-xl tracking-tighter lowercase", collapsed && "sr-only")}>
           lost<span className="text-state-today opacity-80">bae</span>
         </span>

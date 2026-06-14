@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { useActionState, Suspense } from "react";
-import { HeartHandshake, ArrowRight } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { forgotPasswordAction } from "@/actions/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,9 +21,8 @@ function ForgotPasswordForm() {
       <Card className="shadow-glass border-border/50">
         <CardHeader className="text-center pb-2">
           <div className="flex justify-center mb-4">
-            <div className="h-12 w-12 rounded-2xl bg-state-today flex items-center justify-center shadow-soft">
-              <HeartHandshake className="h-6 w-6 text-white" />
-            </div>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/mark.svg" alt="lostbae" className="h-16 w-16 rounded-2xl shadow-soft ring-1 ring-state-today/40" />
           </div>
           <CardTitle className="text-2xl font-bold text-forest-slate">Check your inbox</CardTitle>
         </CardHeader>
@@ -45,9 +44,8 @@ function ForgotPasswordForm() {
     <Card className="shadow-glass border-border/50">
       <CardHeader className="text-center pb-2">
         <div className="flex justify-center mb-4">
-          <div className="h-12 w-12 rounded-2xl bg-state-today flex items-center justify-center shadow-soft">
-            <HeartHandshake className="h-6 w-6 text-white" />
-          </div>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/mark.svg" alt="lostbae" className="h-16 w-16 rounded-2xl shadow-soft ring-1 ring-state-today/40" />
         </div>
         <CardTitle className="text-2xl font-bold text-forest-slate">Forgot password?</CardTitle>
         <CardDescription>Enter your email and we&apos;ll send you a reset link.</CardDescription>
