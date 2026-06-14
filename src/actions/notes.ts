@@ -265,3 +265,15 @@ export async function getAllTerms(): Promise<Term[]> {
     .toArray();
   return results.map(serializeTerm);
 }
+
+/**
+ * Cheap existence check — the dashboard only needs to know whether the user
+ * has any terms, not their full content. Avoids shipping the entire glossary
+ * (definitions + images) into the dashboard payload.
+ */
+export async function userHasTermsAction(): Promise<boolean> {
+  const user = await requireAuth();
+  const terms = await getTermsCollection();
+  const count = await terms.countDocuments({ userId: new ObjectId(user.id) }, { limit: 1 });
+  return count > 0;
+}

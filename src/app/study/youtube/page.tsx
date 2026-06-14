@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { createHash } from "crypto";
 import { requireAuth } from "@/lib/auth/session";
-import { fetchYoutubeMetadata, createOrGetYoutubeSession, fetchYoutubePlaylist, createOrGetExternalVideoSession } from "@/actions/youtube";
+import { createOrGetYoutubeSession, fetchYoutubePlaylist, createOrGetExternalVideoSession } from "@/actions/youtube";
 import { YoutubeStudyClient } from "@/components/features/youtube-study-client";
 import { YoutubeUrlForm } from "@/components/features/youtube-url-form";
 import { PlaylistPreview } from "@/components/features/playlist-preview";
@@ -224,12 +224,10 @@ export default async function YoutubeStudyPage({ searchParams }: YoutubeStudyPag
     }
   }
 
-  // Fetch metadata and create/get session
-  const metadata = await fetchYoutubeMetadata(`https://www.youtube.com/watch?v=${videoId}`);
-  const result = await createOrGetYoutubeSession(videoId as string, {
-    title: metadata.title,
-    thumbnailUrl: metadata.thumbnailUrl,
-  });
+  // Get-or-create the session. Metadata is fetched lazily inside only when a
+  // new session must be created, so revisiting a known video skips the slow
+  // external YouTube metadata call entirely.
+  const result = await createOrGetYoutubeSession(videoId as string);
 
   if (!result.success || !result.data) {
     redirect("/study/youtube");

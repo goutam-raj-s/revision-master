@@ -264,7 +264,7 @@ export async function fetchYoutubePlaylist(
 
 export async function createOrGetYoutubeSession(
   videoId: string,
-  metadata: { title: string; thumbnailUrl: string },
+  metadata?: { title: string; thumbnailUrl: string },
   options: { tags?: string[]; difficulty?: Difficulty; delayDays?: number } = {}
 ): Promise<ActionResult<YoutubeSession>> {
   try {
@@ -287,6 +287,10 @@ export async function createOrGetYoutubeSession(
       return { success: true, data: serializeYoutubeSession(existing) };
     }
 
+    // Only hit the (slow) external metadata API when actually creating a new
+    // session and the caller didn't already supply title/thumbnail.
+    const meta = metadata ?? (await fetchYoutubeMetadata(videoUrl));
+
     // Create new session
     const now = new Date();
     const sessionId = new ObjectId();
@@ -294,8 +298,8 @@ export async function createOrGetYoutubeSession(
       _id: sessionId,
       userId,
       videoId,
-      videoTitle: metadata.title,
-      thumbnailUrl: metadata.thumbnailUrl,
+      videoTitle: meta.title,
+      thumbnailUrl: meta.thumbnailUrl,
       videoUrl,
       sourceType: "youtube",
       playerType: "youtube",

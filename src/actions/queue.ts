@@ -56,11 +56,11 @@ export async function getTaskQueue(filter: TaskFilter = "today"): Promise<AnyTas
 
   const tasks: TaskItem[] = [];
   for (const rep of repList) {
-    const doc = await docs.findOne({
-      _id: rep.docId,
-      userId,
-      status: { $ne: "completed" },
-    });
+    // Queue rows only show titles/metadata — omit the heavy `content` body.
+    const doc = await docs.findOne(
+      { _id: rep.docId, userId, status: { $ne: "completed" } },
+      { projection: { content: 0 } }
+    );
     if (!doc) continue;
     if (doc.parentDocId) continue;
 

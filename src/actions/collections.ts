@@ -9,7 +9,7 @@ import {
   getDocumentsCollection,
   serializeDoc,
 } from "@/lib/db/collections";
-import type { ActionResult, TopicCollection, Document } from "@/types";
+import type { ActionResult, TopicCollection, Document, DbDocument } from "@/types";
 
 export async function getCollectionsAction(): Promise<TopicCollection[]> {
   const user = await requireAuth();
@@ -82,9 +82,9 @@ export async function getCollectionWithDocsAction(
   if (!c) return null;
 
   const docs = await getDocumentsCollection();
-  const rows = c.docIds?.length
-    ? await docs.find({ _id: { $in: c.docIds }, userId: new ObjectId(user.id) }).toArray()
-    : [];
+  const rows = (c.docIds?.length
+    ? await docs.find({ _id: { $in: c.docIds }, userId: new ObjectId(user.id) }).project({ content: 0 }).toArray()
+    : []) as unknown as DbDocument[];
   // Preserve the collection's order.
   const byId = new Map(rows.map((d) => [d._id.toString(), d]));
   const ordered = (c.docIds ?? [])

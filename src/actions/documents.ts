@@ -657,8 +657,10 @@ export async function getUserDocuments(filter?: {
     });
   }
 
-  const results = await docs.find(query).sort({ createdAt: -1 }).toArray();
-  return results.map(serializeDoc);
+  // List views never render the body — omit `content` to keep the RSC
+  // payload small (full content is re-fetched on the reading page).
+  const results = await docs.find(query).project({ content: 0 }).sort({ createdAt: -1 }).toArray();
+  return results.map((d) => serializeDoc(d as unknown as DbDocument));
 }
 
 export async function getAllUserTags(): Promise<{ tag: string; count: number }[]> {
