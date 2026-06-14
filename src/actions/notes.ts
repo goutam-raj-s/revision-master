@@ -277,3 +277,21 @@ export async function userHasTermsAction(): Promise<boolean> {
   const count = await terms.countDocuments({ userId: new ObjectId(user.id) }, { limit: 1 });
   return count > 0;
 }
+
+/**
+ * Lightweight term list for the command palette — id/term/docId only.
+ * The palette never shows definitions or images, so projecting them away
+ * keeps the (per-page) dashboard layout payload tiny.
+ */
+export async function getTermSummariesAction(): Promise<
+  { id: string; term: string; docId?: string }[]
+> {
+  const user = await requireAuth();
+  const terms = await getTermsCollection();
+  const rows = await terms
+    .find({ userId: new ObjectId(user.id) })
+    .project<{ _id: ObjectId; term: string; docId?: ObjectId }>({ term: 1, docId: 1 })
+    .sort({ term: 1 })
+    .toArray();
+  return rows.map((t) => ({ id: t._id.toString(), term: t.term, docId: t.docId?.toString() }));
+}

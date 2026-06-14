@@ -5,7 +5,7 @@ import { CommandPalette } from "@/components/features/command-palette";
 import { DashboardHeader } from "@/components/features/dashboard-header";
 import { GlobalClipperWidget } from "@/components/features/global-clipper-widget";
 import { getUserDocuments, getAllUserTags } from "@/actions/documents";
-import { getAllTerms } from "@/actions/notes";
+import { getTermSummariesAction } from "@/actions/notes";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ShortcutsHelp } from "@/components/features/shortcuts-help";
 import { PomodoroTimer } from "@/components/features/pomodoro-timer";
@@ -19,13 +19,12 @@ export default async function DashboardLayout({
   const user = await getSession();
   if (!user) redirect("/login");
 
-  const [docs, tagData, terms] = await Promise.all([
+  const [docs, tagData, termItems] = await Promise.all([
     getUserDocuments(),
     getAllUserTags(),
-    getAllTerms(),
+    getTermSummariesAction(),
   ]);
   const tags = tagData.map((t) => t.tag);
-  const termItems = terms.map((t) => ({ id: t.id, term: t.term, docId: t.docId }));
 
   return (
     <TooltipProvider delayDuration={300}>
