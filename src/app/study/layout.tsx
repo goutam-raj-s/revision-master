@@ -7,6 +7,7 @@ import { getAllUserTags, getUserDocuments } from "@/actions/documents";
 import { getTermSummariesAction } from "@/actions/notes";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ShortcutsHelp } from "@/components/features/shortcuts-help";
+import { HiddenDocsController } from "@/components/features/hidden-docs-controller";
 
 export default async function StudyLayout({
   children,
@@ -31,6 +32,7 @@ export default async function StudyLayout({
           {children}
         </main>
         <CommandPalette documents={docs} tags={tags} terms={termItems} />
+        <HiddenDocsController />
         <ShortcutsHelp />
         <GlobalClipperWidget />
       </div>

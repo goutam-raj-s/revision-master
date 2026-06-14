@@ -28,6 +28,7 @@ const DASHBOARD_SHORTCUTS = [
   { keys: "Today / Pending", label: "Switch revision queue filter" },
   { keys: "Theme toggle", label: "Light / Dark / System (sidebar)" },
   { keys: "Cmd+Shift+V", label: "Clipboard history (last 10 copies)" },
+  { keys: "Cmd+Shift+Alt+R", label: "Reveal / hide private documents (Ctrl on Windows)" },
 ];
 
 interface DashboardPageProps {

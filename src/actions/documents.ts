@@ -20,6 +20,7 @@ import {
 } from "@/lib/utils";
 import type { ActionResult, DbDocument, Document, SimilarityMatch, MediaType, Difficulty } from "@/types";
 import { deleteCloudinaryAsset } from "@/lib/cloudinary";
+import { hiddenRevealed } from "@/lib/hidden";
 
 function topLevelDocumentQuery(userId: ObjectId) {
   return {
@@ -648,6 +649,10 @@ export async function getUserDocuments(filter?: {
   if (filter?.status) {
     query.status = filter.status;
   }
+  // Hide private documents unless the user has toggled "reveal".
+  if (!(await hiddenRevealed())) {
+    query.$and.push({ isHidden: { $ne: true } });
+  }
   if (filter?.search) {
     query.$and.push({
       $or: [
@@ -661,6 +666,28 @@ export async function getUserDocuments(filter?: {
   // payload small (full content is re-fetched on the reading page).
   const results = await docs.find(query).project({ content: 0 }).sort({ createdAt: -1 }).toArray();
   return results.map((d) => serializeDoc(d as unknown as DbDocument));
+}
+
+/** Hide or unhide a document (and its whole sub-page tree). */
+export async function toggleDocumentHiddenAction(
+  docId: string,
+  hidden: boolean
+): Promise<ActionResult> {
+  const user = await requireAuth();
+  if (!ObjectId.isValid(docId)) return { success: false, error: "Invalid document." };
+  const userId = new ObjectId(user.id);
+  const rootId = await resolveRootDocId(docId, userId);
+  if (!rootId) return { success: false, error: "Document not found." };
+
+  const ids = [rootId, ...(await getDescendantDocIds([rootId], userId))];
+  const docs = await getDocumentsCollection();
+  await docs.updateMany(
+    { _id: { $in: ids }, userId },
+    { $set: { isHidden: hidden, updatedAt: new Date() } }
+  );
+  revalidatePath("/documents");
+  revalidatePath("/dashboard");
+  return { success: true };
 }
 
 export async function getAllUserTags(): Promise<{ tag: string; count: number }[]> {

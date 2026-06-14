@@ -17,6 +17,7 @@ const GROUPS: { title: string; items: Shortcut[] }[] = [
       { keys: ["?"], label: "Show this shortcuts sheet" },
       { keys: ["⌘", "⇧", "K"], label: "Quick clipper widget" },
       { keys: ["⌘", "⇧", "V"], label: "Clipboard history (last 10 copies)" },
+      { keys: ["⌘", "⇧", "⌥", "R"], label: "Reveal / hide private documents" },
     ],
   },
   {

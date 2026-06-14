@@ -20,6 +20,7 @@ import {
   Send,
   PanelLeftClose,
   PanelLeftOpen,
+  EyeOff,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -117,8 +118,18 @@ export function Sidebar({ user }: SidebarProps) {
 
       {/* User */}
       <div className={cn("border-t border-border", collapsed ? "p-2" : "p-3")}>
-        <div className={cn("mb-1 flex", collapsed ? "justify-center" : "px-1")}>
+        <div className={cn("mb-1 flex items-center", collapsed ? "justify-center" : "justify-between px-1")}>
           <ThemeToggle showLabel={!collapsed} />
+          {/* Discreet, unlabeled toggle for private documents. */}
+          <button
+            type="button"
+            onClick={() => window.dispatchEvent(new Event("lostbae:toggle-hidden"))}
+            className={cn("rounded-md p-1.5 text-mossy-gray/30 transition-colors hover:text-mossy-gray", collapsed && "hidden")}
+            aria-label="Toggle private documents"
+            title="Private documents"
+          >
+            <EyeOff className="h-3.5 w-3.5" />
+          </button>
         </div>
         <button
           type="button"

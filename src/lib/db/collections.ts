@@ -272,6 +272,7 @@ export function serializeDoc(d: DbDocument): Document {
     content: d.content,
     aiSummary: d.aiSummary,
     aiSummaryGeneratedAt: d.aiSummaryGeneratedAt?.toISOString(),
+    isHidden: d.isHidden,
     readingProgress: d.readingProgress,
     source: d.source,
     googleDriveFileId: d.googleDriveFileId,

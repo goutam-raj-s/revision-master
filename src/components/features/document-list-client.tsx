@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import {
   Search, X, BookOpen, Calendar, Trash2, Tag, ChevronRight,
   CheckSquare, Square, Minus, Download, Loader2, AlertTriangle,
+  EyeOff, Eye,
 } from "lucide-react";
 import { cn, formatDate } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
@@ -40,7 +41,7 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
-import { deleteDocumentAction, bulkDeleteDocumentsAction } from "@/actions/documents";
+import { deleteDocumentAction, bulkDeleteDocumentsAction, toggleDocumentHiddenAction } from "@/actions/documents";
 import type { Document } from "@/types";
 
 const STATUS_CONFIG = {
@@ -195,6 +196,23 @@ export function DocumentListClient({
     setDeleteId(null);
     setDeleting(false);
     toast("Document deleted", { variant: "success" });
+  }
+
+  // ─── Hide / unhide (private documents) ────────────────────────────────────
+  async function handleToggleHidden(id: string, currentlyHidden: boolean) {
+    const res = await toggleDocumentHiddenAction(id, !currentlyHidden);
+    if (!res.success) {
+      toast(res.error ?? "Could not update", { variant: "error" });
+      return;
+    }
+    if (!currentlyHidden) {
+      // First-time guide (controller checks localStorage so it only shows once).
+      window.dispatchEvent(new Event("lostbae:hidden-first-time"));
+      toast("Document hidden", { variant: "success" });
+    } else {
+      toast("Document unhidden", { variant: "success" });
+    }
+    router.refresh();
   }
 
   // ─── Bulk delete ─────────────────────────────────────────────────────────
@@ -490,6 +508,11 @@ export function DocumentListClient({
                               {doc.parentDocId && (
                                 <span className="text-xs text-mossy-gray">· merged</span>
                               )}
+                              {doc.isHidden && (
+                                <span className="inline-flex items-center gap-0.5 text-[10px] font-medium text-state-upcoming">
+                                  <EyeOff className="h-3 w-3" /> private
+                                </span>
+                              )}
                             </div>
                           </div>
                         </Link>
@@ -524,6 +547,15 @@ export function DocumentListClient({
                             >
                               <BookOpen className="h-3.5 w-3.5" />
                             </Link>
+                          </SimpleTooltip>
+                          <SimpleTooltip content={doc.isHidden ? "Unhide (make visible)" : "Hide (make private)"}>
+                            <button
+                              onClick={() => handleToggleHidden(doc.id, Boolean(doc.isHidden))}
+                              className="p-1.5 rounded-lg hover:bg-canvas text-mossy-gray hover:text-forest-slate transition-colors"
+                              aria-label={doc.isHidden ? "Unhide document" : "Hide document"}
+                            >
+                              {doc.isHidden ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+                            </button>
                           </SimpleTooltip>
                           <SimpleTooltip content="Delete permanently">
                             <button

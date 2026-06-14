@@ -2,6 +2,7 @@
 
 import { ObjectId } from "mongodb";
 import { requireAuth } from "@/lib/auth/session";
+import { hiddenRevealed } from "@/lib/hidden";
 import {
   getDocumentsCollection,
   getRepetitionsCollection,
@@ -20,6 +21,7 @@ export type AnyTaskItem = TaskItem | YoutubeTaskItem;
 export async function getTaskQueue(filter: TaskFilter = "today"): Promise<AnyTaskItem[]> {
   const user = await requireAuth();
   const userId = new ObjectId(user.id);
+  const revealHidden = await hiddenRevealed();
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
   const todayEnd = new Date();
@@ -57,8 +59,9 @@ export async function getTaskQueue(filter: TaskFilter = "today"): Promise<AnyTas
   const tasks: TaskItem[] = [];
   for (const rep of repList) {
     // Queue rows only show titles/metadata — omit the heavy `content` body.
+    // Hidden docs stay out of the queue unless "reveal" is on.
     const doc = await docs.findOne(
-      { _id: rep.docId, userId, status: { $ne: "completed" } },
+      { _id: rep.docId, userId, status: { $ne: "completed" }, ...(revealHidden ? {} : { isHidden: { $ne: true } }) },
       { projection: { content: 0 } }
     );
     if (!doc) continue;

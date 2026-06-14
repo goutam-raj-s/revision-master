@@ -85,6 +85,7 @@ export interface DbDocument {
   content?: string; // For native documents (TipTap JSON/HTML)
   aiSummary?: string; // AI-generated study summary (Markdown)
   aiSummaryGeneratedAt?: Date;
+  isHidden?: boolean; // private doc — only visible when "reveal" is toggled
   readingProgress?: number; // 0–100, manual reading progress
   // Google Drive sync fields
   source?: DocumentSource;
@@ -192,6 +193,7 @@ export interface Document {
   content?: string;
   aiSummary?: string;
   aiSummaryGeneratedAt?: string;
+  isHidden?: boolean;
   readingProgress?: number;
   // Google Drive sync fields
   source?: DocumentSource;
