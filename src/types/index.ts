@@ -377,6 +377,8 @@ export interface DbPostDraft {
   body: string;
   scheduledFor?: Date;
   publishedUrl?: string;
+  providerPostId?: string;
+  publishError?: string;
   docId?: ObjectId;
   createdAt: Date;
   updatedAt: Date;
@@ -389,8 +391,35 @@ export interface PostDraft {
   body: string;
   scheduledFor?: string;
   publishedUrl?: string;
+  providerPostId?: string;
+  publishError?: string;
   createdAt: string;
   updatedAt: string;
+}
+
+// ─── Social connections (direct publishing) ─────────────────────────────────
+export type SocialProvider = "linkedin" | "twitter";
+
+export interface DbSocialConnection {
+  _id: ObjectId;
+  userId: ObjectId;
+  provider: SocialProvider;
+  providerUserId: string;
+  displayName?: string;
+  accessToken: string;
+  accessTokenExpiresAt?: Date;
+  refreshTokenEncrypted?: string;
+  scopes: string[];
+  connectedAt: Date;
+  updatedAt: Date;
+}
+
+export interface SocialConnection {
+  provider: SocialProvider;
+  displayName?: string;
+  connectedAt: string;
+  expiresAt?: string;
+  expired: boolean;
 }
 
 export interface DbTopicCollection {

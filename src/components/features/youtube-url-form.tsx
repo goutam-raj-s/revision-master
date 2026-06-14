@@ -56,7 +56,7 @@ export function YoutubeUrlForm() {
             inputMode="url"
             value={url}
             onChange={(e) => { setUrl(e.target.value); setError(""); }}
-            placeholder="https://youtu.be/... or https://www.airtribe.live/..."
+            placeholder="Paste any public video link (https://youtu.be/...)"
             autoFocus
           />
           {error && <p className="text-xs text-destructive">{error}</p>}

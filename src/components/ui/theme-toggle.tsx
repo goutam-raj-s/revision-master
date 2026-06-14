@@ -9,10 +9,10 @@ const STORAGE_KEY = "lostbae-theme";
 const ORDER: ThemePref[] = ["light", "dark", "system"];
 
 export function getStoredTheme(): ThemePref {
-  if (typeof window === "undefined") return "light";
+  if (typeof window === "undefined") return "dark";
   const v = localStorage.getItem(STORAGE_KEY);
-  // Default to light until the user explicitly chooses dark or system.
-  return v === "light" || v === "dark" || v === "system" ? v : "light";
+  // Default to dark until the user explicitly chooses light or system.
+  return v === "light" || v === "dark" || v === "system" ? v : "dark";
 }
 
 export function applyTheme(pref: ThemePref) {
@@ -42,7 +42,7 @@ const LABELS: Record<ThemePref, string> = {
 };
 
 export function ThemeToggle({ showLabel = false }: { showLabel?: boolean }) {
-  const [pref, setPref] = React.useState<ThemePref>("light");
+  const [pref, setPref] = React.useState<ThemePref>("dark");
   const [mounted, setMounted] = React.useState(false);
 
   React.useEffect(() => {

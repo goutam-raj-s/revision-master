@@ -57,10 +57,10 @@ export default async function DocumentsPage({ searchParams }: DocumentsPageProps
           <Link href="/documents/new">
             <Button
               className="h-8 gap-1.5 px-2.5 text-xs bouncy-hover sm:h-9 sm:px-4 sm:text-sm"
-              aria-label="Add document"
+              aria-label="Import document"
             >
               <Plus className="h-4 w-4" />
-              <span className="hidden sm:inline">Add Document</span>
+              <span className="hidden sm:inline">Import Document</span>
             </Button>
           </Link>
         </div>

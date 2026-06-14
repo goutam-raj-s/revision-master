@@ -104,9 +104,9 @@ export function CommandPalette({ documents = [], tags = [], terms = [] }: Comman
 
   const actions = [
     {
-      label: "Add document",
+      label: "Import document",
       icon: Plus,
-      keywords: "new create import",
+      keywords: "new create import add",
       run: () => navigate("/documents/new"),
     },
     {

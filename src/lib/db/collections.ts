@@ -30,6 +30,7 @@ import type {
   DbPostDraft,
   DbYoutubeShare,
   YoutubeShare,
+  DbSocialConnection,
 } from "@/types";
 
 // ─── Collection accessors ──────────────────────────────────────────────────────
@@ -92,6 +93,11 @@ export async function getTopicCollectionsCollection(): Promise<Collection<DbTopi
 export async function getPostDraftsCollection(): Promise<Collection<DbPostDraft>> {
   const db = await getDb();
   return db.collection<DbPostDraft>("post_drafts");
+}
+
+export async function getSocialConnectionsCollection(): Promise<Collection<DbSocialConnection>> {
+  const db = await getDb();
+  return db.collection<DbSocialConnection>("social_connections");
 }
 
 export async function getYoutubeSessionsCollection(): Promise<Collection<DbYoutubeSession>> {

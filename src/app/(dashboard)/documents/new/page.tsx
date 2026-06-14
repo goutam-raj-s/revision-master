@@ -1,6 +1,6 @@
 import { AddDocumentForm } from "@/components/features/add-document-form";
 
-export const metadata = { title: "Add Document — lostbae" };
+export const metadata = { title: "Import Document — lostbae" };
 
 interface Props {
   searchParams: Promise<{ tab?: string; status?: string }>;
@@ -9,21 +9,20 @@ interface Props {
 export default async function NewDocumentPage({ searchParams }: Props) {
   const { tab, status } = await searchParams;
 
-  const initialTab =
-    tab === "google" ? "google" : tab === "file" ? "file" : "link";
+  const initialTab = tab === "google" ? "google" : "file";
   const googleStatus =
     status === "connected" ? "connected" : status === "error" ? "error" : null;
 
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-bold text-forest-slate">Add Document</h1>
+        <h1 className="text-2xl font-bold text-forest-slate">Import Document</h1>
         <p className="text-sm text-mossy-gray mt-1">
-          Paste a Google Doc URL, upload a file, or import from Google Docs directly.
+          Upload a file or import directly from Google Docs.
         </p>
       </div>
       <AddDocumentForm
-        initialTab={initialTab as "link" | "file" | "google"}
+        initialTab={initialTab as "file" | "google"}
         googleStatus={googleStatus}
       />
     </div>

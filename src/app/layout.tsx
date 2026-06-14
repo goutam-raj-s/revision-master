@@ -74,7 +74,7 @@ export default function RootLayout({
         {/* Applies stored/system theme before first paint to avoid a light flash */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=localStorage.getItem("lostbae-theme");var d=t==="dark"||(t==="system"&&matchMedia("(prefers-color-scheme: dark)").matches);if(d)document.documentElement.classList.add("dark")}catch(e){}})();`,
+            __html: `(function(){try{var t=localStorage.getItem("lostbae-theme");var d;if(t==="light")d=false;else if(t==="system")d=matchMedia("(prefers-color-scheme: dark)").matches;else d=true;if(d)document.documentElement.classList.add("dark")}catch(e){document.documentElement.classList.add("dark")}})();`,
           }}
         />
       </head>

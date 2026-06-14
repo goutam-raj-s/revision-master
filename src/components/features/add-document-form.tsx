@@ -2,9 +2,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { useActionState } from "react";
 import {
-  Link2,
   Loader2,
   AlertTriangle,
   X,
@@ -32,19 +30,10 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/components/ui/toast";
 import {
-  addDocumentAction,
-  fetchDocTitleAction,
   mergeDocumentsAction,
   addFileDocumentAction,
 } from "@/actions/documents";
-import { fetchYoutubeMetadata, createOrGetYoutubeSession } from "@/actions/youtube";
-import { extractYoutubeVideoId } from "@/lib/youtube-utils";
-import { isValidGoogleDocUrl } from "@/lib/utils";
-import type { ActionResult, SimilarityMatch, MediaType, Difficulty } from "@/types";
-
-const initialState: ActionResult<{ docId: string; similarMatches: SimilarityMatch[] }> = {
-  success: false,
-};
+import type { SimilarityMatch, MediaType, Difficulty } from "@/types";
 
 // ── Accepted MIME types for file upload (no video) ────────────────────────────
 const ACCEPTED_MIME_TYPES = [
@@ -63,24 +52,7 @@ const ACCEPTED_EXTENSIONS =
   ".pdf,.docx,.txt,.md,.pptx,.png,.jpg,.jpeg,.gif,.webp";
 
 const AUDIO_MIME_PREFIXES = ["audio/"];
-const AUDIO_MAX_BYTES = 5 * 1024 * 1024; // 5 MB
 const FILE_MAX_BYTES = 50 * 1024 * 1024; // 50 MB
-
-// Video URL patterns (non-YouTube)
-const VIDEO_URL_PATTERNS = [
-  /\.mp4(\?|$)/i,
-  /\.mov(\?|$)/i,
-  /\.webm(\?|$)/i,
-  /vimeo\.com/i,
-];
-
-function isVideoUrl(url: string): boolean {
-  return VIDEO_URL_PATTERNS.some((p) => p.test(url));
-}
-
-function isYoutubeUrlLocal(url: string): boolean {
-  return extractYoutubeVideoId(url) !== null;
-}
 
 
 function getMediaTypeForFile(file: File): MediaType {
@@ -209,376 +181,6 @@ function MetaFields({
         )}
       </div>
     </>
-  );
-}
-
-// ── Link Tab ──────────────────────────────────────────────────────────────────
-function LinkTab({
-  onSuccess,
-}: {
-  onSuccess: (docId: string, similarMatches?: SimilarityMatch[]) => void;
-}) {
-  const router = useRouter();
-  const [url, setUrl] = React.useState("");
-  const [title, setTitle] = React.useState("");
-  const [fetchingTitle, setFetchingTitle] = React.useState(false);
-  const [urlError, setUrlError] = React.useState("");
-  const [tags, setTags] = React.useState<string[]>([]);
-  const [tagInput, setTagInput] = React.useState("");
-  const [delay, setDelay] = React.useState("2");
-  const [difficulty, setDifficulty] = React.useState("medium");
-  const [submitting, setSubmitting] = React.useState(false);
-  const [serverError, setServerError] = React.useState("");
-
-  // Google Doc form action state (for native formAction path)
-  const [state, action, pending] = useActionState(addDocumentAction, initialState);
-
-  React.useEffect(() => {
-    if (state.success && state.data) {
-      onSuccess(state.data.docId, state.data.similarMatches);
-    } else if (state.error) {
-      setServerError(state.error);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state]);
-
-  async function handleUrlBlur() {
-    if (!url) return;
-    if (isYoutubeUrlLocal(url)) {
-      setUrlError("");
-      return;
-    }
-    if (isVideoUrl(url)) {
-      // Video URL — no title fetch needed from server
-      setUrlError("");
-      return;
-    }
-    if (!isValidGoogleDocUrl(url)) {
-      setUrlError("Please enter a valid Google Docs URL, YouTube URL, or video URL (.mp4, .mov, .webm, Vimeo)");
-      return;
-    }
-    setUrlError("");
-    if (title) return;
-
-    setFetchingTitle(true);
-    const result = await fetchDocTitleAction(url);
-    if (result.success && result.data) {
-      setTitle(result.data.title);
-    } else {
-      setTitle("");
-      setUrlError(result.error || "Could not fetch document title.");
-    }
-    setFetchingTitle(false);
-  }
-
-  async function handleYoutubeSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setSubmitting(true);
-    setServerError("");
-    try {
-      const videoId = extractYoutubeVideoId(url);
-      if (!videoId) {
-        setServerError("Invalid YouTube URL");
-        setSubmitting(false);
-        return;
-      }
-      const metadata = await fetchYoutubeMetadata(url);
-      const result = await createOrGetYoutubeSession(videoId, { title: metadata.title, thumbnailUrl: metadata.thumbnailUrl }, {
-        tags,
-        difficulty: difficulty as Difficulty,
-        delayDays: parseInt(delay),
-      });
-      setSubmitting(false);
-      if (result.success && result.data) {
-        // Redirect to YouTube study page
-        router.push(`/study/youtube?v=${result.data.videoId}`);
-      } else {
-        setServerError(result.error || "Failed to create YouTube session.");
-      }
-    } catch {
-      setServerError("Failed to create YouTube session.");
-      setSubmitting(false);
-    }
-  }
-
-  async function handleVideoSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!url || !title) return;
-    setSubmitting(true);
-    setServerError("");
-    const result = await addFileDocumentAction({
-      title,
-      fileUrl: url,
-      mediaType: "video",
-      tags,
-      difficulty: difficulty as Difficulty,
-      delayDays: parseInt(delay),
-    });
-    setSubmitting(false);
-    if (result.success && result.data) {
-      onSuccess(result.data.docId);
-    } else {
-      setServerError(result.error || "Failed to add video.");
-    }
-  }
-
-  const isYoutube = isYoutubeUrlLocal(url);
-  const isVideo = !isYoutube && isVideoUrl(url);
-  const isGoogleDoc = isValidGoogleDocUrl(url);
-
-  // YouTube URL: custom session creation + redirect
-  if (isYoutube) {
-    return (
-      <form onSubmit={handleYoutubeSubmit} className="space-y-5">
-        {serverError && (
-          <div className="rounded-xl bg-destructive/5 border border-destructive/20 px-4 py-3 text-sm text-destructive animate-slide-down">
-            {serverError}
-          </div>
-        )}
-        <div className="space-y-1.5">
-          <Label htmlFor="yt-url-field">YouTube URL <span className="text-destructive">*</span></Label>
-          <div className="relative">
-            <div className="absolute left-3 top-1/2 -translate-y-1/2">
-              <Link2 className="h-4 w-4 text-mossy-gray" />
-            </div>
-            <Input
-              id="yt-url-field"
-              type="text"
-              inputMode="url"
-              value={url}
-              onChange={(e) => { setUrl(e.target.value); setUrlError(""); }}
-              onBlur={handleUrlBlur}
-              placeholder="https://youtu.be/..."
-              className="pl-9"
-              autoFocus
-              required
-            />
-          </div>
-          {urlError && <p className="text-xs text-destructive">{urlError}</p>}
-        </div>
-        <MetaFields
-          tags={tags} setTags={setTags}
-          tagInput={tagInput} setTagInput={setTagInput}
-          difficulty={difficulty} setDifficulty={setDifficulty}
-          delay={delay} setDelay={setDelay}
-          idPrefix="yt"
-        />
-        <Button type="submit" disabled={submitting || !url} className="w-full mt-2">
-          {submitting ? (
-            <span className="flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" />Creating session…</span>
-          ) : (
-            <span className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4" />Start YouTube Session</span>
-          )}
-        </Button>
-      </form>
-    );
-  }
-
-  // For video URLs use our custom submit; for google doc use the native form action
-  if (isVideo) {
-    return (
-      <form onSubmit={handleVideoSubmit} className="space-y-5">
-        {serverError && (
-          <div className="rounded-xl bg-destructive/5 border border-destructive/20 px-4 py-3 text-sm text-destructive animate-slide-down">
-            {serverError}
-          </div>
-        )}
-        <div className="space-y-1.5">
-          <Label htmlFor="video-url">Video URL <span className="text-destructive">*</span></Label>
-          <div className="relative">
-            <div className="absolute left-3 top-1/2 -translate-y-1/2">
-              <Link2 className="h-4 w-4 text-mossy-gray" />
-            </div>
-            <Input
-              id="video-url"
-              type="url"
-              value={url}
-              onChange={(e) => { setUrl(e.target.value); setUrlError(""); }}
-              onBlur={handleUrlBlur}
-              placeholder="https://... or Vimeo URL"
-              className="pl-9"
-              autoFocus
-              required
-            />
-          </div>
-          {urlError && <p className="text-xs text-destructive">{urlError}</p>}
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="video-title">Title <span className="text-destructive">*</span></Label>
-          <Input
-            id="video-title"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="Enter a title for this video"
-            required
-          />
-        </div>
-        <MetaFields
-          tags={tags} setTags={setTags}
-          tagInput={tagInput} setTagInput={setTagInput}
-          difficulty={difficulty} setDifficulty={setDifficulty}
-          delay={delay} setDelay={setDelay}
-          idPrefix="video"
-        />
-        <Button type="submit" disabled={submitting || !url || !title} className="w-full mt-2">
-          {submitting ? (
-            <span className="flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" />Adding…</span>
-          ) : (
-            <span className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4" />Add Video to Library</span>
-          )}
-        </Button>
-      </form>
-    );
-  }
-
-  // Default: Google Doc URL form (native action)
-  return (
-    <form action={action} className="space-y-5">
-      {(state.error || serverError) && (
-        <div className="rounded-xl bg-destructive/5 border border-destructive/20 px-4 py-3 text-sm text-destructive animate-slide-down">
-          {state.error || serverError}
-        </div>
-      )}
-      <div className="space-y-1.5">
-        <Label htmlFor="url">
-          Google Doc URL or Video URL <span className="text-destructive">*</span>
-        </Label>
-        <div className="relative">
-          <div className="absolute left-3 top-1/2 -translate-y-1/2">
-            <Link2 className="h-4 w-4 text-mossy-gray" />
-          </div>
-          <Input
-            id="url"
-            name="url"
-            type="text"
-            inputMode="url"
-            value={url}
-            onChange={(e) => { setUrl(e.target.value); setUrlError(""); }}
-            onBlur={handleUrlBlur}
-            placeholder="https://docs.google.com/... or video URL"
-            className="pl-9"
-            autoFocus
-            required
-          />
-          {fetchingTitle && (
-            <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-state-today" />
-          )}
-        </div>
-        {urlError && <p className="text-xs text-destructive">{urlError}</p>}
-      </div>
-
-      <div className="space-y-1.5">
-        <Label htmlFor="title">
-          Document Title
-          {fetchingTitle && <span className="ml-2 text-mossy-gray font-normal">(fetching…)</span>}
-        </Label>
-        <Input
-          id="title"
-          name="title"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          placeholder="Auto-extracted from the document"
-          required
-        />
-      </div>
-
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-1.5">
-          <Label htmlFor="difficulty">Difficulty</Label>
-          <Select name="difficulty" value={difficulty} onValueChange={setDifficulty}>
-            <SelectTrigger id="difficulty">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="easy">Easy</SelectItem>
-              <SelectItem value="medium">Medium</SelectItem>
-              <SelectItem value="hard">Hard</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="initialDelayDays">First Review</Label>
-          <Select name="initialDelayDays" value={delay} onValueChange={setDelay}>
-            <SelectTrigger id="initialDelayDays">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {[1, 2, 3, 5, 7, 14, 21, 30].map((d) => (
-                <SelectItem key={d} value={String(d)}>
-                  +{d} days{d === 2 ? " (default)" : ""}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-
-      <div className="space-y-1.5">
-        <Label htmlFor="tag-input">Tags</Label>
-        <div className="flex gap-2">
-          <Input
-            id="tag-input"
-            value={tagInput}
-            onChange={(e) => setTagInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === ",") {
-                e.preventDefault();
-                const t = tagInput.trim().toLowerCase();
-                if (t && !tags.includes(t)) setTags((prev) => [...prev, t]);
-                setTagInput("");
-              }
-            }}
-            placeholder="Add tag and press Enter"
-            className="flex-1"
-          />
-          <Button
-            type="button"
-            variant="outline"
-            size="icon"
-            onClick={() => {
-              const t = tagInput.trim().toLowerCase();
-              if (t && !tags.includes(t)) setTags((prev) => [...prev, t]);
-              setTagInput("");
-            }}
-            aria-label="Add tag"
-          >
-            <Plus className="h-4 w-4" />
-          </Button>
-        </div>
-        <input type="hidden" name="tags" value={tags.join(",")} />
-        {tags.length > 0 && (
-          <div className="flex flex-wrap gap-1.5 mt-2">
-            {tags.map((tag) => (
-              <Badge key={tag} variant="tag" className="gap-1.5 cursor-default">
-                #{tag}
-                <button
-                  type="button"
-                  onClick={() => setTags((prev) => prev.filter((t) => t !== tag))}
-                  className="hover:text-destructive transition-colors"
-                  aria-label={`Remove tag ${tag}`}
-                >
-                  <X className="h-3 w-3" />
-                </button>
-              </Badge>
-            ))}
-          </div>
-        )}
-      </div>
-
-      <Button type="submit" disabled={pending || !url || !title} className="w-full mt-2">
-        {pending ? (
-          <span className="flex items-center gap-2">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            Adding to library…
-          </span>
-        ) : (
-          <span className="flex items-center gap-2">
-            <CheckCircle2 className="h-4 w-4" />
-            Add to Library
-          </span>
-        )}
-      </Button>
-    </form>
   );
 }
 
@@ -956,13 +558,13 @@ function FileUploadTab({ onSuccess }: { onSuccess: (docId: string) => void }) {
 
 // ── Main AddDocumentForm ──────────────────────────────────────────────────────
 interface AddDocumentFormProps {
-  initialTab?: "link" | "file" | "google";
+  initialTab?: "file" | "google";
   googleStatus?: "connected" | "error" | null;
 }
 
 export function AddDocumentForm({ initialTab, googleStatus }: AddDocumentFormProps = {}) {
   const router = useRouter();
-  const [activeTab, setActiveTab] = React.useState<"link" | "file" | "google">(initialTab ?? "link");
+  const [activeTab, setActiveTab] = React.useState<"file" | "google">(initialTab ?? "file");
   const [similarMatches, setSimilarMatches] = React.useState<SimilarityMatch[]>([]);
   const [showSimilarity, setShowSimilarity] = React.useState(false);
   const [newDocId, setNewDocId] = React.useState<string | null>(null);
@@ -1045,19 +647,6 @@ export function AddDocumentForm({ initialTab, googleStatus }: AddDocumentFormPro
       <div className="flex rounded-xl border border-border bg-canvas p-1 mb-6 gap-1">
         <button
           type="button"
-          onClick={() => setActiveTab("link")}
-          className={`flex-1 flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-all ${
-            activeTab === "link"
-              ? "bg-surface shadow-card text-forest-slate"
-              : "text-mossy-gray hover:text-forest-slate"
-          }`}
-          aria-pressed={activeTab === "link"}
-        >
-          <Link2 className="h-4 w-4" />
-          Link
-        </button>
-        <button
-          type="button"
           onClick={() => setActiveTab("file")}
           className={`flex-1 flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-all ${
             activeTab === "file"
@@ -1084,7 +673,6 @@ export function AddDocumentForm({ initialTab, googleStatus }: AddDocumentFormPro
         </button>
       </div>
 
-      {activeTab === "link" && <LinkTab onSuccess={handleSuccess} />}
       {activeTab === "file" && <FileUploadTab onSuccess={(docId) => handleSuccess(docId)} />}
       {activeTab === "google" && (
         <GoogleDocsTab

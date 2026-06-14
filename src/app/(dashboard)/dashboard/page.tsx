@@ -117,9 +117,9 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         <div className="flex items-center gap-2">
           <QuickGuideButton shortcuts={DASHBOARD_SHORTCUTS} title="Dashboard" />
           <Link href="/documents/new" prefetch={true}>
-            <Button className="h-8 gap-1.5 px-3 text-xs bouncy-hover sm:h-9 sm:gap-2 sm:px-4 sm:text-sm" aria-label="Add document">
+            <Button className="h-8 gap-1.5 px-3 text-xs bouncy-hover sm:h-9 sm:gap-2 sm:px-4 sm:text-sm" aria-label="Import document">
               <Plus className="h-4 w-4" />
-              <span className="hidden sm:inline">Add Document</span>
+              <span className="hidden sm:inline">Import Document</span>
             </Button>
           </Link>
         </div>

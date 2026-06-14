@@ -25,6 +25,7 @@ import { updateDocumentAction, rescheduleDocAction, completeReviewAction, markDo
 import { ReviewScheduleControls } from "@/components/features/review-schedule-controls";
 import { DocumentExtras } from "@/components/features/document-extras";
 import { AddToCollection } from "@/components/features/add-to-collection";
+import { FocusMusicPlayer } from "@/components/features/focus-music-player";
 import type { Document, Repetition, Note, Term, Difficulty } from "@/types";
 
 interface DocumentDetailClientProps {
@@ -178,6 +179,8 @@ export function DocumentDetailClient({ doc, rep, initialNotes, initialTerms }: D
   }
 
   return (
+    <>
+    <FocusMusicPlayer />
     <div className="grid lg:grid-cols-3 gap-6">
       {/* Left: Notes & Terms */}
       <div className="lg:col-span-2 space-y-6">
@@ -509,5 +512,6 @@ export function DocumentDetailClient({ doc, rep, initialNotes, initialTerms }: D
         <AddToCollection docId={doc.id} />
       </div>
     </div>
+    </>
   );
 }
