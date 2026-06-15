@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useActionState, Suspense, useEffect } from "react";
 import { ArrowRight, Eye, EyeOff } from "lucide-react";
 import { loginAction, recordLoginAccessAction } from "@/actions/auth";
@@ -85,7 +84,6 @@ function OAuthButtons() {
 }
 
 function LoginFormBase() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const from = searchParams?.get("from") || "/dashboard";
   const oauthError = searchParams?.get("error");
@@ -99,9 +97,12 @@ function LoginFormBase() {
 
   React.useEffect(() => {
     if (state.success) {
-      router.push(from);
+      // Hard navigation (not router.push): the soft router cache may hold the
+      // logged-out redirect for the destination, which would bounce us back to
+      // /login. A full load sends the new session cookie and re-runs middleware.
+      window.location.assign(from);
     }
-  }, [state, router, from]);
+  }, [state, from]);
 
   const oauthErrorMessage =
     oauthError === "email_exists"

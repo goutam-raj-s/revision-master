@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useActionState, Suspense } from "react";
 import { ArrowRight, Eye, EyeOff } from "lucide-react";
 import { registerAction } from "@/actions/auth";
@@ -85,7 +84,6 @@ function OAuthButtons() {
 }
 
 function RegisterFormBase() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const from = searchParams?.get("from") || "/dashboard";
   const [showPassword, setShowPassword] = React.useState(false);
@@ -93,9 +91,11 @@ function RegisterFormBase() {
 
   React.useEffect(() => {
     if (state.success) {
-      router.push(from);
+      // Hard navigation so the new session cookie is sent and middleware
+      // re-runs (avoids the cached logged-out redirect for the destination).
+      window.location.assign(from);
     }
-  }, [state, router, from]);
+  }, [state, from]);
 
   return (
     <Card className="shadow-glass border-border/50">
