@@ -63,6 +63,7 @@ export const viewport: Viewport = {
 };
 
 import NextTopLoader from 'nextjs-toploader';
+import Script from "next/script";
 
 export default function RootLayout({
   children,
@@ -71,15 +72,13 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="h-full" suppressHydrationWarning>
-      <head>
-        {/* Applies stored/system theme before first paint to avoid a light flash */}
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=localStorage.getItem("lostbae-theme");var d;if(t==="light")d=false;else if(t==="system")d=matchMedia("(prefers-color-scheme: dark)").matches;else d=true;if(d)document.documentElement.classList.add("dark")}catch(e){document.documentElement.classList.add("dark")}})();`,
-          }}
-        />
-      </head>
       <body className="min-h-full bg-canvas font-sans antialiased">
+        {/* Applies stored/system theme before first paint to avoid a light flash.
+            Uses next/script (beforeInteractive) so React 19 doesn't try to
+            hydrate a raw inline <script> in the tree. */}
+        <Script id="theme-init" strategy="beforeInteractive">
+          {`(function(){try{var t=localStorage.getItem("lostbae-theme");var d;if(t==="light")d=false;else if(t==="system")d=matchMedia("(prefers-color-scheme: dark)").matches;else d=true;if(d)document.documentElement.classList.add("dark")}catch(e){document.documentElement.classList.add("dark")}})();`}
+        </Script>
         <NextTopLoader color="#059669" showSpinner={false} />
         {children}
         <FocusMusicPlayer />

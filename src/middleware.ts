@@ -8,12 +8,13 @@ export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const sessionToken = request.cookies.get("rm_session")?.value;
 
-  // Allow public paths
+  // Allow public paths.
+  // NOTE: we intentionally do NOT bounce /login → /dashboard on cookie
+  // presence. Middleware can't validate the session (no DB here), so a stale
+  // or invalid cookie would create a redirect loop with the dashboard layout
+  // (which redirects to /login when getSession() fails). Letting /login render
+  // lets the user re-authenticate and replace the bad cookie.
   if (PUBLIC_EXACT.includes(pathname) || PUBLIC_PATHS.some((p) => pathname.startsWith(p))) {
-    // If already authenticated, redirect to dashboard
-    if (sessionToken && (pathname === "/login" || pathname === "/register")) {
-      return NextResponse.redirect(new URL("/dashboard", request.url));
-    }
     return NextResponse.next();
   }
 
