@@ -14,6 +14,8 @@ import { RichTextEditorDynamic as RichTextEditor } from "@/components/features/e
 import { DocumentTabsSidebar } from "@/components/features/document-tabs-sidebar";
 import { QuickGuideButton } from "@/components/ui/quick-guide-button";
 import { AiAssistant } from "@/components/features/ai-assistant";
+import { ShareButton } from "@/components/features/share-button";
+import { DocumentThumbnailButton } from "@/components/features/document-thumbnail-button";
 import type { DocumentTreeNode } from "@/types";
 
 const DOC_SHORTCUTS = [
@@ -87,7 +89,7 @@ export default async function StudyPage({ params }: StudyPageProps) {
             { href: `/study/${doc.id}`, label: doc.title },
           ]}
           rightActions={
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3">
               <StudyDocSwitcher currentDocId={doc.id} />
               {!doc.url.startsWith("native://") && (
                 <a
@@ -95,12 +97,14 @@ export default async function StudyPage({ params }: StudyPageProps) {
                   target="_blank"
                   rel="noopener noreferrer"
                   title="Open original in Google Docs"
-                  className="flex items-center gap-1.5 text-xs text-mossy-gray hover:text-forest-slate transition-colors"
+                  className="hidden sm:flex items-center gap-1.5 text-xs text-mossy-gray hover:text-forest-slate transition-colors"
                 >
                   <ExternalLink className="h-3.5 w-3.5" />
                   <span className="hidden sm:inline">Open in Google Docs</span>
                 </a>
               )}
+              <ShareButton docId={doc.id} title={doc.title} />
+              <DocumentThumbnailButton docId={doc.id} currentThumbnailUrl={doc.thumbnailUrl} />
               <QuickGuideButton shortcuts={DOC_SHORTCUTS} title="Document Study" />
             </div>
           }

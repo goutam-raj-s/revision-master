@@ -21,6 +21,9 @@ import {
   markNoteDoneAction, deleteTermAction,
 } from "@/actions/notes";
 import { updateDocumentAction, rescheduleDocAction, markDocCompletedAction } from "@/actions/documents";
+import { InlineTitleEditor } from "@/components/features/inline-title-editor";
+import { AddToCollection } from "@/components/features/add-to-collection";
+import { DocumentExtras } from "@/components/features/document-extras";
 import type { Document, Repetition, Note, Term, Difficulty } from "@/types";
 
 type SidebarTab = "overview" | "notes" | "terms";
@@ -481,6 +484,22 @@ export function StudySidebarPanel({
             ) : (
               <p className="text-xs text-mossy-gray">No review schedule yet.</p>
             )}
+
+            {/* Restored from the old detail page: rename, collections, backlinks,
+                reading progress and Markdown export. */}
+            <div className="space-y-3 border-t border-border/60 pt-3">
+              <div>
+                <Label className="text-[11px] uppercase tracking-wide text-mossy-gray">Title</Label>
+                <InlineTitleEditor docId={doc.id} title={doc.title} className="mt-1 text-sm font-medium text-forest-slate" />
+              </div>
+              <AddToCollection docId={doc.id} />
+              <DocumentExtras
+                docId={doc.id}
+                title={doc.title}
+                content={doc.content}
+                initialProgress={doc.readingProgress ?? 0}
+              />
+            </div>
           </>
         )}
 
