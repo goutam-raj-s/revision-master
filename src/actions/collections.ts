@@ -8,6 +8,7 @@ import {
   getTopicCollectionsCollection,
   getDocumentsCollection,
   serializeDoc,
+  LIST_DOC_PROJECTION,
 } from "@/lib/db/collections";
 import type { ActionResult, TopicCollection, Document, DbDocument } from "@/types";
 
@@ -83,7 +84,7 @@ export async function getCollectionWithDocsAction(
 
   const docs = await getDocumentsCollection();
   const rows = (c.docIds?.length
-    ? await docs.find({ _id: { $in: c.docIds }, userId: new ObjectId(user.id) }).project({ content: 0 }).toArray()
+    ? await docs.find({ _id: { $in: c.docIds }, userId: new ObjectId(user.id) }).project(LIST_DOC_PROJECTION).toArray()
     : []) as unknown as DbDocument[];
   // Preserve the collection's order.
   const byId = new Map(rows.map((d) => [d._id.toString(), d]));

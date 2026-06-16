@@ -250,6 +250,20 @@ export function serializeUser(u: DbUser): User {
   };
 }
 
+/**
+ * Projection for document LIST/queue queries: drop the heavy fields that lists
+ * never render. `url`/`fileUrl` matter because imported media can embed the
+ * whole file as a multi-MB base64 data-URL. Single-doc reads (study page) do
+ * NOT use this — they need the full document.
+ */
+export const LIST_DOC_PROJECTION = {
+  content: 0,
+  url: 0,
+  fileUrl: 0,
+  aiSummary: 0,
+  transcript: 0,
+} as const;
+
 export function serializeDoc(d: DbDocument): Document {
   return {
     id: d._id.toString(),

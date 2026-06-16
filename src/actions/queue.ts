@@ -13,6 +13,7 @@ import {
   serializeRepetition,
   serializeNote,
   serializeYoutubeSession,
+  LIST_DOC_PROJECTION,
 } from "@/lib/db/collections";
 import type { TaskItem, YoutubeTaskItem, TaskFilter } from "@/types";
 
@@ -67,7 +68,7 @@ export async function getTaskQueue(filter: TaskFilter = "today"): Promise<AnyTas
       status: { $ne: "completed" },
       ...(revealHidden ? {} : { isHidden: { $ne: true } }),
     })
-    .project({ content: 0 })
+    .project(LIST_DOC_PROJECTION)
     .toArray();
   const docById = new Map(docList.map((d) => [d._id.toString(), d]));
 

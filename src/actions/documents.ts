@@ -10,6 +10,7 @@ import {
   getNotesCollection,
   getTermsCollection,
   serializeDoc,
+  LIST_DOC_PROJECTION,
 } from "@/lib/db/collections";
 import { getCustomNextReviewDate, getNextReviewDate } from "@/lib/srs/engine";
 import { logReviewEvent, type ReviewConfidence } from "@/lib/streak";
@@ -662,9 +663,15 @@ export async function getUserDocuments(filter?: {
     });
   }
 
-  // List views never render the body — omit `content` to keep the RSC
-  // payload small (full content is re-fetched on the reading page).
-  const results = await docs.find(query).project({ content: 0 }).sort({ createdAt: -1 }).toArray();
+  // List views never render the body or media — omit the heavy fields. Some
+  // imported media docs store the whole file as a base64 data-URL in `url` /
+  // `fileUrl` (multiple MB each), so shipping them made list queries crawl on
+  // Atlas's free tier. The reading/study page re-fetches the full doc.
+  const results = await docs
+    .find(query)
+    .project(LIST_DOC_PROJECTION)
+    .sort({ createdAt: -1 })
+    .toArray();
   return results.map((d) => serializeDoc(d as unknown as DbDocument));
 }
 

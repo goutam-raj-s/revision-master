@@ -19,8 +19,13 @@ const CALM_LINES = [
 ];
 
 export function InboxZero({ nextDate, clearedToday, streak }: InboxZeroProps) {
-  // Pick a calm line once per mount.
-  const line = React.useMemo(() => CALM_LINES[Math.floor(Math.random() * CALM_LINES.length)], []);
+  // Render a stable line on the server, then randomise after mount. Picking a
+  // random line during render differs between server and client and breaks
+  // hydration.
+  const [line, setLine] = React.useState(CALM_LINES[0]);
+  React.useEffect(() => {
+    setLine(CALM_LINES[Math.floor(Math.random() * CALM_LINES.length)]);
+  }, []);
 
   // Read the chosen companion, and update live if changed in Settings.
   const [character, setCharacter] = React.useState<CharacterId>("aria");
