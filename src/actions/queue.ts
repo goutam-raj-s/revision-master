@@ -56,36 +56,58 @@ export async function getTaskQueue(filter: TaskFilter = "today"): Promise<AnyTas
     return "upcoming";
   }
 
+  // Batch the doc + notes lookups instead of querying per repetition. With many
+  // due reviews the old per-item loop was 2 round-trips × N items, which on
+  // Vercel could exceed the serverless function time limit for heavy accounts.
+  const docIds = repList.map((r) => r.docId);
+  const docList = await docs
+    .find({
+      _id: { $in: docIds },
+      userId,
+      status: { $ne: "completed" },
+      ...(revealHidden ? {} : { isHidden: { $ne: true } }),
+    })
+    .project({ content: 0 })
+    .toArray();
+  const docById = new Map(docList.map((d) => [d._id.toString(), d]));
+
+  const noteList = await notes
+    .find({ docId: { $in: docIds }, isDone: false })
+    .sort({ createdAt: -1 })
+    .toArray();
+  const notesByDoc = new Map<string, typeof noteList>();
+  for (const n of noteList) {
+    const key = n.docId.toString();
+    const arr = notesByDoc.get(key) ?? [];
+    if (arr.length < 3) arr.push(n); // keep the 3 most recent per doc
+    notesByDoc.set(key, arr);
+  }
+
   const tasks: TaskItem[] = [];
   for (const rep of repList) {
-    // Queue rows only show titles/metadata — omit the heavy `content` body.
-    // Hidden docs stay out of the queue unless "reveal" is on.
-    const doc = await docs.findOne(
-      { _id: rep.docId, userId, status: { $ne: "completed" }, ...(revealHidden ? {} : { isHidden: { $ne: true } }) },
-      { projection: { content: 0 } }
-    );
+    const doc = docById.get(rep.docId.toString());
     if (!doc) continue;
     if (doc.parentDocId) continue;
-
-    const docNotes = await notes
-      .find({ docId: rep.docId, isDone: false })
-      .sort({ createdAt: -1 })
-      .limit(3)
-      .toArray();
-
     tasks.push({
-      doc: serializeDoc(doc),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      doc: serializeDoc(doc as any),
       repetition: serializeRepetition(rep),
-      notes: docNotes.map(serializeNote),
+      notes: (notesByDoc.get(rep.docId.toString()) ?? []).map(serializeNote),
       urgency: urgencyFor(rep.nextReviewDate),
     });
   }
 
-  // Fetch YouTube repetitions
+  // Fetch YouTube repetitions (batched the same way).
   const ytRepList = await ytReps.find(repQuery).sort({ nextReviewDate: 1 }).toArray();
+  const ytIds = ytRepList.map((r) => r.docId);
+  const ytList = await ytSessions
+    .find({ _id: { $in: ytIds }, userId, status: { $ne: "completed" } })
+    .toArray();
+  const ytById = new Map(ytList.map((s) => [s._id.toString(), s]));
+
   const youtubeTasks: YoutubeTaskItem[] = [];
   for (const rep of ytRepList) {
-    const session = await ytSessions.findOne({ _id: rep.docId, userId, status: { $ne: "completed" } });
+    const session = ytById.get(rep.docId.toString());
     if (!session) continue;
     youtubeTasks.push({
       source: "youtube",

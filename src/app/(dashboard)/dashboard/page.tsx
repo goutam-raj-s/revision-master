@@ -1,5 +1,7 @@
 import { Plus } from "lucide-react";
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { getSession } from "@/lib/auth/session";
 import { getTaskQueue } from "@/actions/queue";
 import { getDashboardStats, getReviewTrendAction, getStreakAction } from "@/actions/analytics";
 import { StreakCard } from "@/components/features/streak-card";
@@ -82,6 +84,12 @@ function FilterTabs({ active, pendingCount }: { active: TaskFilter; pendingCount
 }
 
 export default async function DashboardPage({ searchParams }: DashboardPageProps) {
+  // Verify the session ONCE, up front. If it's missing/invalid, redirect to
+  // login immediately — before running any data queries. (Avoids firing the
+  // queue/stats reads, and the noisy UNAUTHORIZED throws, for unauthed requests.)
+  const user = await getSession();
+  if (!user) redirect("/login");
+
   const params = await searchParams;
   const filter = (params.filter as TaskFilter) || "today";
 
