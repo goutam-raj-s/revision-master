@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { requireAuth } from "@/lib/auth/session";
-import { getDocById, serializeDoc, getRepetitionByDocId, serializeRepetition, getDocumentTree, getRootDocForDoc } from "@/lib/db/collections";
+import { getDocById, serializeDoc, getDocumentTree, getRootDocForDoc } from "@/lib/db/collections";
 import { getGoogleDocEmbedUrl } from "@/lib/utils";
 import { ExternalLink } from "lucide-react";
 import { StudyPageWrapper } from "@/components/features/study-page-wrapper";
@@ -8,7 +8,6 @@ import { StudySplitPane } from "@/components/features/study-split-pane";
 import { StudyDocSwitcher } from "@/components/features/study-doc-switcher";
 import { MobileSidebarButton } from "@/components/features/study-mobile-sidebar";
 import { AudioPlayer, VideoPlayer, DocumentDownload } from "@/components/features/media-player";
-import { getDocNotes, getDocTerms } from "@/actions/notes";
 import { DashboardHeader } from "@/components/features/dashboard-header";
 import { RichTextEditorDynamic as RichTextEditor } from "@/components/features/editor/RichTextEditorDynamic";
 import { DocumentTabsSidebar } from "@/components/features/document-tabs-sidebar";
@@ -67,15 +66,6 @@ export default async function StudyPage({ params }: StudyPageProps) {
   const doc = serializeDoc(dbDoc);
   const embedUrl = getGoogleDocEmbedUrl(doc.url);
 
-  // Fetch all sidebar data in parallel
-  const [dbRep, initialNotes, initialTerms] = await Promise.all([
-    getRepetitionByDocId(parentId),
-    getDocNotes(docId),
-    getDocTerms(docId),
-  ]);
-
-  const rep = dbRep ? serializeRepetition(dbRep) : null;
-
   return (
     <StudyPageWrapper>
       <AiAssistant kind="document" contextId={doc.id} title={doc.title} enableSummary={Boolean(doc.content)} />
@@ -123,9 +113,7 @@ export default async function StudyPage({ params }: StudyPageProps) {
           {/* Split-pane body — resizable */}
           <StudySplitPane
             doc={doc}
-            rep={rep}
-            initialNotes={initialNotes}
-            initialTerms={initialTerms}
+            rootDocId={parentId}
             leftContent={
             doc.mediaType === "audio" && doc.fileUrl ? (
               <div className="absolute inset-0 overflow-auto">
@@ -198,9 +186,7 @@ export default async function StudyPage({ params }: StudyPageProps) {
         {/* Mobile FAB — opens sidebar as overlay (hidden on lg+) */}
         <MobileSidebarButton
           doc={doc}
-          rep={rep}
-          initialNotes={initialNotes}
-          initialTerms={initialTerms}
+          rootDocId={parentId}
         />
       </div>
     </StudyPageWrapper>

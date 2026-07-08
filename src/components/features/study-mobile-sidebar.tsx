@@ -1,23 +1,27 @@
 "use client";
 
 import * as React from "react";
+import dynamic from "next/dynamic";
 import { PanelRight } from "lucide-react";
-import { StudySidebarPanel } from "@/components/features/study-sidebar-panel";
 import { SimpleTooltip } from "@/components/ui/tooltip";
-import type { Document, Repetition, Note, Term } from "@/types";
+import type { Document } from "@/types";
+
+const StudySidebarLoader = dynamic(
+  () => import("@/components/features/study-sidebar-loader").then((mod) => mod.StudySidebarLoader),
+  {
+    ssr: false,
+    loading: () => <div className="h-full w-full border-l border-border bg-surface" />,
+  }
+);
 
 interface MobileSidebarButtonProps {
   doc: Document;
-  rep: Repetition | null;
-  initialNotes: Note[];
-  initialTerms: Term[];
+  rootDocId: string;
 }
 
 export function MobileSidebarButton({
   doc,
-  rep,
-  initialNotes,
-  initialTerms,
+  rootDocId,
 }: MobileSidebarButtonProps) {
   const [open, setOpen] = React.useState(false);
 
@@ -44,11 +48,9 @@ export function MobileSidebarButton({
           />
           {/* Sidebar panel */}
           <div className="relative w-80 max-w-full h-full animate-slide-up flex flex-col shadow-glass">
-            <StudySidebarPanel
+            <StudySidebarLoader
               doc={doc}
-              rep={rep}
-              initialNotes={initialNotes}
-              initialTerms={initialTerms}
+              rootDocId={rootDocId}
               onClose={() => setOpen(false)}
             />
           </div>

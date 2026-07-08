@@ -469,7 +469,22 @@ export async function getDocumentTree(rootDocId: string, userId: string): Promis
   const col = await getDocumentsCollection();
   const userObjectId = new ObjectId(userId);
   const rootObjectId = new ObjectId(rootDocId);
-  const docs = await col.find({ userId: userObjectId }).sort({ createdAt: 1 }).toArray();
+  const rootDoc = await col.findOne({ _id: rootObjectId, userId: userObjectId });
+  if (!rootDoc) return [];
+
+  const docs: DbDocument[] = [rootDoc];
+  let parentIds = [rootObjectId];
+
+  while (parentIds.length > 0) {
+    const children = await col
+      .find({ userId: userObjectId, parentDocId: { $in: parentIds } })
+      .sort({ createdAt: 1 })
+      .toArray();
+
+    docs.push(...children);
+    parentIds = children.map((doc) => doc._id);
+  }
+
   const nodes = new Map<string, DocumentTreeNode>();
 
   docs.forEach((doc) => {

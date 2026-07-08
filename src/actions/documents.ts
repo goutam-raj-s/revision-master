@@ -10,6 +10,9 @@ import {
   getNotesCollection,
   getTermsCollection,
   serializeDoc,
+  serializeNote,
+  serializeRepetition,
+  serializeTerm,
   LIST_DOC_PROJECTION,
 } from "@/lib/db/collections";
 import { getCustomNextReviewDate, getNextReviewDate } from "@/lib/srs/engine";
@@ -19,7 +22,7 @@ import {
   computeTitleSimilarity,
   computeTagOverlap,
 } from "@/lib/utils";
-import type { ActionResult, DbDocument, Document, SimilarityMatch, MediaType, Difficulty } from "@/types";
+import type { ActionResult, DbDocument, Document, SimilarityMatch, MediaType, Difficulty, Note, Repetition, Term } from "@/types";
 import { deleteCloudinaryAsset } from "@/lib/cloudinary";
 import { hiddenRevealed } from "@/lib/hidden";
 
@@ -29,6 +32,55 @@ function topLevelDocumentQuery(userId: ObjectId) {
     $and: [
       { parentDocId: { $exists: false } },
     ],
+  };
+}
+
+export async function getStudySidebarDataAction(
+  docId: string,
+  rootDocId: string
+): Promise<ActionResult<{ rep: Repetition | null; notes: Note[]; terms: Term[] }>> {
+  const user = await requireAuth();
+  if (!ObjectId.isValid(docId) || !ObjectId.isValid(rootDocId)) {
+    return { success: false, error: "Invalid document." };
+  }
+
+  const userId = new ObjectId(user.id);
+  const currentObjectId = new ObjectId(docId);
+  const rootObjectId = new ObjectId(rootDocId);
+  const docs = await getDocumentsCollection();
+
+  const [currentDoc, rootDoc] = await Promise.all([
+    docs.findOne({ _id: currentObjectId, userId }, { projection: { _id: 1 } }),
+    docs.findOne({ _id: rootObjectId, userId }, { projection: { _id: 1 } }),
+  ]);
+
+  if (!currentDoc || !rootDoc) {
+    return { success: false, error: "Document not found." };
+  }
+
+  const reps = await getRepetitionsCollection();
+  const notes = await getNotesCollection();
+  const terms = await getTermsCollection();
+
+  const [rep, noteResults, termResults] = await Promise.all([
+    reps.findOne({ docId: rootObjectId, userId }),
+    notes
+      .find({ docId: currentObjectId, userId })
+      .sort({ createdAt: -1 })
+      .toArray(),
+    terms
+      .find({ docId: currentObjectId, userId })
+      .sort({ term: 1 })
+      .toArray(),
+  ]);
+
+  return {
+    success: true,
+    data: {
+      rep: rep ? serializeRepetition(rep) : null,
+      notes: noteResults.map(serializeNote),
+      terms: termResults.map(serializeTerm),
+    },
   };
 }
 

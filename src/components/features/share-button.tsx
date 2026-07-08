@@ -1,10 +1,15 @@
 "use client";
 
 import * as React from "react";
+import dynamic from "next/dynamic";
 import { Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { ShareModal } from "@/components/features/share-modal";
 import { cn } from "@/lib/utils";
+
+const ShareModal = dynamic(
+  () => import("@/components/features/share-modal").then((mod) => mod.ShareModal),
+  { ssr: false }
+);
 
 interface ShareButtonProps {
   docId: string;
@@ -30,12 +35,14 @@ export function ShareButton({ docId, title, size = "icon", className }: ShareBut
         <Share2 className="h-3.5 w-3.5" />
         {size === "sm" && <span>Share</span>}
       </Button>
-      <ShareModal
-        open={open}
-        onOpenChange={setOpen}
-        docId={docId}
-        docTitle={title}
-      />
+      {open && (
+        <ShareModal
+          open={open}
+          onOpenChange={setOpen}
+          docId={docId}
+          docTitle={title}
+        />
+      )}
     </>
   );
 }

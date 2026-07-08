@@ -1,16 +1,22 @@
 "use client";
 
 import * as React from "react";
-import { StudySidebarPanel } from "@/components/features/study-sidebar-panel";
+import dynamic from "next/dynamic";
 import { PanelRightClose, PanelRightOpen, RotateCcw } from "lucide-react";
-import type { Document, Repetition, Note, Term } from "@/types";
+import type { Document } from "@/types";
+
+const StudySidebarLoader = dynamic(
+  () => import("@/components/features/study-sidebar-loader").then((mod) => mod.StudySidebarLoader),
+  {
+    ssr: false,
+    loading: () => <div className="h-full w-full border-l border-border bg-surface" />,
+  }
+);
 
 interface StudySplitPaneProps {
   leftContent: React.ReactNode;
   doc: Document;
-  rep: Repetition | null;
-  initialNotes: Note[];
-  initialTerms: Term[];
+  rootDocId: string;
 }
 
 const MIN_SIDEBAR_WIDTH = 260;
@@ -20,9 +26,7 @@ const DEFAULT_SIDEBAR_WIDTH = 320;
 export function StudySplitPane({
   leftContent,
   doc,
-  rep,
-  initialNotes,
-  initialTerms,
+  rootDocId,
 }: StudySplitPaneProps) {
   const [sidebarWidth, setSidebarWidth] = React.useState(DEFAULT_SIDEBAR_WIDTH);
   const [isDragging, setIsDragging] = React.useState(false);
@@ -39,15 +43,24 @@ export function StudySplitPane({
   }, [sidebarWidth]);
 
   React.useEffect(() => {
-    const storedWidth = window.localStorage.getItem("lostbae_study_sidebar_width");
-    const storedOpen = window.localStorage.getItem("lostbae_study_sidebar_open");
-    if (storedWidth) {
-      const parsed = Number(storedWidth);
-      if (!Number.isNaN(parsed)) {
-        setSidebarWidth(Math.min(MAX_SIDEBAR_WIDTH, Math.max(MIN_SIDEBAR_WIDTH, parsed)));
+    let cancelled = false;
+
+    queueMicrotask(() => {
+      if (cancelled) return;
+      const storedWidth = window.localStorage.getItem("lostbae_study_sidebar_width");
+      const storedOpen = window.localStorage.getItem("lostbae_study_sidebar_open");
+      if (storedWidth) {
+        const parsed = Number(storedWidth);
+        if (!Number.isNaN(parsed)) {
+          setSidebarWidth(Math.min(MAX_SIDEBAR_WIDTH, Math.max(MIN_SIDEBAR_WIDTH, parsed)));
+        }
       }
-    }
-    if (storedOpen === "0") setIsSidebarOpen(false);
+      if (storedOpen === "0") setIsSidebarOpen(false);
+    });
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   React.useEffect(() => {
@@ -161,11 +174,9 @@ export function StudySplitPane({
           className="hidden lg:flex h-full shrink-0 transition-[width] duration-200"
           style={{ width: sidebarWidth }}
         >
-          <StudySidebarPanel
+          <StudySidebarLoader
             doc={doc}
-            rep={rep}
-            initialNotes={initialNotes}
-            initialTerms={initialTerms}
+            rootDocId={rootDocId}
             onClose={() => setIsSidebarOpen(false)}
           />
         </div>
