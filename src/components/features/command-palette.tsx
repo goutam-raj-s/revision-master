@@ -170,7 +170,7 @@ export function CommandPalette({ documents = [], tags = [], terms = [], onClose 
                   <Command.Item
                     key={doc.id}
                     value={`recent:${doc.id}`}
-                    onSelect={() => navigate(`/documents/${doc.id}`)}
+                    onSelect={() => navigate(`/study/${doc.id}`)}
                     className={itemClass}
                   >
                     <Clock className="h-4 w-4 text-mossy-gray shrink-0" />
@@ -209,7 +209,7 @@ export function CommandPalette({ documents = [], tags = [], terms = [], onClose 
                   <Command.Item
                     key={doc.id}
                     value={doc.title}
-                    onSelect={() => navigate(`/documents/${doc.id}`)}
+                    onSelect={() => navigate(`/study/${doc.id}`)}
                     className={itemClass}
                   >
                     <BookOpen className="h-4 w-4 text-mossy-gray shrink-0" />
@@ -237,7 +237,7 @@ export function CommandPalette({ documents = [], tags = [], terms = [], onClose 
                   <Command.Item
                     key={t.id}
                     value={`term:${t.term}`}
-                    onSelect={() => navigate(t.docId ? `/documents/${t.docId}` : "/terminology")}
+                    onSelect={() => navigate(t.docId ? `/study/${t.docId}` : "/terminology")}
                     className={itemClass}
                   >
                     <BookText className="h-4 w-4 text-mossy-gray shrink-0" />

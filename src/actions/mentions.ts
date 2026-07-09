@@ -43,14 +43,14 @@ export async function searchMentionablesAction(query: string): Promise<Mentionab
     id: d._id.toString(),
     label: (d.title as string) || "Untitled",
     type: "document",
-    href: `/documents/${d._id.toString()}`,
+    href: `/study/${d._id.toString()}`,
   }));
 
   const termItems: Mentionable[] = terms.map((t) => ({
     id: t._id.toString(),
     label: t.term as string,
     type: "term",
-    href: t.docId ? `/documents/${(t.docId as ObjectId).toString()}` : "/terminology",
+    href: t.docId ? `/study/${(t.docId as ObjectId).toString()}` : "/terminology",
   }));
 
   return [...docItems, ...termItems].slice(0, 8);

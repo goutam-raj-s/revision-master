@@ -53,7 +53,7 @@ export default function CreateDocumentPage() {
 
     if (result.success && result.data) {
       toast("Document created successfully", { variant: "success" });
-      router.push(`/documents/${result.data.docId}`);
+      router.push(`/study/${result.data.docId}`);
     } else {
       toast(result.error || "Failed to create document", { variant: "error" });
       setIsCreating(false);
@@ -143,7 +143,7 @@ export default function CreateDocumentPage() {
             <div className="max-w-xs mx-auto">
               <h3 className="text-lg font-semibold text-forest-slate">Editor Experience</h3>
               <p className="text-sm text-mossy-gray mt-1">
-                Once you initialize the document, you'll get access to the full rich-text editor to craft your content.
+                Once you initialize the document, you&apos;ll get access to the full rich-text editor to craft your content.
               </p>
             </div>
           </div>

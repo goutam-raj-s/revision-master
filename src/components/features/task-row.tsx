@@ -223,7 +223,7 @@ export function TaskRow({
 
         {/* Title + meta */}
         <Link
-          href={`/documents/${task.doc.id}`}
+          href={`/study/${task.doc.id}`}
           className="flex-1 text-left min-w-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-state-today/50 rounded-lg p-1 -m-1"
           aria-label={`Open ${task.doc.title}`}
         >
@@ -367,7 +367,7 @@ export function TaskRow({
               </button>
             ))}
             <div className="flex-1" />
-            <Link href={`/documents/${task.doc.id}`} tabIndex={-1}>
+            <Link href={`/study/${task.doc.id}`} tabIndex={-1}>
               <Button
                 variant="ghost"
                 size="sm"

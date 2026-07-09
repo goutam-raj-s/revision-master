@@ -46,7 +46,17 @@ export function DocumentTabsSidebar({ subPages, currentDocId, parentId, routeBas
   }, [query, subPages]);
 
   React.useEffect(() => {
-    setIsCollapsed(window.localStorage.getItem("lostbae_doc_tabs_collapsed") === "1");
+    let cancelled = false;
+
+    queueMicrotask(() => {
+      if (!cancelled) {
+        setIsCollapsed(window.localStorage.getItem("lostbae_doc_tabs_collapsed") === "1");
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   React.useEffect(() => {
@@ -143,7 +153,7 @@ export function DocumentTabsSidebar({ subPages, currentDocId, parentId, routeBas
           </>
         ) : (
           <div className="flex flex-col items-center gap-4 py-2">
-            <Link href={routeBase === "/study" ? `/documents/${parentId}` : "/documents"} title={routeBase === "/study" ? "Back to document" : "Back to Documents"}>
+            <Link href={routeBase === "/study" ? `/study/${parentId}` : "/documents"} title={routeBase === "/study" ? "Back to document" : "Back to Documents"}>
               <ArrowLeft className="h-5 w-5 text-mossy-gray" />
             </Link>
             <button 
