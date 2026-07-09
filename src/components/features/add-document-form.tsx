@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import {
   Loader2,
@@ -16,7 +17,6 @@ import {
   FileText,
   ImageIcon,
 } from "lucide-react";
-import { GoogleDocsTab } from "@/components/features/google-docs-importer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -34,6 +34,18 @@ import {
   addFileDocumentAction,
 } from "@/actions/documents";
 import type { SimilarityMatch, MediaType, Difficulty } from "@/types";
+
+const GoogleDocsTab = dynamic(
+  () => import("@/components/features/google-docs-importer").then((mod) => mod.GoogleDocsTab),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="rounded-2xl border border-border bg-surface p-6 text-sm text-mossy-gray shadow-card">
+        Loading Google Docs importer...
+      </div>
+    ),
+  }
+);
 
 // ── Accepted MIME types for file upload (no video) ────────────────────────────
 const ACCEPTED_MIME_TYPES = [

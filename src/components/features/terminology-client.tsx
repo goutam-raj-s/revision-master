@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { BookText, ChevronDown, ChevronRight, Copy, Download, ExternalLink, GraduationCap, Loader2, Pencil, Plus, Search, Trash2, X } from "lucide-react";
 import {
@@ -16,9 +17,20 @@ import { toast } from "@/components/ui/toast";
 import { createStandaloneTermAction, deleteTermAction, updateTermAction } from "@/actions/notes";
 import { ImagePreviewThumbnail } from "@/components/features/image-preview-thumbnail";
 import { ImagePickerButton } from "@/components/features/image-picker-button";
-import { TerminologyPractice } from "@/components/features/terminology-practice";
-import { TermDetails } from "@/components/features/term-details";
 import type { Term, Document } from "@/types";
+
+const TerminologyPractice = dynamic(
+  () => import("@/components/features/terminology-practice").then((mod) => mod.TerminologyPractice),
+  { ssr: false }
+);
+
+const TermDetails = dynamic(
+  () => import("@/components/features/term-details").then((mod) => mod.TermDetails),
+  {
+    ssr: false,
+    loading: () => <div className="h-10 rounded-lg bg-canvas" />,
+  }
+);
 
 interface TerminologyClientProps {
   terms: Term[];

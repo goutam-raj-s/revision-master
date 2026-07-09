@@ -20,6 +20,7 @@ import { cn } from "@/lib/utils";
 import { setTheme, getStoredTheme } from "@/components/ui/theme-toggle";
 import { syncGoogleDocsAction } from "@/actions/google-docs";
 import { toast } from "@/components/ui/toast";
+import { readRecentDocs } from "@/components/features/command-palette-recents";
 import type { Document } from "@/types";
 
 interface TermItem {
@@ -32,49 +33,17 @@ interface CommandPaletteProps {
   documents?: Document[];
   tags?: string[];
   terms?: TermItem[];
+  onClose?: () => void;
 }
 
-const RECENTS_KEY = "lostbae-recent-docs";
-
-function readRecents(): string[] {
-  if (typeof window === "undefined") return [];
-  try {
-    return JSON.parse(localStorage.getItem(RECENTS_KEY) ?? "[]");
-  } catch {
-    return [];
-  }
-}
-
-export function pushRecentDoc(id: string) {
-  if (typeof window === "undefined") return;
-  const next = [id, ...readRecents().filter((x) => x !== id)].slice(0, 6);
-  localStorage.setItem(RECENTS_KEY, JSON.stringify(next));
-}
-
-export function CommandPalette({ documents = [], tags = [], terms = [] }: CommandPaletteProps) {
-  const [open, setOpen] = React.useState(false);
+export function CommandPalette({ documents = [], tags = [], terms = [], onClose }: CommandPaletteProps) {
   const [query, setQuery] = React.useState("");
-  const [recentIds, setRecentIds] = React.useState<string[]>([]);
+  const [recentIds] = React.useState<string[]>(() => readRecentDocs());
   const router = useRouter();
 
-  React.useEffect(() => {
-    const down = (e: KeyboardEvent) => {
-      if ((e.key === "k" || e.key === "/") && (e.metaKey || e.ctrlKey)) {
-        e.preventDefault();
-        setOpen((o) => !o);
-      }
-    };
-    document.addEventListener("keydown", down);
-    return () => document.removeEventListener("keydown", down);
-  }, []);
-
-  React.useEffect(() => {
-    if (open) setRecentIds(readRecents());
-  }, [open]);
-
   function close() {
-    setOpen(false);
     setQuery("");
+    onClose?.();
   }
 
   function navigate(href: string) {
@@ -136,8 +105,6 @@ export function CommandPalette({ documents = [], tags = [], terms = [] }: Comman
       },
     },
   ].filter((a) => !query || a.label.toLowerCase().includes(q) || a.keywords.includes(q));
-
-  if (!open) return null;
 
   const itemClass = cn(
     "flex items-center gap-3 rounded-lg px-3 py-2 text-sm cursor-pointer",

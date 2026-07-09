@@ -1,11 +1,12 @@
 "use client";
 
 import * as React from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-  Search, X, BookOpen, Calendar, Trash2, Tag, ChevronRight,
-  CheckSquare, Square, Minus, Download, Loader2, AlertTriangle,
+  Search, X, BookOpen, Trash2, ChevronRight,
+  CheckSquare, Square, Minus, Download,
   EyeOff, Eye,
 } from "lucide-react";
 import { cn, formatDate } from "@/lib/utils";
@@ -14,15 +15,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { SimpleTooltip } from "@/components/ui/tooltip";
 import { ShareButton } from "@/components/features/share-button";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-  DialogClose,
-} from "@/components/ui/dialog";
 import { toast } from "@/components/ui/toast";
 import {
   Table,
@@ -43,6 +35,11 @@ import {
 } from "@/components/ui/pagination";
 import { deleteDocumentAction, bulkDeleteDocumentsAction, toggleDocumentHiddenAction } from "@/actions/documents";
 import type { Document } from "@/types";
+
+const DocumentDeleteDialogs = dynamic(
+  () => import("@/components/features/document-delete-dialogs").then((mod) => mod.DocumentDeleteDialogs),
+  { ssr: false }
+);
 
 const STATUS_CONFIG = {
   first_visit: { label: "First Visit", variant: "upcoming" as const },
@@ -80,10 +77,19 @@ export function DocumentListClient({
 
   // Rehydrate persisted filter prefs from localStorage (client-only)
   React.useEffect(() => {
-    const storedSort = localStorage.getItem("lostbae_doc_sort") as SortOrder | null;
-    const storedMedia = localStorage.getItem("lostbae_doc_media");
-    if (storedSort && (VALID_SORTS as readonly string[]).includes(storedSort)) setSortOrder(storedSort);
-    if (storedMedia !== null) setMediaFilter(storedMedia || null);
+    let cancelled = false;
+
+    queueMicrotask(() => {
+      if (cancelled) return;
+      const storedSort = localStorage.getItem("lostbae_doc_sort") as SortOrder | null;
+      const storedMedia = localStorage.getItem("lostbae_doc_media");
+      if (storedSort && (VALID_SORTS as readonly string[]).includes(storedSort)) setSortOrder(storedSort);
+      if (storedMedia !== null) setMediaFilter(storedMedia || null);
+    });
+
+    return () => {
+      cancelled = true;
+    };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -123,8 +129,17 @@ export function DocumentListClient({
 
   // Reset to page 1 when filters change
   React.useEffect(() => {
-    setCurrentPage(1);
-    setSelectedIds(new Set());
+    let cancelled = false;
+
+    queueMicrotask(() => {
+      if (cancelled) return;
+      setCurrentPage(1);
+      setSelectedIds(new Set());
+    });
+
+    return () => {
+      cancelled = true;
+    };
   }, [search, tagFilter, mediaFilter]);
 
   const totalPages = Math.ceil(filtered.length / itemsPerPage);
@@ -678,68 +693,19 @@ export function DocumentListClient({
         </div>
       )}
 
-      {/* ── Single Delete Confirmation ───────────────────────────────────── */}
-      <Dialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Delete document?</DialogTitle>
-            <DialogDescription>
-              This will permanently delete the document and all associated notes, tags, and revision history. This action cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <DialogClose asChild>
-              <Button variant="outline">Cancel</Button>
-            </DialogClose>
-            <Button
-              variant="destructive"
-              onClick={handleDelete}
-              disabled={deleting}
-              className="rounded-full"
-            >
-              {deleting ? "Deleting…" : "Delete permanently"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* ── Bulk Delete Confirmation ─────────────────────────────────────── */}
-      <Dialog open={showBulkConfirm} onOpenChange={setShowBulkConfirm}>
-        <DialogContent>
-          <DialogHeader>
-            <div className="flex items-center gap-3 mb-1">
-              <div className="p-2 bg-destructive/10 rounded-xl">
-                <AlertTriangle className="h-5 w-5 text-destructive" />
-              </div>
-              <DialogTitle>Delete {selectedIds.size} document{selectedIds.size !== 1 ? "s" : ""}?</DialogTitle>
-            </div>
-            <DialogDescription>
-              This will permanently delete{" "}
-              <span className="font-semibold text-forest-slate">{selectedIds.size} document{selectedIds.size !== 1 ? "s" : ""}</span>{" "}
-              along with all associated notes, terms, and revision history.
-              <br />
-              <strong className="text-destructive">This cannot be undone.</strong>
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <DialogClose asChild>
-              <Button variant="outline" disabled={bulkDeleting}>Cancel</Button>
-            </DialogClose>
-            <Button
-              variant="destructive"
-              onClick={handleBulkDelete}
-              disabled={bulkDeleting}
-              className="rounded-full gap-2"
-            >
-              {bulkDeleting ? (
-                <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Deleting…</>
-              ) : (
-                <><Trash2 className="h-3.5 w-3.5" /> Delete {selectedIds.size}</>
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {(deleteId || showBulkConfirm) && (
+        <DocumentDeleteDialogs
+          deleteOpen={Boolean(deleteId)}
+          onDeleteOpenChange={(open) => { if (!open) setDeleteId(null); }}
+          deleting={deleting}
+          onDelete={handleDelete}
+          bulkOpen={showBulkConfirm}
+          onBulkOpenChange={setShowBulkConfirm}
+          bulkDeleting={bulkDeleting}
+          selectedCount={selectedIds.size}
+          onBulkDelete={handleBulkDelete}
+        />
+      )}
     </div>
   );
 }

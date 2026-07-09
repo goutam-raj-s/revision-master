@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Plus, Trash2, Check, Loader2, BookText, FileText, X, Save, Search, Copy, CalendarDays } from "lucide-react";
 import { SimpleTooltip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { pushRecentDoc } from "@/components/features/command-palette";
+import { pushRecentDoc } from "@/components/features/command-palette-recents";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";

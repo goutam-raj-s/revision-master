@@ -1,7 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { useEditor, EditorContent } from "@tiptap/react";
+import { useEditor, EditorContent, type Editor } from "@tiptap/react";
+import type { EditorView } from "@tiptap/pm/view";
 import StarterKit from "@tiptap/starter-kit";
 import Underline from "@tiptap/extension-underline";
 import Highlight from "@tiptap/extension-highlight";
@@ -38,8 +39,6 @@ const PAGE_TOP_PADDING = 72; // py-[72px] on the page card
 import { updateDocumentContentAction } from "@/actions/documents";
 import { toast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
-import jsPDF from "jspdf";
-import html2canvas from "html2canvas";
 
 interface RichTextEditorProps {
   initialContent?: string;
@@ -90,8 +89,17 @@ export function RichTextEditor({
   }, []);
 
   React.useEffect(() => {
-    const stored = window.localStorage.getItem("lostbae_editor_focus_mode");
-    if (stored === "1") setFocusMode(true);
+    let cancelled = false;
+
+    queueMicrotask(() => {
+      if (cancelled) return;
+      const stored = window.localStorage.getItem("lostbae_editor_focus_mode");
+      if (stored === "1") setFocusMode(true);
+    });
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   React.useEffect(() => {
@@ -100,8 +108,17 @@ export function RichTextEditor({
 
   React.useEffect(() => {
     if (compact) return;
-    const stored = window.localStorage.getItem("lostbae_editor_page_view");
-    if (stored === "1") setPageView(true);
+    let cancelled = false;
+
+    queueMicrotask(() => {
+      if (cancelled) return;
+      const stored = window.localStorage.getItem("lostbae_editor_page_view");
+      if (stored === "1") setPageView(true);
+    });
+
+    return () => {
+      cancelled = true;
+    };
   }, [compact]);
 
   React.useEffect(() => {
@@ -112,7 +129,7 @@ export function RichTextEditor({
   // Compute page-break guide line positions via ResizeObserver
   React.useEffect(() => {
     if (!pageView || compact) {
-      setPageBreakLines([]);
+      queueMicrotask(() => setPageBreakLines([]));
       return;
     }
     const el = pageCardRef.current;
@@ -303,7 +320,7 @@ export function RichTextEditor({
     ],
     content: initialContent,
     editable: !readOnly,
-    onUpdate: ({ editor }: any) => {
+    onUpdate: ({ editor }: { editor: Editor }) => {
       if (readOnly) return;
       updateContentStats(editor.getText());
       if (saveTimeoutRef.current) {
@@ -314,17 +331,17 @@ export function RichTextEditor({
         handleSave(editor.getHTML());
       }, 2000); // Auto-save after 2 seconds of inactivity
     },
-    onCreate: ({ editor }: any) => {
+    onCreate: ({ editor }: { editor: Editor }) => {
       updateContentStats(editor.getText());
     },
     editorProps: {
       handleDOMEvents: {
-        dragenter: (_view: any, event: DragEvent) => {
+        dragenter: (_view: EditorView, event: DragEvent) => {
           const hasImage = Array.from(event.dataTransfer?.items || []).some((item) => item.type.startsWith("image"));
           if (hasImage) setIsDragActive(true);
           return false;
         },
-        dragover: (_view: any, event: DragEvent) => {
+        dragover: (_view: EditorView, event: DragEvent) => {
           const hasImage = Array.from(event.dataTransfer?.items || []).some((item) => item.type.startsWith("image"));
           if (hasImage) {
             setIsDragActive(true);
@@ -337,7 +354,7 @@ export function RichTextEditor({
           return false;
         },
       },
-      handlePaste: (view: any, event: ClipboardEvent) => {
+      handlePaste: (view: EditorView, event: ClipboardEvent) => {
         const items = Array.from(event.clipboardData?.items || []);
         const imageItem = items.find((item) => item.type.startsWith("image"));
 
@@ -357,7 +374,7 @@ export function RichTextEditor({
         }
         return false;
       },
-      handleDrop: (view: any, event: DragEvent) => {
+      handleDrop: (view: EditorView, event: DragEvent) => {
         const items = Array.from(event.dataTransfer?.files || []);
         const imageFile = items.find((file) => file.type.startsWith("image"));
 
@@ -381,7 +398,7 @@ export function RichTextEditor({
         setIsDragActive(false);
         return false;
       },
-      handleClick: (view: any, pos: number, event: MouseEvent) => {
+      handleClick: (view: EditorView, pos: number) => {
         if (isStickyHighlight) {
           const { state, dispatch } = view;
           const { tr } = state;
@@ -428,6 +445,10 @@ export function RichTextEditor({
     toast("Generating PDF…", { variant: "default" });
 
     try {
+      const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([
+        import("html2canvas"),
+        import("jspdf"),
+      ]);
       const canvas = await html2canvas(element, {
         scale: 2,
         useCORS: true,
