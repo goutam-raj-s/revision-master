@@ -645,7 +645,7 @@ export function DocumentListClient({
           className={cn(
             "fixed bottom-4 left-3 right-3 z-50 sm:bottom-6 sm:left-1/2 sm:right-auto sm:-translate-x-1/2",
             "flex items-center gap-2 px-3 py-2.5 sm:gap-3 sm:px-5 sm:py-3",
-            "bg-forest-slate/95 backdrop-blur-xl rounded-2xl shadow-glass border border-white/10",
+            "bg-ink/95 backdrop-blur-xl rounded-2xl shadow-glass border border-white/10",
             "animate-slide-up"
           )}
         >

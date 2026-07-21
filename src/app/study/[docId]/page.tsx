@@ -164,7 +164,7 @@ export default async function StudyPage({ params }: StudyPageProps) {
                   href={doc.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="px-6 py-2.5 bg-forest-slate text-white rounded-lg text-sm font-medium hover:bg-forest-slate/90 transition-colors shadow-sm inline-flex items-center gap-2"
+                  className="px-6 py-2.5 bg-ink text-white rounded-lg text-sm font-medium hover:bg-ink/90 transition-colors shadow-sm inline-flex items-center gap-2"
                 >
                   <ExternalLink className="h-4 w-4" />
                   Open Original Website

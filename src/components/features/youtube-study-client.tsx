@@ -34,7 +34,7 @@ function SkipButton({
       }
       title={isForward ? `Skip forward ${Math.abs(seconds)}s` : `Skip back ${Math.abs(seconds)}s`}
       aria-label={isForward ? `Skip forward ${Math.abs(seconds)} seconds` : `Skip back ${Math.abs(seconds)} seconds`}
-      className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-forest-slate/10 hover:bg-forest-slate/20 text-forest-slate border border-forest-slate/20 transition-colors"
+      className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-ink/10 hover:bg-ink/20 text-forest-slate border border-forest-slate/20 transition-colors"
     >
       {isForward ? <SkipForward className="h-3.5 w-3.5" /> : <SkipBack className="h-3.5 w-3.5" />}
       <span>{label}</span>
@@ -132,7 +132,7 @@ export function YoutubeStudyClient({ session }: YoutubeStudyClientProps) {
       {resumeAt != null && (
         <button
           onClick={resume}
-          className="absolute left-3 top-3 z-20 flex items-center gap-1.5 rounded-full bg-forest-slate/85 px-3 py-1.5 text-xs font-medium text-white shadow-soft backdrop-blur transition-transform hover:scale-105"
+          className="absolute left-3 top-3 z-20 flex items-center gap-1.5 rounded-full bg-ink/85 px-3 py-1.5 text-xs font-medium text-white shadow-soft backdrop-blur transition-transform hover:scale-105"
         >
           <SkipForward className="h-3.5 w-3.5" />
           Resume from {fmtTime(resumeAt)}

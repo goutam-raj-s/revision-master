@@ -115,7 +115,7 @@ export function StudyDocSwitcher({ currentDocId }: StudyDocSwitcherProps) {
           onClick={(e) => e.target === e.currentTarget && setOpen(false)}
         >
           {/* Backdrop */}
-          <div className="absolute inset-0 bg-forest-slate/20 backdrop-blur-sm" onClick={() => setOpen(false)} />
+          <div className="absolute inset-0 bg-ink/20 backdrop-blur-sm" onClick={() => setOpen(false)} />
 
           {/* Palette */}
           <div className="relative w-full max-w-lg bg-surface rounded-2xl shadow-hover border border-border overflow-hidden animate-slide-down">

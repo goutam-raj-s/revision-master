@@ -67,7 +67,7 @@ export function CommandPaletteTrigger() {
       <div className="fixed inset-0 z-[100] flex items-start justify-center pt-[15vh]">
         <button
           type="button"
-          className="absolute inset-0 bg-forest-slate/20 backdrop-blur-sm"
+          className="absolute inset-0 bg-ink/20 backdrop-blur-sm"
           onClick={() => setOpen(false)}
           aria-label="Close command palette"
         />

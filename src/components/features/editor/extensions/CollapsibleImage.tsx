@@ -72,7 +72,7 @@ const CollapsibleImageComponent = ({ node, updateAttributes, deleteNode }: any) 
               onClick={() => setIsOpen(true)}
             >
               {!isOpen ? (
-                <div className="flex items-center gap-1.5 px-2 py-1 bg-forest-slate/5 hover:bg-forest-slate/10 text-forest-slate/70 hover:text-forest-slate rounded-md border border-forest-slate/10 transition-all cursor-pointer shadow-sm select-none">
+                <div className="flex items-center gap-1.5 px-2 py-1 bg-ink/5 hover:bg-ink/10 text-forest-slate/70 hover:text-forest-slate rounded-md border border-forest-slate/10 transition-all cursor-pointer shadow-sm select-none">
                   <ImageIcon className="h-3 w-3" />
                   <span className="text-[10px] font-bold uppercase tracking-tight">Image</span>
                   <button
@@ -147,7 +147,7 @@ const CollapsibleImageComponent = ({ node, updateAttributes, deleteNode }: any) 
                   </div>
                   
                   {isResizing && (
-                    <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-forest-slate text-white text-[10px] px-2 py-0.5 rounded-full">
+                    <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-ink text-white text-[10px] px-2 py-0.5 rounded-full">
                       {Math.round(imageRef.current?.offsetWidth || 0)}px
                     </div>
                   )}
