@@ -103,7 +103,7 @@ export default function HomePage() {
           <p className="text-lg text-mossy-gray max-w-2xl mx-auto mb-10 leading-relaxed">
             Lostbae is a spaced repetition learning platform that uses AI to turn your notes,
             articles, and videos into flashcards — then schedules reviews at the exact moment
-            you're about to forget them.
+            you&apos;re about to forget them.
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
@@ -236,7 +236,7 @@ export default function HomePage() {
         </section>
 
         {/* CTA */}
-        <section className="bg-forest-slate">
+        <section className="bg-ink">
           <div className="max-w-5xl mx-auto px-6 py-16 text-center">
             <h2 className="text-2xl sm:text-3xl font-bold text-white mb-4">
               Ready to actually remember what you learn?

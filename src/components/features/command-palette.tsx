@@ -150,7 +150,7 @@ export function CommandPalette({ documents = [], tags = [], terms = [] }: Comman
       className="fixed inset-0 z-[100] flex items-start justify-center pt-[15vh]"
       onClick={close}
     >
-      <div className="absolute inset-0 bg-forest-slate/20 backdrop-blur-sm animate-fade-in" />
+      <div className="absolute inset-0 bg-ink/20 backdrop-blur-sm animate-fade-in" />
 
       <div className="relative w-full max-w-xl animate-slide-up" onClick={(e) => e.stopPropagation()}>
         <Command

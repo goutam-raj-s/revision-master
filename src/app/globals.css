@@ -8,6 +8,7 @@
   /* Zen Productivity (Mint Tint) Palette */
   --color-canvas:       #f1f5f2;
   --color-surface:      #ffffff;
+  --color-ink:          #1e2d24;
   --color-forest-slate: #1e2d24;
   --color-mossy-gray:   #6b7f73;
 
@@ -73,6 +74,7 @@
 
   --color-canvas:       #0f1713;
   --color-surface:      #182019;
+  --color-ink:          #0b120e;
   --color-forest-slate: #e4efe7;
   --color-mossy-gray:   #97ab9e;
 

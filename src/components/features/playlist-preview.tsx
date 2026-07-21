@@ -114,7 +114,7 @@ export function PlaylistPreview({ playlist, bookmarked = false }: PlaylistPrevie
                 <button
                   onClick={() => handleRemove(video.videoId)}
                   title="Remove from saved playlist"
-                  className="absolute right-2 top-2 z-10 flex h-6 w-6 items-center justify-center rounded-full bg-forest-slate/70 text-white opacity-0 backdrop-blur transition-opacity hover:bg-destructive group-hover:opacity-100"
+                  className="absolute right-2 top-2 z-10 flex h-6 w-6 items-center justify-center rounded-full bg-ink/70 text-white opacity-0 backdrop-blur transition-opacity hover:bg-destructive group-hover:opacity-100"
                   aria-label="Remove video"
                 >
                   <X className="h-3.5 w-3.5" />

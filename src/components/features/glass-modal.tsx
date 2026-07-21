@@ -166,7 +166,7 @@ export function GlassModal({ task, onClose, onComplete }: GlassModalProps) {
     >
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-forest-slate/25 backdrop-blur-sm animate-fade-in"
+        className="absolute inset-0 bg-ink/25 backdrop-blur-sm animate-fade-in"
         onClick={onClose}
       />
 

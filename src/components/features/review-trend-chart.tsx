@@ -17,7 +17,7 @@ const EMPTY_TOOLTIP = () => null;
 function CustomTooltip({ active, payload, label }: { active?: boolean; payload?: { value: number }[]; label?: string }) {
   if (!active || !payload?.length) return null;
   return (
-    <div className="bg-forest-slate/90 backdrop-blur-sm text-white text-xs px-2.5 py-1.5 rounded-lg shadow-glass">
+    <div className="bg-ink/90 backdrop-blur-sm text-white text-xs px-2.5 py-1.5 rounded-lg shadow-glass">
       <span className="font-semibold">{label}</span>
       <span className="ml-2 text-white/70">{payload[0].value} review{payload[0].value !== 1 ? "s" : ""}</span>
     </div>

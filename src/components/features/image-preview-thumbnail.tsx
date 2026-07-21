@@ -36,14 +36,14 @@ export function ImagePreviewThumbnail({ src, alt = "", className }: ImagePreview
 
       {open && (
         <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-forest-slate/55 p-4 backdrop-blur-sm"
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-ink/55 p-4 backdrop-blur-sm"
           onClick={() => setOpen(false)}
         >
           <div className="relative max-h-[86vh] max-w-[86vw] rounded-2xl border border-white/20 bg-surface p-2 shadow-glass">
             <button
               type="button"
               onClick={() => setOpen(false)}
-              className="absolute -right-3 -top-3 rounded-full bg-forest-slate p-2 text-white shadow-hover"
+              className="absolute -right-3 -top-3 rounded-full bg-ink p-2 text-white shadow-hover"
               aria-label="Close preview"
             >
               <X className="h-4 w-4" />

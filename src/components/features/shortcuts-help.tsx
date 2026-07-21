@@ -69,7 +69,7 @@ export function ShortcutsHelp() {
       className="fixed inset-0 z-[110] flex items-center justify-center p-4"
       onClick={() => setOpen(false)}
     >
-      <div className="absolute inset-0 bg-forest-slate/30 backdrop-blur-sm animate-fade-in" />
+      <div className="absolute inset-0 bg-ink/30 backdrop-blur-sm animate-fade-in" />
 
       <div
         className="relative w-full max-w-lg animate-slide-up rounded-2xl border border-border bg-surface shadow-glass"

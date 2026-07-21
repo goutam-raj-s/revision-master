@@ -197,7 +197,7 @@ export function FullscreenButton({ targetRef }: FullscreenButtonProps) {
     <button
       onClick={toggle}
       title={isFs ? "Exit fullscreen" : "Enter fullscreen — notes stay accessible via the floating button"}
-      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-forest-slate/10 hover:bg-forest-slate/20 text-forest-slate border border-forest-slate/20 transition-colors"
+      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-ink/10 hover:bg-ink/20 text-forest-slate border border-forest-slate/20 transition-colors"
       aria-label={isFs ? "Exit fullscreen" : "Fullscreen with notes"}
     >
       {isFs ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}

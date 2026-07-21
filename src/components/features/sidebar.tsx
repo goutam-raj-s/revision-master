@@ -192,7 +192,7 @@ export function Sidebar({ user }: SidebarProps) {
           className="md:hidden fixed inset-0 z-40"
           onClick={() => setMobileOpen(false)}
         >
-          <div className="absolute inset-0 bg-forest-slate/20 backdrop-blur-sm" />
+          <div className="absolute inset-0 bg-ink/20 backdrop-blur-sm" />
           <aside
             className="absolute left-0 top-0 h-full w-56 flex flex-col bg-surface border-r border-border shadow-hover animate-slide-up"
             onClick={(event) => event.stopPropagation()}

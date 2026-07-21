@@ -91,7 +91,7 @@ export function HiddenDocsController() {
 
       {guideOpen && (
         <div
-          className="fixed inset-0 z-[120] flex items-center justify-center bg-forest-slate/30 backdrop-blur-sm p-4 print:hidden"
+          className="fixed inset-0 z-[120] flex items-center justify-center bg-ink/30 backdrop-blur-sm p-4 print:hidden"
           onClick={() => setGuideOpen(false)}
         >
           <div
