@@ -460,6 +460,24 @@ export async function getRepetitionByDocId(docId: string): Promise<DbRepetition 
   return col.findOne({ docId: new ObjectId(docId) });
 }
 
+export async function getDocNotesForUser(docId: string, userId: string): Promise<Note[]> {
+  const notes = await getNotesCollection();
+  const results = await notes
+    .find({ docId: new ObjectId(docId), userId: new ObjectId(userId) })
+    .sort({ createdAt: -1 })
+    .toArray();
+  return results.map(serializeNote);
+}
+
+export async function getDocTermsForUser(docId: string, userId: string): Promise<Term[]> {
+  const terms = await getTermsCollection();
+  const results = await terms
+    .find({ docId: new ObjectId(docId), userId: new ObjectId(userId) })
+    .sort({ term: 1 })
+    .toArray();
+  return results.map(serializeTerm);
+}
+
 export async function getSubPages(docId: string, userId: string): Promise<DbDocument[]> {
   const col = await getDocumentsCollection();
   return col.find({ parentDocId: new ObjectId(docId), userId: new ObjectId(userId) }).sort({ createdAt: 1 }).toArray();
@@ -469,11 +487,15 @@ export async function getDocumentTree(rootDocId: string, userId: string): Promis
   const col = await getDocumentsCollection();
   const userObjectId = new ObjectId(userId);
   const rootObjectId = new ObjectId(rootDocId);
-  const docs = await col.find({ userId: userObjectId }).sort({ createdAt: 1 }).toArray();
+  const docs = await col
+    .find({ userId: userObjectId })
+    .project({ content: 0, fileUrl: 0, aiSummary: 0, transcript: 0 })
+    .sort({ createdAt: 1 })
+    .toArray();
   const nodes = new Map<string, DocumentTreeNode>();
 
   docs.forEach((doc) => {
-    nodes.set(doc._id.toString(), { ...serializeDoc(doc), children: [] });
+    nodes.set(doc._id.toString(), { ...serializeDoc(doc as unknown as DbDocument), children: [] });
   });
 
   const root = nodes.get(rootObjectId.toString());

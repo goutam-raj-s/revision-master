@@ -8,6 +8,8 @@ import {
   getNotesCollection,
   getTermsCollection,
   getDocumentsCollection,
+  getDocNotesForUser,
+  getDocTermsForUser,
   serializeNote,
   serializeTerm,
 } from "@/lib/db/collections";
@@ -93,12 +95,7 @@ export async function deleteNoteAction(noteId: string): Promise<ActionResult> {
 
 export async function getDocNotes(docId: string): Promise<Note[]> {
   const user = await requireAuth();
-  const notes = await getNotesCollection();
-  const results = await notes
-    .find({ docId: new ObjectId(docId), userId: new ObjectId(user.id) })
-    .sort({ createdAt: -1 })
-    .toArray();
-  return results.map(serializeNote);
+  return getDocNotesForUser(docId, user.id);
 }
 
 // ─── Terms ─────────────────────────────────────────────────────────────────────
@@ -248,12 +245,7 @@ export async function deleteTermAction(termId: string): Promise<ActionResult> {
 
 export async function getDocTerms(docId: string): Promise<Term[]> {
   const user = await requireAuth();
-  const terms = await getTermsCollection();
-  const results = await terms
-    .find({ docId: new ObjectId(docId), userId: new ObjectId(user.id) })
-    .sort({ term: 1 })
-    .toArray();
-  return results.map(serializeTerm);
+  return getDocTermsForUser(docId, user.id);
 }
 
 export async function getAllTerms(): Promise<Term[]> {

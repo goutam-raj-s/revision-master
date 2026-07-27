@@ -91,7 +91,7 @@ export function DocumentExtras({ docId, title, content, initialProgress = 0 }: D
             {backlinks.map((b) => (
               <li key={b.id}>
                 <Link
-                  href={`/documents/${b.id}`}
+                  href={`/study/${b.id}`}
                   className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-forest-slate transition-colors hover:bg-canvas"
                 >
                   <FileText className="h-3.5 w-3.5 shrink-0 text-mossy-gray" />

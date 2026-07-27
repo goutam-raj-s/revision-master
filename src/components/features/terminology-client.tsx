@@ -356,7 +356,7 @@ export function TerminologyClient({ terms: initialTerms, docs }: TerminologyClie
                       </button>
                       {sourceDoc && (
                         <Link
-                          href={`/documents/${sourceDoc.id}`}
+                          href={`/study/${sourceDoc.id}`}
                           className="hidden max-w-[150px] shrink-0 items-center gap-1.5 truncate text-xs text-state-today hover:underline sm:inline-flex"
                           title={sourceDoc.title}
                         >
@@ -434,7 +434,7 @@ export function TerminologyClient({ terms: initialTerms, docs }: TerminologyClie
                             )}
                             {sourceDoc && (
                               <Link
-                                href={`/documents/${sourceDoc.id}`}
+                                href={`/study/${sourceDoc.id}`}
                                 className="mt-2 inline-flex items-center gap-1.5 text-xs text-state-today hover:underline sm:hidden"
                               >
                                 <ExternalLink className="h-3 w-3" />

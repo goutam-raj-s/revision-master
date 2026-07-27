@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { requireAuth } from "@/lib/auth/session";
-import { getDocById, serializeDoc, getRepetitionByDocId, serializeRepetition, getDocumentTree, getRootDocForDoc } from "@/lib/db/collections";
+import { getDocById, serializeDoc, getRepetitionByDocId, serializeRepetition, getDocumentTree, getRootDocForDoc, getDocNotesForUser, getDocTermsForUser } from "@/lib/db/collections";
 import { getGoogleDocEmbedUrl } from "@/lib/utils";
 import { ExternalLink } from "lucide-react";
 import { StudyPageWrapper } from "@/components/features/study-page-wrapper";
@@ -8,7 +8,6 @@ import { StudySplitPane } from "@/components/features/study-split-pane";
 import { StudyDocSwitcher } from "@/components/features/study-doc-switcher";
 import { MobileSidebarButton } from "@/components/features/study-mobile-sidebar";
 import { AudioPlayer, VideoPlayer, DocumentDownload } from "@/components/features/media-player";
-import { getDocNotes, getDocTerms } from "@/actions/notes";
 import { DashboardHeader } from "@/components/features/dashboard-header";
 import { RichTextEditorDynamic as RichTextEditor } from "@/components/features/editor/RichTextEditorDynamic";
 import { DocumentTabsSidebar } from "@/components/features/document-tabs-sidebar";
@@ -56,24 +55,25 @@ export default async function StudyPage({ params }: StudyPageProps) {
   const { docId } = await params;
   const user = await requireAuth();
 
-  const dbDoc = await getDocById(docId, user.id);
+  const [dbDoc, dbRootDoc] = await Promise.all([
+    getDocById(docId, user.id),
+    getRootDocForDoc(docId, user.id),
+  ]);
   if (!dbDoc) notFound();
-
-  const dbRootDoc = await getRootDocForDoc(docId, user.id);
   if (!dbRootDoc) notFound();
   const parentId = dbRootDoc._id.toString();
-  const subPages = await getDocumentTree(parentId, user.id);
-  const flatSubPages = flattenPages(subPages);
   const doc = serializeDoc(dbDoc);
   const embedUrl = getGoogleDocEmbedUrl(doc.url);
 
   // Fetch all sidebar data in parallel
-  const [dbRep, initialNotes, initialTerms] = await Promise.all([
+  const [subPages, dbRep, initialNotes, initialTerms] = await Promise.all([
+    getDocumentTree(parentId, user.id),
     getRepetitionByDocId(parentId),
-    getDocNotes(docId),
-    getDocTerms(docId),
+    getDocNotesForUser(docId, user.id),
+    getDocTermsForUser(docId, user.id),
   ]);
 
+  const flatSubPages = flattenPages(subPages);
   const rep = dbRep ? serializeRepetition(dbRep) : null;
 
   return (

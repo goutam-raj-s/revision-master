@@ -19,6 +19,8 @@ import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { setTheme, getStoredTheme } from "@/components/ui/theme-toggle";
 import { syncGoogleDocsAction } from "@/actions/google-docs";
+import { getAllUserTags, getUserDocuments } from "@/actions/documents";
+import { getTermSummariesAction } from "@/actions/notes";
 import { toast } from "@/components/ui/toast";
 import type { Document } from "@/types";
 
@@ -54,7 +56,12 @@ export function pushRecentDoc(id: string) {
 export function CommandPalette({ documents = [], tags = [], terms = [] }: CommandPaletteProps) {
   const [open, setOpen] = React.useState(false);
   const [query, setQuery] = React.useState("");
-  const [recentIds, setRecentIds] = React.useState<string[]>([]);
+  const [paletteDocuments, setPaletteDocuments] = React.useState<Document[]>(documents);
+  const [paletteTags, setPaletteTags] = React.useState<string[]>(tags);
+  const [paletteTerms, setPaletteTerms] = React.useState<TermItem[]>(terms);
+  const [hasLoadedPaletteData, setHasLoadedPaletteData] = React.useState(
+    documents.length > 0 || tags.length > 0 || terms.length > 0
+  );
   const router = useRouter();
 
   React.useEffect(() => {
@@ -69,8 +76,31 @@ export function CommandPalette({ documents = [], tags = [], terms = [] }: Comman
   }, []);
 
   React.useEffect(() => {
-    if (open) setRecentIds(readRecents());
-  }, [open]);
+    if (!open || hasLoadedPaletteData) return;
+    let cancelled = false;
+
+    async function loadPaletteData() {
+      try {
+        const [nextDocuments, nextTagData, nextTerms] = await Promise.all([
+          getUserDocuments(),
+          getAllUserTags(),
+          getTermSummariesAction(),
+        ]);
+        if (cancelled) return;
+        setPaletteDocuments(nextDocuments);
+        setPaletteTags(nextTagData.map((item) => item.tag));
+        setPaletteTerms(nextTerms);
+        setHasLoadedPaletteData(true);
+      } catch {
+        if (!cancelled) setHasLoadedPaletteData(true);
+      }
+    }
+
+    loadPaletteData();
+    return () => {
+      cancelled = true;
+    };
+  }, [hasLoadedPaletteData, open]);
 
   function close() {
     setOpen(false);
@@ -85,20 +115,20 @@ export function CommandPalette({ documents = [], tags = [], terms = [] }: Comman
   const q = query.toLowerCase();
 
   const filteredDocs = query
-    ? documents.filter(
+    ? paletteDocuments.filter(
         (d) =>
           d.title.toLowerCase().includes(q) ||
           d.tags.some((t) => t.toLowerCase().includes(q))
       )
-    : documents.slice(0, 5);
+    : paletteDocuments.slice(0, 5);
 
   const filteredTerms = query
-    ? terms.filter((t) => t.term.toLowerCase().includes(q)).slice(0, 6)
+    ? paletteTerms.filter((t) => t.term.toLowerCase().includes(q)).slice(0, 6)
     : [];
 
   const recentDocs = !query
-    ? recentIds
-        .map((id) => documents.find((d) => d.id === id))
+    ? readRecents()
+        .map((id) => paletteDocuments.find((d) => d.id === id))
         .filter((d): d is Document => Boolean(d))
     : [];
 
@@ -203,7 +233,7 @@ export function CommandPalette({ documents = [], tags = [], terms = [] }: Comman
                   <Command.Item
                     key={doc.id}
                     value={`recent:${doc.id}`}
-                    onSelect={() => navigate(`/documents/${doc.id}`)}
+                    onSelect={() => navigate(`/study/${doc.id}`)}
                     className={itemClass}
                   >
                     <Clock className="h-4 w-4 text-mossy-gray shrink-0" />
@@ -242,7 +272,7 @@ export function CommandPalette({ documents = [], tags = [], terms = [] }: Comman
                   <Command.Item
                     key={doc.id}
                     value={doc.title}
-                    onSelect={() => navigate(`/documents/${doc.id}`)}
+                    onSelect={() => navigate(`/study/${doc.id}`)}
                     className={itemClass}
                   >
                     <BookOpen className="h-4 w-4 text-mossy-gray shrink-0" />
@@ -270,7 +300,7 @@ export function CommandPalette({ documents = [], tags = [], terms = [] }: Comman
                   <Command.Item
                     key={t.id}
                     value={`term:${t.term}`}
-                    onSelect={() => navigate(t.docId ? `/documents/${t.docId}` : "/terminology")}
+                    onSelect={() => navigate(t.docId ? `/study/${t.docId}` : "/terminology")}
                     className={itemClass}
                   >
                     <BookText className="h-4 w-4 text-mossy-gray shrink-0" />
@@ -281,9 +311,9 @@ export function CommandPalette({ documents = [], tags = [], terms = [] }: Comman
             )}
 
             {/* Tags */}
-            {tags.filter((t) => !query || t.toLowerCase().includes(q)).length > 0 && (
+            {paletteTags.filter((t) => !query || t.toLowerCase().includes(q)).length > 0 && (
               <Command.Group heading={<span className={headingClass}>Tags</span>}>
-                {tags
+                {paletteTags
                   .filter((t) => !query || t.toLowerCase().includes(q))
                   .slice(0, 5)
                   .map((tag) => (

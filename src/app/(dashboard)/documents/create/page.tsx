@@ -53,7 +53,7 @@ export default function CreateDocumentPage() {
 
     if (result.success && result.data) {
       toast("Document created successfully", { variant: "success" });
-      router.push(`/documents/${result.data.docId}`);
+      router.push(`/study/${result.data.docId}`);
     } else {
       toast(result.error || "Failed to create document", { variant: "error" });
       setIsCreating(false);

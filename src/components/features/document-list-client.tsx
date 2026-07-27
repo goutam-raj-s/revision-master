@@ -382,7 +382,7 @@ export function DocumentListClient({
                         <Square className="h-4 w-4" />
                       )}
                     </button>
-                    <Link href={`/documents/${doc.id}`} className="flex min-w-0 flex-1 items-start gap-2">
+                    <Link href={`/study/${doc.id}`} className="flex min-w-0 flex-1 items-start gap-2">
                       {doc.thumbnailUrl && (
                         <img src={doc.thumbnailUrl} alt="" className="h-12 w-12 shrink-0 rounded-lg border border-border object-cover" />
                       )}
@@ -493,7 +493,7 @@ export function DocumentListClient({
                       </TableCell>
 
                       <TableCell>
-                        <Link href={`/documents/${doc.id}`} className="flex min-w-0 items-center gap-2">
+                        <Link href={`/study/${doc.id}`} className="flex min-w-0 items-center gap-2">
                           {doc.thumbnailUrl && (
                             <img src={doc.thumbnailUrl} alt="" className="h-9 w-9 shrink-0 rounded-lg border border-border object-cover" />
                           )}
@@ -565,7 +565,7 @@ export function DocumentListClient({
                               <Trash2 className="h-3.5 w-3.5" />
                             </button>
                           </SimpleTooltip>
-                          <Link href={`/documents/${doc.id}`} className="p-1.5 rounded-lg text-mossy-gray hover:text-forest-slate transition-colors">
+                          <Link href={`/study/${doc.id}`} className="p-1.5 rounded-lg text-mossy-gray hover:text-forest-slate transition-colors">
                             <ChevronRight className="h-4 w-4" />
                           </Link>
                         </div>

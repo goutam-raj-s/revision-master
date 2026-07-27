@@ -143,7 +143,7 @@ export function DocumentTabsSidebar({ subPages, currentDocId, parentId, routeBas
           </>
         ) : (
           <div className="flex flex-col items-center gap-4 py-2">
-            <Link href={routeBase === "/study" ? `/documents/${parentId}` : "/documents"} title={routeBase === "/study" ? "Back to document" : "Back to Documents"}>
+            <Link href={routeBase === "/study" ? `/study/${parentId}` : "/documents"} title={routeBase === "/study" ? "Back to document" : "Back to Documents"}>
               <ArrowLeft className="h-5 w-5 text-mossy-gray" />
             </Link>
             <button 
