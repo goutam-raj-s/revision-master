@@ -32,6 +32,11 @@ import type {
   YoutubeShare,
   DbSocialConnection,
   DbAiChat,
+  DbCalorieEntry,
+  DbCalorieLibraryItem,
+  DbCalorieSettings,
+  CalorieEntry,
+  CalorieLibraryItem,
 } from "@/types";
 
 // ─── Collection accessors ──────────────────────────────────────────────────────
@@ -141,6 +146,21 @@ export async function getGoogleIntegrationsCollection(): Promise<Collection<DbGo
   return db.collection<DbGoogleIntegration>("google_integrations");
 }
 
+export async function getCalorieEntriesCollection(): Promise<Collection<DbCalorieEntry>> {
+  const db = await getDb();
+  return db.collection<DbCalorieEntry>("calorie_entries");
+}
+
+export async function getCalorieLibraryCollection(): Promise<Collection<DbCalorieLibraryItem>> {
+  const db = await getDb();
+  return db.collection<DbCalorieLibraryItem>("calorie_library");
+}
+
+export async function getCalorieSettingsCollection(): Promise<Collection<DbCalorieSettings>> {
+  const db = await getDb();
+  return db.collection<DbCalorieSettings>("calorie_settings");
+}
+
 export async function getShareByToken(token: string): Promise<DbDocumentShare | null> {
   const shares = await getDocumentSharesCollection();
   return shares.findOne({ token });
@@ -234,6 +254,20 @@ export async function ensureIndexes(): Promise<void> {
 
   await db.collection("google_integrations").createIndexes([
     { key: { userId: 1, provider: 1 }, unique: true },
+  ]);
+
+  await db.collection("calorie_entries").createIndexes([
+    { key: { userId: 1, dayKey: -1 } },
+    { key: { userId: 1, kind: 1, nameKey: 1 } },
+  ]);
+
+  await db.collection("calorie_library").createIndexes([
+    { key: { userId: 1, kind: 1, nameKey: 1 }, unique: true },
+    { key: { userId: 1, kind: 1, timesLogged: -1 } },
+  ]);
+
+  await db.collection("calorie_settings").createIndexes([
+    { key: { userId: 1 }, unique: true },
   ]);
 
 }
@@ -382,6 +416,33 @@ export function serializeYoutubePlaylist(p: DbYoutubePlaylist, items: YoutubePla
     items,
     createdAt: p.createdAt.toISOString(),
     updatedAt: p.updatedAt.toISOString(),
+  };
+}
+
+export function serializeCalorieEntry(e: DbCalorieEntry): CalorieEntry {
+  return {
+    id: e._id.toString(),
+    dayKey: e.dayKey,
+    kind: e.kind,
+    name: e.name,
+    unit: e.unit,
+    quantity: e.quantity,
+    caloriesPerUnit: e.caloriesPerUnit,
+    totalCalories: e.totalCalories,
+    createdAt: e.createdAt.toISOString(),
+  };
+}
+
+export function serializeCalorieLibraryItem(i: DbCalorieLibraryItem): CalorieLibraryItem {
+  return {
+    id: i._id.toString(),
+    kind: i.kind,
+    name: i.name,
+    nameKey: i.nameKey,
+    unit: i.unit,
+    caloriesPerUnit: i.caloriesPerUnit,
+    lastCaloriesBurned: i.lastCaloriesBurned,
+    timesLogged: i.timesLogged,
   };
 }
 

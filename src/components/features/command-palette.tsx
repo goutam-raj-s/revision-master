@@ -14,6 +14,7 @@ import {
   RefreshCw,
   Sun,
   Clock,
+  Utensils,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -249,6 +250,7 @@ export function CommandPalette({ documents = [], tags = [], terms = [] }: Comman
                 { label: "Dashboard", icon: LayoutDashboard, href: "/dashboard" },
                 { label: "All Documents", icon: BookOpen, href: "/documents" },
                 { label: "Terminology", icon: BookText, href: "/terminology" },
+                { label: "Calories", icon: Utensils, href: "/calories" },
                 { label: "Settings", icon: Settings, href: "/settings" },
               ]
                 .filter((n) => !query || n.label.toLowerCase().includes(q))

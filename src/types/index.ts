@@ -523,6 +523,124 @@ export interface YoutubeShare {
   createdAt: string;
 }
 
+// ─── Calorie Tracking ──────────────────────────────────────────────────────────
+
+/** How per-unit calories are expressed for a dish. */
+export type FoodUnit = "per100g" | "perPiece";
+export type CalorieEntryKind = "food" | "exercise";
+
+export interface DbCalorieEntry {
+  _id: ObjectId;
+  userId: ObjectId;
+  /** Local calendar day key (YYYY-MM-DD), computed client-side. */
+  dayKey: string;
+  kind: CalorieEntryKind;
+  name: string;
+  /** Normalized name (lowercase, collapsed whitespace) for autofill matching. */
+  nameKey: string;
+  /** Food only. */
+  unit?: FoodUnit;
+  /** Food only: grams when per100g, pieces when perPiece. */
+  quantity?: number;
+  /** Food only: kcal per 100 g or per piece. */
+  caloriesPerUnit?: number;
+  /** Food: kcal consumed. Exercise: kcal burned. Always positive. */
+  totalCalories: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+/** Remembered dishes/exercises so repeat entries autofill their calories. */
+export interface DbCalorieLibraryItem {
+  _id: ObjectId;
+  userId: ObjectId;
+  kind: CalorieEntryKind;
+  nameKey: string;
+  name: string;
+  unit?: FoodUnit;
+  caloriesPerUnit?: number;
+  /** Exercise: last logged kcal burned, used as autofill default. */
+  lastCaloriesBurned?: number;
+  timesLogged: number;
+  lastLoggedAt: Date;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface DbCalorieSettings {
+  _id: ObjectId;
+  userId: ObjectId;
+  /** Daily intake target in kcal. */
+  dailyCalorieGoal: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface CalorieEntry {
+  id: string;
+  dayKey: string;
+  kind: CalorieEntryKind;
+  name: string;
+  unit?: FoodUnit;
+  quantity?: number;
+  caloriesPerUnit?: number;
+  totalCalories: number;
+  createdAt: string;
+}
+
+export interface CalorieLibraryItem {
+  id: string;
+  kind: CalorieEntryKind;
+  name: string;
+  nameKey: string;
+  unit?: FoodUnit;
+  caloriesPerUnit?: number;
+  lastCaloriesBurned?: number;
+  timesLogged: number;
+}
+
+export interface CalorieDaySummary {
+  dayKey: string;
+  foodCalories: number;
+  exerciseCalories: number;
+  /** foodCalories - exerciseCalories */
+  netCalories: number;
+  entryCount: number;
+}
+
+export interface CalorieWeekSummary {
+  /** Monday of the week (YYYY-MM-DD). */
+  weekStartKey: string;
+  weekEndKey: string;
+  daysLogged: number;
+  foodCalories: number;
+  exerciseCalories: number;
+  netCalories: number;
+  avgNetPerLoggedDay: number;
+}
+
+export interface CalorieMonthSummary {
+  /** YYYY-MM */
+  monthKey: string;
+  daysLogged: number;
+  foodCalories: number;
+  exerciseCalories: number;
+  netCalories: number;
+  avgNetPerLoggedDay: number;
+}
+
+export interface CaloriesOverview {
+  dailyCalorieGoal: number | null;
+  dayEntries: CalorieEntry[];
+  library: CalorieLibraryItem[];
+  /** Oldest→newest, one row per day in range (zero-filled), last 30 days. */
+  daily: CalorieDaySummary[];
+  /** Oldest→newest, last 8 weeks. */
+  weekly: CalorieWeekSummary[];
+  /** Oldest→newest, last 6 months. */
+  monthly: CalorieMonthSummary[];
+}
+
 // ─── Server Action Results ─────────────────────────────────────────────────────
 
 export interface ActionResult<T = void> {

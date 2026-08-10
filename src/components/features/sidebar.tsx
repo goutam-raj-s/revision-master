@@ -21,6 +21,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   EyeOff,
+  Utensils,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -41,6 +42,7 @@ const navItems = [
   { href: "/collections", label: "Collections", icon: FolderOpen },
   { href: "/posts", label: "Posts", icon: Send },
   { href: "/stats", label: "Stats", icon: BarChart3 },
+  { href: "/calories", label: "Calories", icon: Utensils },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 
