@@ -428,6 +428,8 @@ export function serializeCalorieEntry(e: DbCalorieEntry): CalorieEntry {
     unit: e.unit,
     quantity: e.quantity,
     caloriesPerUnit: e.caloriesPerUnit,
+    proteinGrams: e.proteinGrams,
+    carbsGrams: e.carbsGrams,
     totalCalories: e.totalCalories,
     createdAt: e.createdAt.toISOString(),
   };

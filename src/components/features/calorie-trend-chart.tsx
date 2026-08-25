@@ -12,8 +12,9 @@ import {
 } from "recharts";
 
 interface CalorieTrendChartProps {
-  data: { day: string; net: number; logged: boolean }[];
+  data: { day: string; dayKey: string; net: number; logged: boolean }[];
   goal: number | null;
+  onDayClick?: (dayKey: string) => void;
 }
 
 function CustomTooltip({
@@ -53,7 +54,7 @@ function CustomTooltip({
 }
 
 /** Net calories per day (bars) against the daily goal (dashed line). */
-export function CalorieTrendChart({ data, goal }: CalorieTrendChartProps) {
+export function CalorieTrendChart({ data, goal, onDayClick }: CalorieTrendChartProps) {
   const allEmpty = data.every((d) => !d.logged);
 
   return (
@@ -86,7 +87,16 @@ export function CalorieTrendChart({ data, goal }: CalorieTrendChartProps) {
               }}
             />
           )}
-          <Bar dataKey="net" radius={[4, 4, 0, 0]} maxBarSize={26}>
+          <Bar
+            dataKey="net"
+            radius={[4, 4, 0, 0]}
+            maxBarSize={26}
+            cursor={onDayClick ? "pointer" : undefined}
+            onClick={(data) => {
+              const dayKey = data?.payload?.dayKey;
+              if (typeof dayKey === "string") onDayClick?.(dayKey);
+            }}
+          >
             {data.map((d) => (
               <Cell
                 key={d.day}

@@ -544,6 +544,10 @@ export interface DbCalorieEntry {
   quantity?: number;
   /** Food only: kcal per 100 g or per piece. */
   caloriesPerUnit?: number;
+  /** Food only: total protein grams for the logged portion. */
+  proteinGrams?: number;
+  /** Food only: total carbohydrate grams for the logged portion. */
+  carbsGrams?: number;
   /** Food: kcal consumed. Exercise: kcal burned. Always positive. */
   totalCalories: number;
   createdAt: Date;
@@ -584,6 +588,8 @@ export interface CalorieEntry {
   unit?: FoodUnit;
   quantity?: number;
   caloriesPerUnit?: number;
+  proteinGrams?: number;
+  carbsGrams?: number;
   totalCalories: number;
   createdAt: string;
 }
@@ -602,6 +608,8 @@ export interface CalorieLibraryItem {
 export interface CalorieDaySummary {
   dayKey: string;
   foodCalories: number;
+  proteinGrams: number;
+  carbsGrams: number;
   exerciseCalories: number;
   /** foodCalories - exerciseCalories */
   netCalories: number;

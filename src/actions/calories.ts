@@ -38,6 +38,10 @@ export interface FoodEntryInput {
   quantity: number;
   /** kcal per 100 g or per piece. */
   caloriesPerUnit: number;
+  /** Total grams for the logged portion. */
+  proteinGrams?: number;
+  /** Total grams for the logged portion. */
+  carbsGrams?: number;
 }
 
 export interface ExerciseEntryInput {
@@ -78,6 +82,8 @@ function validateFoodInput(input: FoodEntryInput): string | null {
   if (input.unit !== "per100g" && input.unit !== "perPiece") return "Invalid unit.";
   if (!isValidNumber(input.quantity, MAX_QUANTITY)) return "Quantity must be a positive number.";
   if (!isValidNonNegative(input.caloriesPerUnit, MAX_KCAL)) return "Calories can't be negative.";
+  if (input.proteinGrams != null && !isValidNonNegative(input.proteinGrams, MAX_QUANTITY)) return "Protein can't be negative.";
+  if (input.carbsGrams != null && !isValidNonNegative(input.carbsGrams, MAX_QUANTITY)) return "Carbs can't be negative.";
   return null;
 }
 
@@ -189,12 +195,14 @@ export async function getCaloriesOverviewAction(
     entriesCol.find({ userId, dayKey: todayKey }).sort({ createdAt: 1 }).toArray(),
     libraryCol.find({ userId }).sort({ timesLogged: -1, lastLoggedAt: -1 }).limit(300).toArray(),
     entriesCol
-      .aggregate<{ _id: string; food: number; exercise: number; count: number }>([
+      .aggregate<{ _id: string; food: number; protein: number; carbs: number; exercise: number; count: number }>([
         { $match: { userId, dayKey: { $gte: rangeStart, $lte: todayKey } } },
         {
           $group: {
             _id: "$dayKey",
             food: { $sum: { $cond: [{ $eq: ["$kind", "food"] }, "$totalCalories", 0] } },
+            protein: { $sum: { $cond: [{ $eq: ["$kind", "food"] }, { $ifNull: ["$proteinGrams", 0] }, 0] } },
+            carbs: { $sum: { $cond: [{ $eq: ["$kind", "food"] }, { $ifNull: ["$carbsGrams", 0] }, 0] } },
             exercise: { $sum: { $cond: [{ $eq: ["$kind", "exercise"] }, "$totalCalories", 0] } },
             count: { $sum: 1 },
           },
@@ -211,6 +219,8 @@ export async function getCaloriesOverviewAction(
     return {
       dayKey,
       foodCalories: food,
+      proteinGrams: d?.protein ?? 0,
+      carbsGrams: d?.carbs ?? 0,
       exerciseCalories: exercise,
       netCalories: food - exercise,
       entryCount: d?.count ?? 0,
@@ -313,6 +323,8 @@ export async function addFoodEntryAction(
     unit: input.unit,
     quantity: input.quantity,
     caloriesPerUnit: input.caloriesPerUnit,
+    proteinGrams: input.proteinGrams,
+    carbsGrams: input.carbsGrams,
     totalCalories: computeFoodTotal(input.unit, input.quantity, input.caloriesPerUnit),
     createdAt: now,
     updatedAt: now,
@@ -393,19 +405,28 @@ export async function updateFoodEntryAction(
   const col = await getCalorieEntriesCollection();
   const name = input.name.trim();
   const now = new Date();
+  const setFields: Record<string, unknown> = {
+    name,
+    nameKey: normalizeName(name),
+    unit: input.unit,
+    quantity: input.quantity,
+    caloriesPerUnit: input.caloriesPerUnit,
+    totalCalories: computeFoodTotal(input.unit, input.quantity, input.caloriesPerUnit),
+    updatedAt: now,
+  };
+  const unsetFields: Record<string, ""> = {};
+
+  if (input.proteinGrams != null) setFields.proteinGrams = input.proteinGrams;
+  else unsetFields.proteinGrams = "";
+
+  if (input.carbsGrams != null) setFields.carbsGrams = input.carbsGrams;
+  else unsetFields.carbsGrams = "";
 
   const updated = await col.findOneAndUpdate(
     { _id: new ObjectId(entryId), userId, kind: "food" },
     {
-      $set: {
-        name,
-        nameKey: normalizeName(name),
-        unit: input.unit,
-        quantity: input.quantity,
-        caloriesPerUnit: input.caloriesPerUnit,
-        totalCalories: computeFoodTotal(input.unit, input.quantity, input.caloriesPerUnit),
-        updatedAt: now,
-      },
+      $set: setFields,
+      ...(Object.keys(unsetFields).length > 0 ? { $unset: unsetFields } : {}),
     },
     { returnDocument: "after" }
   );

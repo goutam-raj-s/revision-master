@@ -23,6 +23,13 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -101,6 +108,8 @@ function formatMonth(monthKey: string): string {
 }
 
 const fmt = (n: number) => Math.round(n).toLocaleString("en-US");
+const fmtMacro = (n: number) =>
+  Number.isInteger(n) ? n.toLocaleString("en-US") : n.toLocaleString("en-US", { maximumFractionDigits: 1 });
 
 function normalizeName(name: string): string {
   return name.trim().replace(/\s+/g, " ").toLowerCase();
@@ -172,6 +181,154 @@ function IconStat({
   );
 }
 
+function DayDetailsModal({
+  open,
+  dayKey,
+  entries,
+  loading,
+  goal,
+  todayKey,
+  onOpenChange,
+  onLogDay,
+}: {
+  open: boolean;
+  dayKey: string;
+  entries: CalorieEntry[];
+  loading: boolean;
+  goal: number | null;
+  todayKey: string;
+  onOpenChange: (open: boolean) => void;
+  onLogDay: () => void;
+}) {
+  const foods = entries.filter((entry) => entry.kind === "food");
+  const exercises = entries.filter((entry) => entry.kind === "exercise");
+  const eaten = foods.reduce((sum, entry) => sum + entry.totalCalories, 0);
+  const burned = exercises.reduce((sum, entry) => sum + entry.totalCalories, 0);
+  const protein = foods.reduce((sum, entry) => sum + (entry.proteinGrams ?? 0), 0);
+  const carbs = foods.reduce((sum, entry) => sum + (entry.carbsGrams ?? 0), 0);
+  const net = eaten - burned;
+  const delta = goal != null && entries.length > 0 ? goal - net : null;
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>{dayKey === todayKey ? "Today" : formatDayLabel(dayKey)}</DialogTitle>
+          <DialogDescription>
+            {entries.length > 0
+              ? `${entries.length} item${entries.length === 1 ? "" : "s"} logged`
+              : "No food or exercise logged for this day"}
+          </DialogDescription>
+        </DialogHeader>
+
+        {loading ? (
+          <div className="space-y-3">
+            <Skeleton className="h-16 rounded-xl" />
+            <Skeleton className="h-20 rounded-xl" />
+            <Skeleton className="h-20 rounded-xl" />
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+              <div className="rounded-xl border border-border bg-canvas p-3">
+                <div className="text-[11px] text-mossy-gray">Eaten</div>
+                <div className="font-mono text-lg font-semibold text-forest-slate">{fmt(eaten)}</div>
+              </div>
+              <div className="rounded-xl border border-border bg-canvas p-3">
+                <div className="text-[11px] text-mossy-gray">Burned</div>
+                <div className="font-mono text-lg font-semibold text-forest-slate">{fmt(burned)}</div>
+              </div>
+              <div className="rounded-xl border border-border bg-canvas p-3">
+                <div className="text-[11px] text-mossy-gray">Net</div>
+                <div className="font-mono text-lg font-semibold text-forest-slate">{fmt(net)}</div>
+              </div>
+              <div className="rounded-xl border border-border bg-canvas p-3">
+                <div className="text-[11px] text-mossy-gray">Protein</div>
+                <div className="font-mono text-lg font-semibold text-forest-slate">{fmtMacro(protein)}g</div>
+              </div>
+              <div className="rounded-xl border border-border bg-canvas p-3">
+                <div className="text-[11px] text-mossy-gray">Carbs</div>
+                <div className="font-mono text-lg font-semibold text-forest-slate">{fmtMacro(carbs)}g</div>
+              </div>
+            </div>
+
+            {delta != null && (
+              <div className={cn("rounded-xl px-3 py-2 text-xs font-medium", delta >= 0 ? "bg-state-today/10 text-state-today" : "bg-destructive/10 text-destructive")}>
+                {delta >= 0 ? `${fmt(delta)} kcal under goal` : `${fmt(Math.abs(delta))} kcal over goal`}
+              </div>
+            )}
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <div>
+                <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-mossy-gray">Food</h3>
+                <div className="space-y-2">
+                  {foods.length === 0 ? (
+                    <div className="rounded-xl border border-dashed border-border px-3 py-5 text-center text-xs text-mossy-gray">
+                      No food logged.
+                    </div>
+                  ) : (
+                    foods.map((entry) => (
+                      <div key={entry.id} className="rounded-xl border border-border bg-canvas px-3 py-2.5">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="truncate text-sm font-medium text-forest-slate">{entry.name}</div>
+                            <div className="mt-0.5 text-[11px] text-mossy-gray">
+                              {entry.unit === "perPiece"
+                                ? `${entry.quantity} pc · ${fmt(entry.caloriesPerUnit ?? 0)} kcal/pc`
+                                : `${entry.quantity} g · ${fmt(entry.caloriesPerUnit ?? 0)} kcal/100 g`}
+                            </div>
+                          </div>
+                          <div className="shrink-0 text-right font-mono text-sm font-semibold text-forest-slate">
+                            {fmt(entry.totalCalories)}
+                          </div>
+                        </div>
+                        <div className="mt-2 flex flex-wrap gap-1.5 text-[11px]">
+                          <span className="rounded-full bg-surface px-2 py-0.5 text-mossy-gray">
+                            Protein {fmtMacro(entry.proteinGrams ?? 0)}g
+                          </span>
+                          <span className="rounded-full bg-surface px-2 py-0.5 text-mossy-gray">
+                            Carbs {fmtMacro(entry.carbsGrams ?? 0)}g
+                          </span>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-mossy-gray">Exercise</h3>
+                <div className="space-y-2">
+                  {exercises.length === 0 ? (
+                    <div className="rounded-xl border border-dashed border-border px-3 py-5 text-center text-xs text-mossy-gray">
+                      No exercise logged.
+                    </div>
+                  ) : (
+                    exercises.map((entry) => (
+                      <div key={entry.id} className="flex items-center justify-between gap-3 rounded-xl border border-border bg-canvas px-3 py-2.5">
+                        <div className="min-w-0 truncate text-sm font-medium text-forest-slate">{entry.name}</div>
+                        <div className="shrink-0 font-mono text-sm font-semibold text-state-today">
+                          -{fmt(entry.totalCalories)}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end">
+              <Button size="sm" variant="outline" onClick={onLogDay}>
+                Open day
+              </Button>
+            </div>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // ─── Main component ────────────────────────────────────────────────────────────
 
 type ReportTab = "daily" | "weekly" | "monthly";
@@ -181,6 +338,8 @@ interface FoodForm {
   unit: FoodUnit;
   quantity: string;
   caloriesPerUnit: string;
+  proteinGrams: string;
+  carbsGrams: string;
   editingId: string | null;
 }
 
@@ -195,6 +354,8 @@ const EMPTY_FOOD_FORM: FoodForm = {
   unit: "per100g",
   quantity: "",
   caloriesPerUnit: "",
+  proteinGrams: "",
+  carbsGrams: "",
   editingId: null,
 };
 const EMPTY_EXERCISE_FORM: ExerciseForm = { name: "", caloriesBurned: "", editingId: null };
@@ -213,6 +374,11 @@ export function CaloriesClient() {
   const [entries, setEntries] = React.useState<CalorieEntry[]>([]);
   const [dayLoading, setDayLoading] = React.useState(false);
   const dayReq = React.useRef(0);
+  const [detailsOpen, setDetailsOpen] = React.useState(false);
+  const [detailsDay, setDetailsDay] = React.useState(todayKey);
+  const [detailsEntries, setDetailsEntries] = React.useState<CalorieEntry[]>([]);
+  const [detailsLoading, setDetailsLoading] = React.useState(false);
+  const detailsReq = React.useRef(0);
 
   const [library, setLibrary] = React.useState<CalorieLibraryItem[]>([]);
   const [daily, setDaily] = React.useState<CalorieDaySummary[]>([]);
@@ -287,6 +453,8 @@ export function CaloriesClient() {
   const foodEntries = entries.filter((e) => e.kind === "food");
   const exerciseEntries = entries.filter((e) => e.kind === "exercise");
   const eaten = foodEntries.reduce((s, e) => s + e.totalCalories, 0);
+  const protein = foodEntries.reduce((s, e) => s + (e.proteinGrams ?? 0), 0);
+  const carbs = foodEntries.reduce((s, e) => s + (e.carbsGrams ?? 0), 0);
   const burned = exerciseEntries.reduce((s, e) => s + e.totalCalories, 0);
   const net = eaten - burned;
   const remaining = goal != null ? goal - net : null;
@@ -369,6 +537,7 @@ export function CaloriesClient() {
     () =>
       daily.slice(-14).map((d) => ({
         day: formatShort(d.dayKey),
+        dayKey: d.dayKey,
         net: Math.max(0, d.netCalories),
         logged: d.entryCount > 0,
       })),
@@ -430,6 +599,8 @@ export function CaloriesClient() {
       unit: item.unit ?? "per100g",
       quantity: "",
       caloriesPerUnit: item.caloriesPerUnit != null ? String(item.caloriesPerUnit) : "",
+      proteinGrams: "",
+      carbsGrams: "",
       editingId: null,
     });
     setFoodSugOpen(false);
@@ -442,6 +613,8 @@ export function CaloriesClient() {
       unit: entry.unit ?? "per100g",
       quantity: entry.quantity != null ? String(entry.quantity) : "",
       caloriesPerUnit: entry.caloriesPerUnit != null ? String(entry.caloriesPerUnit) : "",
+      proteinGrams: entry.proteinGrams != null ? String(entry.proteinGrams) : "",
+      carbsGrams: entry.carbsGrams != null ? String(entry.carbsGrams) : "",
       editingId: entry.id,
     });
     setFoodSugOpen(false);
@@ -463,6 +636,8 @@ export function CaloriesClient() {
     e.preventDefault();
     const quantity = parseFloat(foodForm.quantity);
     const caloriesPerUnit = parseFloat(foodForm.caloriesPerUnit);
+    const proteinGrams = foodForm.proteinGrams.trim() ? parseFloat(foodForm.proteinGrams) : undefined;
+    const carbsGrams = foodForm.carbsGrams.trim() ? parseFloat(foodForm.carbsGrams) : undefined;
     const name = foodForm.name.trim();
 
     if (!name) return toast("Enter a dish name.", { variant: "error" });
@@ -470,9 +645,13 @@ export function CaloriesClient() {
       return toast(`Enter ${foodForm.unit === "per100g" ? "weight in grams" : "number of pieces"}.`, { variant: "error" });
     if (!Number.isFinite(caloriesPerUnit) || caloriesPerUnit < 0)
       return toast(`Enter kcal ${foodForm.unit === "per100g" ? "per 100 g" : "per piece"}.`, { variant: "error" });
+    if (proteinGrams != null && (!Number.isFinite(proteinGrams) || proteinGrams < 0))
+      return toast("Enter protein in grams, or leave it blank.", { variant: "error" });
+    if (carbsGrams != null && (!Number.isFinite(carbsGrams) || carbsGrams < 0))
+      return toast("Enter carbs in grams, or leave it blank.", { variant: "error" });
 
     setFoodSubmitting(true);
-    const input = { name, unit: foodForm.unit, quantity, caloriesPerUnit };
+    const input = { name, unit: foodForm.unit, quantity, caloriesPerUnit, proteinGrams, carbsGrams };
     const res = foodForm.editingId
       ? await updateFoodEntryAction(foodForm.editingId, input)
       : await addFoodEntryAction({ ...input, dayKey: selectedDay });
@@ -585,16 +764,42 @@ export function CaloriesClient() {
     }
   }
 
+  async function openDayDetails(dayKey: string) {
+    setDetailsOpen(true);
+    setDetailsDay(dayKey);
+
+    if (dayKey === selectedDay && !dayLoading) {
+      setDetailsEntries(entries);
+      setDetailsLoading(false);
+      return;
+    }
+
+    setDetailsLoading(true);
+    setDetailsEntries([]);
+    const req = ++detailsReq.current;
+    const res = await getDayEntriesAction(dayKey);
+    if (req !== detailsReq.current) return;
+    if (res.success && res.data) {
+      setDetailsEntries(res.data.entries);
+    } else {
+      setDetailsEntries([]);
+      toast(res.error ?? "Could not load that day.", { variant: "error" });
+    }
+    setDetailsLoading(false);
+  }
+
   function exportCsv() {
     const esc = (s: string) => `"${s.replace(/"/g, '""')}"`;
     let header: string[];
     let rows: (string | number)[][];
 
     if (reportTab === "daily") {
-      header = ["Date", "Eaten (kcal)", "Burned (kcal)", "Net (kcal)", "Goal (kcal)", "Delta"];
+      header = ["Date", "Eaten (kcal)", "Protein (g)", "Carbs (g)", "Burned (kcal)", "Net (kcal)", "Goal (kcal)", "Delta"];
       rows = [...daily].reverse().map((d) => [
         d.dayKey,
         d.foodCalories,
+        d.proteinGrams,
+        d.carbsGrams,
         d.exerciseCalories,
         d.netCalories,
         goal ?? "",
@@ -669,6 +874,20 @@ export function CaloriesClient() {
 
   return (
     <div className="space-y-6 sm:space-y-8">
+      <DayDetailsModal
+        open={detailsOpen}
+        dayKey={detailsDay}
+        entries={detailsEntries}
+        loading={detailsLoading}
+        goal={goal}
+        todayKey={todayKey}
+        onOpenChange={setDetailsOpen}
+        onLogDay={() => {
+          void selectDay(detailsDay);
+          setDetailsOpen(false);
+        }}
+      />
+
       {/* Header */}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
@@ -771,8 +990,10 @@ export function CaloriesClient() {
       </Card>
 
       {/* Day summary */}
-      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-6">
         <IconStat icon={Utensils} label="Eaten" value={fmt(eaten)} sub="kcal" color="text-state-today" />
+        <IconStat icon={Activity} label="Protein" value={fmtMacro(protein)} sub="g" color="text-state-completed" />
+        <IconStat icon={Activity} label="Carbs" value={fmtMacro(carbs)} sub="g" color="text-state-upcoming" />
         <IconStat icon={Flame} label="Burned" value={fmt(burned)} sub="kcal" color="text-state-stale" />
         <IconStat icon={Activity} label="Net" value={fmt(net)} sub="eaten − burned" color="text-state-upcoming" />
         {goal != null && remaining != null ? (
@@ -866,9 +1087,11 @@ export function CaloriesClient() {
               <Utensils className="h-4 w-4 text-state-today" />
               Food log
             </h2>
-            <span className="font-mono text-xs tabular-nums text-mossy-gray">
-              {fmt(eaten)} kcal
-            </span>
+            <div className="flex flex-wrap justify-end gap-2 font-mono text-xs tabular-nums text-mossy-gray">
+              <span>{fmt(eaten)} kcal</span>
+              <span>{fmtMacro(protein)}g protein</span>
+              <span>{fmtMacro(carbs)}g carbs</span>
+            </div>
           </div>
 
           {quickAdds.length > 0 && !foodForm.editingId && (
@@ -964,6 +1187,28 @@ export function CaloriesClient() {
                 className="w-28 flex-1 sm:flex-none"
                 aria-label={foodForm.unit === "per100g" ? "Calories per 100 grams" : "Calories per piece"}
               />
+              <Input
+                type="number"
+                inputMode="decimal"
+                step="any"
+                min={0}
+                value={foodForm.proteinGrams}
+                onChange={(e) => setFoodForm((f) => ({ ...f, proteinGrams: e.target.value }))}
+                placeholder="protein g"
+                className="w-24 flex-1 sm:flex-none"
+                aria-label="Protein grams"
+              />
+              <Input
+                type="number"
+                inputMode="decimal"
+                step="any"
+                min={0}
+                value={foodForm.carbsGrams}
+                onChange={(e) => setFoodForm((f) => ({ ...f, carbsGrams: e.target.value }))}
+                placeholder="carbs g"
+                className="w-24 flex-1 sm:flex-none"
+                aria-label="Carbs grams"
+              />
               <Button type="submit" size="sm" disabled={foodSubmitting} className="h-9 px-4">
                 {foodSubmitting ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -1011,6 +1256,12 @@ export function CaloriesClient() {
                       {entry.unit === "perPiece"
                         ? `${entry.quantity} pc · ${fmt(entry.caloriesPerUnit ?? 0)} kcal/pc`
                         : `${entry.quantity} g · ${fmt(entry.caloriesPerUnit ?? 0)} kcal/100 g`}
+                      {(entry.proteinGrams != null || entry.carbsGrams != null) && (
+                        <span>
+                          {" · "}
+                          P {fmtMacro(entry.proteinGrams ?? 0)}g · C {fmtMacro(entry.carbsGrams ?? 0)}g
+                        </span>
+                      )}
                     </div>
                   </div>
                   <span className="font-mono text-sm font-semibold tabular-nums text-forest-slate">
@@ -1183,7 +1434,7 @@ export function CaloriesClient() {
             </span>
           )}
         </div>
-        <CalorieTrendChart data={chartData} goal={goal} />
+        <CalorieTrendChart data={chartData} goal={goal} onDayClick={openDayDetails} />
       </Card>
 
       {/* Reports */}
@@ -1220,6 +1471,8 @@ export function CaloriesClient() {
               <TableRow>
                 <TableHead className="h-9 px-3 text-xs">Date</TableHead>
                 <TableHead className="h-9 px-3 text-right text-xs">Eaten</TableHead>
+                <TableHead className="h-9 px-3 text-right text-xs">Protein</TableHead>
+                <TableHead className="h-9 px-3 text-right text-xs">Carbs</TableHead>
                 <TableHead className="h-9 px-3 text-right text-xs">Burned</TableHead>
                 <TableHead className="h-9 px-3 text-right text-xs">Net</TableHead>
                 <TableHead className="h-9 px-3 text-right text-xs">vs Goal</TableHead>
@@ -1238,14 +1491,20 @@ export function CaloriesClient() {
                       d.dayKey === todayKey && "bg-state-today/5",
                       !logged && "opacity-50"
                     )}
-                    onClick={() => selectDay(d.dayKey)}
-                    title="View this day's log"
+                    onClick={() => openDayDetails(d.dayKey)}
+                    title="View this day's details"
                   >
                     <TableCell className="whitespace-nowrap p-2.5 px-3 text-xs font-medium text-forest-slate">
                       {d.dayKey === todayKey ? "Today" : formatShort(d.dayKey)}
                     </TableCell>
                     <TableCell className="p-2.5 px-3 text-right font-mono text-xs tabular-nums">
                       {logged ? fmt(d.foodCalories) : "—"}
+                    </TableCell>
+                    <TableCell className="p-2.5 px-3 text-right font-mono text-xs tabular-nums">
+                      {logged ? `${fmtMacro(d.proteinGrams)}g` : "—"}
+                    </TableCell>
+                    <TableCell className="p-2.5 px-3 text-right font-mono text-xs tabular-nums">
+                      {logged ? `${fmtMacro(d.carbsGrams)}g` : "—"}
                     </TableCell>
                     <TableCell className="p-2.5 px-3 text-right font-mono text-xs tabular-nums">
                       {logged ? fmt(d.exerciseCalories) : "—"}
