@@ -111,6 +111,15 @@ const fmt = (n: number) => Math.round(n).toLocaleString("en-US");
 const fmtMacro = (n: number) =>
   Number.isInteger(n) ? n.toLocaleString("en-US") : n.toLocaleString("en-US", { maximumFractionDigits: 1 });
 
+function macroPerUnitFromEntry(entry: CalorieEntry, macro: "protein" | "carbs"): string {
+  const stored = macro === "protein" ? entry.proteinPerUnit : entry.carbsPerUnit;
+  if (stored != null) return String(stored);
+  const total = macro === "protein" ? entry.proteinGrams : entry.carbsGrams;
+  if (total == null || entry.quantity == null || entry.quantity <= 0) return "";
+  const perUnit = entry.unit === "perPiece" ? total / entry.quantity : (total / entry.quantity) * 100;
+  return String(Math.round(perUnit * 10) / 10);
+}
+
 function normalizeName(name: string): string {
   return name.trim().replace(/\s+/g, " ").toLowerCase();
 }
@@ -278,8 +287,8 @@ function DayDetailsModal({
                             <div className="truncate text-sm font-medium text-forest-slate">{entry.name}</div>
                             <div className="mt-0.5 text-[11px] text-mossy-gray">
                               {entry.unit === "perPiece"
-                                ? `${entry.quantity} pc · ${fmt(entry.caloriesPerUnit ?? 0)} kcal/pc`
-                                : `${entry.quantity} g · ${fmt(entry.caloriesPerUnit ?? 0)} kcal/100 g`}
+                                ? `Ate ${entry.quantity} pc · product ${fmt(entry.caloriesPerUnit ?? 0)} kcal/pc`
+                                : `Ate ${entry.quantity} g · product ${fmt(entry.caloriesPerUnit ?? 0)} kcal/100 g`}
                             </div>
                           </div>
                           <div className="flex shrink-0 items-start gap-1">
@@ -378,8 +387,8 @@ interface FoodForm {
   unit: FoodUnit;
   quantity: string;
   caloriesPerUnit: string;
-  proteinGrams: string;
-  carbsGrams: string;
+  proteinPerUnit: string;
+  carbsPerUnit: string;
   editingId: string | null;
 }
 
@@ -394,8 +403,8 @@ const EMPTY_FOOD_FORM: FoodForm = {
   unit: "per100g",
   quantity: "",
   caloriesPerUnit: "",
-  proteinGrams: "",
-  carbsGrams: "",
+  proteinPerUnit: "",
+  carbsPerUnit: "",
   editingId: null,
 };
 const EMPTY_EXERCISE_FORM: ExerciseForm = { name: "", caloriesBurned: "", editingId: null };
@@ -511,7 +520,7 @@ export function CaloriesClient() {
       .map((i) => ({
         key: i.id,
         label: i.name,
-        sub: `${fmt(i.caloriesPerUnit ?? 0)} kcal/${i.unit === "perPiece" ? "pc" : "100 g"} · ${i.timesLogged}×`,
+        sub: `${fmt(i.caloriesPerUnit ?? 0)} kcal/${i.unit === "perPiece" ? "pc" : "100 g"} · P ${fmtMacro(i.proteinPerUnit ?? 0)}g · C ${fmtMacro(i.carbsPerUnit ?? 0)}g`,
         item: i,
       }));
   }, [foodForm.name, foodLibrary]);
@@ -541,6 +550,20 @@ export function CaloriesClient() {
     if (!Number.isFinite(q) || !Number.isFinite(c) || q <= 0 || c < 0) return null;
     return Math.round(foodForm.unit === "per100g" ? (q / 100) * c : q * c);
   }, [foodForm.quantity, foodForm.caloriesPerUnit, foodForm.unit]);
+
+  const previewProtein = React.useMemo(() => {
+    const q = parseFloat(foodForm.quantity);
+    const p = parseFloat(foodForm.proteinPerUnit);
+    if (!Number.isFinite(q) || !Number.isFinite(p) || q <= 0 || p < 0) return null;
+    return foodForm.unit === "per100g" ? (q / 100) * p : q * p;
+  }, [foodForm.proteinPerUnit, foodForm.quantity, foodForm.unit]);
+
+  const previewCarbs = React.useMemo(() => {
+    const q = parseFloat(foodForm.quantity);
+    const c = parseFloat(foodForm.carbsPerUnit);
+    if (!Number.isFinite(q) || !Number.isFinite(c) || q <= 0 || c < 0) return null;
+    return foodForm.unit === "per100g" ? (q / 100) * c : q * c;
+  }, [foodForm.carbsPerUnit, foodForm.quantity, foodForm.unit]);
 
   // Insights over the last 30 days.
   const insights = React.useMemo(() => {
@@ -614,6 +637,8 @@ export function CaloriesClient() {
       name: s.item.name,
       unit: s.item.unit ?? f.unit,
       caloriesPerUnit: s.item.caloriesPerUnit != null ? String(s.item.caloriesPerUnit) : f.caloriesPerUnit,
+      proteinPerUnit: s.item.proteinPerUnit != null ? String(s.item.proteinPerUnit) : f.proteinPerUnit,
+      carbsPerUnit: s.item.carbsPerUnit != null ? String(s.item.carbsPerUnit) : f.carbsPerUnit,
     }));
     setFoodSugOpen(false);
     quantityRef.current?.focus();
@@ -630,6 +655,8 @@ export function CaloriesClient() {
       name: match.name,
       unit: match.unit ?? f.unit,
       caloriesPerUnit: String(match.caloriesPerUnit),
+      proteinPerUnit: match.proteinPerUnit != null ? String(match.proteinPerUnit) : f.proteinPerUnit,
+      carbsPerUnit: match.carbsPerUnit != null ? String(match.carbsPerUnit) : f.carbsPerUnit,
     }));
   }
 
@@ -639,8 +666,8 @@ export function CaloriesClient() {
       unit: item.unit ?? "per100g",
       quantity: "",
       caloriesPerUnit: item.caloriesPerUnit != null ? String(item.caloriesPerUnit) : "",
-      proteinGrams: "",
-      carbsGrams: "",
+      proteinPerUnit: item.proteinPerUnit != null ? String(item.proteinPerUnit) : "",
+      carbsPerUnit: item.carbsPerUnit != null ? String(item.carbsPerUnit) : "",
       editingId: null,
     });
     setFoodSugOpen(false);
@@ -653,8 +680,8 @@ export function CaloriesClient() {
       unit: entry.unit ?? "per100g",
       quantity: entry.quantity != null ? String(entry.quantity) : "",
       caloriesPerUnit: entry.caloriesPerUnit != null ? String(entry.caloriesPerUnit) : "",
-      proteinGrams: entry.proteinGrams != null ? String(entry.proteinGrams) : "",
-      carbsGrams: entry.carbsGrams != null ? String(entry.carbsGrams) : "",
+      proteinPerUnit: macroPerUnitFromEntry(entry, "protein"),
+      carbsPerUnit: macroPerUnitFromEntry(entry, "carbs"),
       editingId: entry.id,
     });
     setFoodSugOpen(false);
@@ -676,8 +703,8 @@ export function CaloriesClient() {
     e.preventDefault();
     const quantity = parseFloat(foodForm.quantity);
     const caloriesPerUnit = parseFloat(foodForm.caloriesPerUnit);
-    const proteinGrams = foodForm.proteinGrams.trim() ? parseFloat(foodForm.proteinGrams) : undefined;
-    const carbsGrams = foodForm.carbsGrams.trim() ? parseFloat(foodForm.carbsGrams) : undefined;
+    const proteinPerUnit = foodForm.proteinPerUnit.trim() ? parseFloat(foodForm.proteinPerUnit) : undefined;
+    const carbsPerUnit = foodForm.carbsPerUnit.trim() ? parseFloat(foodForm.carbsPerUnit) : undefined;
     const name = foodForm.name.trim();
 
     if (!name) return toast("Enter a dish name.", { variant: "error" });
@@ -685,13 +712,13 @@ export function CaloriesClient() {
       return toast(`Enter ${foodForm.unit === "per100g" ? "weight in grams" : "number of pieces"}.`, { variant: "error" });
     if (!Number.isFinite(caloriesPerUnit) || caloriesPerUnit < 0)
       return toast(`Enter kcal ${foodForm.unit === "per100g" ? "per 100 g" : "per piece"}.`, { variant: "error" });
-    if (proteinGrams != null && (!Number.isFinite(proteinGrams) || proteinGrams < 0))
-      return toast("Enter protein in grams, or leave it blank.", { variant: "error" });
-    if (carbsGrams != null && (!Number.isFinite(carbsGrams) || carbsGrams < 0))
-      return toast("Enter carbs in grams, or leave it blank.", { variant: "error" });
+    if (proteinPerUnit != null && (!Number.isFinite(proteinPerUnit) || proteinPerUnit < 0))
+      return toast(`Enter product protein ${foodForm.unit === "per100g" ? "per 100 g" : "per piece"}, or leave it blank.`, { variant: "error" });
+    if (carbsPerUnit != null && (!Number.isFinite(carbsPerUnit) || carbsPerUnit < 0))
+      return toast(`Enter product carbs ${foodForm.unit === "per100g" ? "per 100 g" : "per piece"}, or leave it blank.`, { variant: "error" });
 
     setFoodSubmitting(true);
-    const input = { name, unit: foodForm.unit, quantity, caloriesPerUnit, proteinGrams, carbsGrams };
+    const input = { name, unit: foodForm.unit, quantity, caloriesPerUnit, proteinPerUnit, carbsPerUnit };
     const res = foodForm.editingId
       ? await updateFoodEntryAction(foodForm.editingId, input)
       : await addFoodEntryAction({ ...input, dayKey: selectedDay });
@@ -1176,7 +1203,7 @@ export function CaloriesClient() {
                   type="button"
                   onClick={() => applyQuickAdd(item)}
                   className="rounded-full border border-border bg-canvas px-2.5 py-1 text-[11px] font-medium text-mossy-gray transition-colors hover:border-state-today/30 hover:text-state-today"
-                  title={`${item.name} · ${fmt(item.caloriesPerUnit ?? 0)} kcal/${item.unit === "perPiece" ? "pc" : "100 g"}`}
+                  title={`${item.name} product facts · ${fmt(item.caloriesPerUnit ?? 0)} kcal/${item.unit === "perPiece" ? "pc" : "100 g"} · P ${fmtMacro(item.proteinPerUnit ?? 0)}g · C ${fmtMacro(item.carbsPerUnit ?? 0)}g`}
                 >
                   + {item.name}
                 </button>
@@ -1225,64 +1252,77 @@ export function CaloriesClient() {
               )}
             </div>
 
+            <div className="rounded-xl border border-border bg-canvas/60 p-3">
+              <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-mossy-gray">
+                Product nutrition facts
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <Select
+                  value={foodForm.unit}
+                  onValueChange={(v) => setFoodForm((f) => ({ ...f, unit: v as FoodUnit }))}
+                >
+                  <SelectTrigger className="w-[130px]" aria-label="Product nutrition unit">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="per100g">Per 100 g</SelectItem>
+                    <SelectItem value="perPiece">Per piece</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Input
+                  type="number"
+                  inputMode="decimal"
+                  step="any"
+                  min={0}
+                  value={foodForm.caloriesPerUnit}
+                  onChange={(e) => setFoodForm((f) => ({ ...f, caloriesPerUnit: e.target.value }))}
+                  placeholder={foodForm.unit === "per100g" ? "kcal / 100 g" : "kcal / piece"}
+                  className="w-28 flex-1 sm:flex-none"
+                  aria-label={foodForm.unit === "per100g" ? "Product calories per 100 grams" : "Product calories per piece"}
+                />
+                <Input
+                  type="number"
+                  inputMode="decimal"
+                  step="any"
+                  min={0}
+                  value={foodForm.proteinPerUnit}
+                  onChange={(e) => setFoodForm((f) => ({ ...f, proteinPerUnit: e.target.value }))}
+                  placeholder={foodForm.unit === "per100g" ? "protein / 100 g" : "protein / piece"}
+                  className="w-32 flex-1 sm:flex-none"
+                  aria-label={foodForm.unit === "per100g" ? "Product protein per 100 grams" : "Product protein per piece"}
+                />
+                <Input
+                  type="number"
+                  inputMode="decimal"
+                  step="any"
+                  min={0}
+                  value={foodForm.carbsPerUnit}
+                  onChange={(e) => setFoodForm((f) => ({ ...f, carbsPerUnit: e.target.value }))}
+                  placeholder={foodForm.unit === "per100g" ? "carbs / 100 g" : "carbs / piece"}
+                  className="w-32 flex-1 sm:flex-none"
+                  aria-label={foodForm.unit === "per100g" ? "Product carbs per 100 grams" : "Product carbs per piece"}
+                />
+              </div>
+            </div>
+
             <div className="flex flex-wrap items-center gap-2">
-              <Select
-                value={foodForm.unit}
-                onValueChange={(v) => setFoodForm((f) => ({ ...f, unit: v as FoodUnit }))}
-              >
-                <SelectTrigger className="w-[120px]" aria-label="Measure by">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="per100g">Weight (g)</SelectItem>
-                  <SelectItem value="perPiece">Pieces</SelectItem>
-                </SelectContent>
-              </Select>
-              <Input
-                ref={quantityRef}
-                type="number"
-                inputMode="decimal"
-                step="any"
-                min={0}
-                value={foodForm.quantity}
-                onChange={(e) => setFoodForm((f) => ({ ...f, quantity: e.target.value }))}
-                placeholder={foodForm.unit === "per100g" ? "grams" : "pieces"}
-                className="w-24 flex-1 sm:flex-none"
-                aria-label={foodForm.unit === "per100g" ? "Weight in grams" : "Number of pieces"}
-              />
-              <Input
-                type="number"
-                inputMode="decimal"
-                step="any"
-                min={0}
-                value={foodForm.caloriesPerUnit}
-                onChange={(e) => setFoodForm((f) => ({ ...f, caloriesPerUnit: e.target.value }))}
-                placeholder={foodForm.unit === "per100g" ? "kcal / 100 g" : "kcal / piece"}
-                className="w-28 flex-1 sm:flex-none"
-                aria-label={foodForm.unit === "per100g" ? "Calories per 100 grams" : "Calories per piece"}
-              />
-              <Input
-                type="number"
-                inputMode="decimal"
-                step="any"
-                min={0}
-                value={foodForm.proteinGrams}
-                onChange={(e) => setFoodForm((f) => ({ ...f, proteinGrams: e.target.value }))}
-                placeholder="protein g"
-                className="w-24 flex-1 sm:flex-none"
-                aria-label="Protein grams"
-              />
-              <Input
-                type="number"
-                inputMode="decimal"
-                step="any"
-                min={0}
-                value={foodForm.carbsGrams}
-                onChange={(e) => setFoodForm((f) => ({ ...f, carbsGrams: e.target.value }))}
-                placeholder="carbs g"
-                className="w-24 flex-1 sm:flex-none"
-                aria-label="Carbs grams"
-              />
+              <div className="flex min-w-[160px] flex-1 items-center gap-2 sm:flex-none">
+                <span className="shrink-0 text-[11px] font-semibold uppercase tracking-wide text-mossy-gray">
+                  Today I ate
+                </span>
+                <Input
+                  ref={quantityRef}
+                  type="number"
+                  inputMode="decimal"
+                  step="any"
+                  min={0}
+                  value={foodForm.quantity}
+                  onChange={(e) => setFoodForm((f) => ({ ...f, quantity: e.target.value }))}
+                  placeholder={foodForm.unit === "per100g" ? "grams" : "pieces"}
+                  className="w-24 flex-1 sm:flex-none"
+                  aria-label={foodForm.unit === "per100g" ? "Weight eaten in grams" : "Pieces eaten"}
+                />
+              </div>
               <Button type="submit" size="sm" disabled={foodSubmitting} className="h-9 px-4">
                 {foodSubmitting ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -1299,9 +1339,11 @@ export function CaloriesClient() {
                   <X className="h-3.5 w-3.5" /> Cancel
                 </Button>
               )}
-              {previewTotal != null && (
+              {(previewTotal != null || previewProtein != null || previewCarbs != null) && (
                 <span className="ml-auto font-mono text-xs tabular-nums text-mossy-gray">
-                  ≈ {fmt(previewTotal)} kcal
+                  = {previewTotal != null ? `${fmt(previewTotal)} kcal` : "— kcal"}
+                  {previewProtein != null && ` · P ${fmtMacro(previewProtein)}g`}
+                  {previewCarbs != null && ` · C ${fmtMacro(previewCarbs)}g`}
                 </span>
               )}
             </div>
@@ -1328,12 +1370,12 @@ export function CaloriesClient() {
                     <div className="truncate text-sm font-medium text-forest-slate">{entry.name}</div>
                     <div className="text-[11px] text-mossy-gray">
                       {entry.unit === "perPiece"
-                        ? `${entry.quantity} pc · ${fmt(entry.caloriesPerUnit ?? 0)} kcal/pc`
-                        : `${entry.quantity} g · ${fmt(entry.caloriesPerUnit ?? 0)} kcal/100 g`}
+                        ? `Ate ${entry.quantity} pc · product ${fmt(entry.caloriesPerUnit ?? 0)} kcal/pc`
+                        : `Ate ${entry.quantity} g · product ${fmt(entry.caloriesPerUnit ?? 0)} kcal/100 g`}
                       {(entry.proteinGrams != null || entry.carbsGrams != null) && (
                         <span>
                           {" · "}
-                          P {fmtMacro(entry.proteinGrams ?? 0)}g · C {fmtMacro(entry.carbsGrams ?? 0)}g
+                          eaten P {fmtMacro(entry.proteinGrams ?? 0)}g · C {fmtMacro(entry.carbsGrams ?? 0)}g
                         </span>
                       )}
                     </div>

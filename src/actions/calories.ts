@@ -38,10 +38,10 @@ export interface FoodEntryInput {
   quantity: number;
   /** kcal per 100 g or per piece. */
   caloriesPerUnit: number;
-  /** Total grams for the logged portion. */
-  proteinGrams?: number;
-  /** Total grams for the logged portion. */
-  carbsGrams?: number;
+  /** Protein grams per 100 g or per piece. */
+  proteinPerUnit?: number;
+  /** Carbohydrate grams per 100 g or per piece. */
+  carbsPerUnit?: number;
 }
 
 export interface ExerciseEntryInput {
@@ -75,6 +75,12 @@ function computeFoodTotal(unit: FoodUnit, quantity: number, caloriesPerUnit: num
   return Math.round(total);
 }
 
+function computeMacroTotal(unit: FoodUnit, quantity: number, gramsPerUnit?: number): number | undefined {
+  if (gramsPerUnit == null) return undefined;
+  const total = unit === "per100g" ? (quantity / 100) * gramsPerUnit : quantity * gramsPerUnit;
+  return Math.round(total * 10) / 10;
+}
+
 function validateFoodInput(input: FoodEntryInput): string | null {
   if (!DAY_KEY_RE.test(input.dayKey)) return "Invalid date.";
   const name = input.name?.trim();
@@ -82,8 +88,8 @@ function validateFoodInput(input: FoodEntryInput): string | null {
   if (input.unit !== "per100g" && input.unit !== "perPiece") return "Invalid unit.";
   if (!isValidNumber(input.quantity, MAX_QUANTITY)) return "Quantity must be a positive number.";
   if (!isValidNonNegative(input.caloriesPerUnit, MAX_KCAL)) return "Calories can't be negative.";
-  if (input.proteinGrams != null && !isValidNonNegative(input.proteinGrams, MAX_QUANTITY)) return "Protein can't be negative.";
-  if (input.carbsGrams != null && !isValidNonNegative(input.carbsGrams, MAX_QUANTITY)) return "Carbs can't be negative.";
+  if (input.proteinPerUnit != null && !isValidNonNegative(input.proteinPerUnit, MAX_QUANTITY)) return "Protein can't be negative.";
+  if (input.carbsPerUnit != null && !isValidNonNegative(input.carbsPerUnit, MAX_QUANTITY)) return "Carbs can't be negative.";
   return null;
 }
 
@@ -122,22 +128,31 @@ async function upsertLibraryItem(
   userId: ObjectId,
   kind: "food" | "exercise",
   name: string,
-  values: { unit?: FoodUnit; caloriesPerUnit?: number; lastCaloriesBurned?: number },
+  values: { unit?: FoodUnit; caloriesPerUnit?: number; proteinPerUnit?: number; carbsPerUnit?: number; lastCaloriesBurned?: number },
   countAsLog: boolean
 ): Promise<DbCalorieLibraryItem | null> {
   const library = await getCalorieLibraryCollection();
   const now = new Date();
   const nameKey = normalizeName(name);
+  const setValues = Object.fromEntries(
+    Object.entries(values).filter(([, value]) => value !== undefined)
+  );
+  const unsetValues: Record<string, ""> = Object.fromEntries(
+    Object.entries(values)
+      .filter(([, value]) => value === undefined)
+      .map(([key]) => [key, ""])
+  ) as Record<string, "">;
 
   return library.findOneAndUpdate(
     { userId, kind, nameKey },
     {
       $set: {
         name: name.trim(),
-        ...values,
+        ...setValues,
         lastLoggedAt: now,
         updatedAt: now,
       },
+      ...(Object.keys(unsetValues).length > 0 ? { $unset: unsetValues } : {}),
       ...(countAsLog ? { $inc: { timesLogged: 1 } } : {}),
       $setOnInsert: {
         _id: new ObjectId(),
@@ -323,8 +338,10 @@ export async function addFoodEntryAction(
     unit: input.unit,
     quantity: input.quantity,
     caloriesPerUnit: input.caloriesPerUnit,
-    proteinGrams: input.proteinGrams,
-    carbsGrams: input.carbsGrams,
+    proteinPerUnit: input.proteinPerUnit,
+    carbsPerUnit: input.carbsPerUnit,
+    proteinGrams: computeMacroTotal(input.unit, input.quantity, input.proteinPerUnit),
+    carbsGrams: computeMacroTotal(input.unit, input.quantity, input.carbsPerUnit),
     totalCalories: computeFoodTotal(input.unit, input.quantity, input.caloriesPerUnit),
     createdAt: now,
     updatedAt: now,
@@ -335,7 +352,12 @@ export async function addFoodEntryAction(
     userId,
     "food",
     name,
-    { unit: input.unit, caloriesPerUnit: input.caloriesPerUnit },
+    {
+      unit: input.unit,
+      caloriesPerUnit: input.caloriesPerUnit,
+      proteinPerUnit: input.proteinPerUnit,
+      carbsPerUnit: input.carbsPerUnit,
+    },
     true
   );
 
@@ -416,10 +438,16 @@ export async function updateFoodEntryAction(
   };
   const unsetFields: Record<string, ""> = {};
 
-  if (input.proteinGrams != null) setFields.proteinGrams = input.proteinGrams;
+  if (input.proteinPerUnit != null) setFields.proteinPerUnit = input.proteinPerUnit;
+  else unsetFields.proteinPerUnit = "";
+
+  if (input.carbsPerUnit != null) setFields.carbsPerUnit = input.carbsPerUnit;
+  else unsetFields.carbsPerUnit = "";
+
+  if (input.proteinPerUnit != null) setFields.proteinGrams = computeMacroTotal(input.unit, input.quantity, input.proteinPerUnit);
   else unsetFields.proteinGrams = "";
 
-  if (input.carbsGrams != null) setFields.carbsGrams = input.carbsGrams;
+  if (input.carbsPerUnit != null) setFields.carbsGrams = computeMacroTotal(input.unit, input.quantity, input.carbsPerUnit);
   else unsetFields.carbsGrams = "";
 
   const updated = await col.findOneAndUpdate(
@@ -437,7 +465,12 @@ export async function updateFoodEntryAction(
     userId,
     "food",
     name,
-    { unit: input.unit, caloriesPerUnit: input.caloriesPerUnit },
+    {
+      unit: input.unit,
+      caloriesPerUnit: input.caloriesPerUnit,
+      proteinPerUnit: input.proteinPerUnit,
+      carbsPerUnit: input.carbsPerUnit,
+    },
     false
   );
 

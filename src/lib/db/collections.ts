@@ -428,6 +428,8 @@ export function serializeCalorieEntry(e: DbCalorieEntry): CalorieEntry {
     unit: e.unit,
     quantity: e.quantity,
     caloriesPerUnit: e.caloriesPerUnit,
+    proteinPerUnit: e.proteinPerUnit,
+    carbsPerUnit: e.carbsPerUnit,
     proteinGrams: e.proteinGrams,
     carbsGrams: e.carbsGrams,
     totalCalories: e.totalCalories,
@@ -443,6 +445,8 @@ export function serializeCalorieLibraryItem(i: DbCalorieLibraryItem): CalorieLib
     nameKey: i.nameKey,
     unit: i.unit,
     caloriesPerUnit: i.caloriesPerUnit,
+    proteinPerUnit: i.proteinPerUnit,
+    carbsPerUnit: i.carbsPerUnit,
     lastCaloriesBurned: i.lastCaloriesBurned,
     timesLogged: i.timesLogged,
   };

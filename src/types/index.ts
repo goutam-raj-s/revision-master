@@ -544,9 +544,13 @@ export interface DbCalorieEntry {
   quantity?: number;
   /** Food only: kcal per 100 g or per piece. */
   caloriesPerUnit?: number;
-  /** Food only: total protein grams for the logged portion. */
+  /** Food only: protein grams per 100 g or per piece. */
+  proteinPerUnit?: number;
+  /** Food only: carbohydrate grams per 100 g or per piece. */
+  carbsPerUnit?: number;
+  /** Food only: total protein grams for the eaten quantity. */
   proteinGrams?: number;
-  /** Food only: total carbohydrate grams for the logged portion. */
+  /** Food only: total carbohydrate grams for the eaten quantity. */
   carbsGrams?: number;
   /** Food: kcal consumed. Exercise: kcal burned. Always positive. */
   totalCalories: number;
@@ -563,6 +567,8 @@ export interface DbCalorieLibraryItem {
   name: string;
   unit?: FoodUnit;
   caloriesPerUnit?: number;
+  proteinPerUnit?: number;
+  carbsPerUnit?: number;
   /** Exercise: last logged kcal burned, used as autofill default. */
   lastCaloriesBurned?: number;
   timesLogged: number;
@@ -588,6 +594,8 @@ export interface CalorieEntry {
   unit?: FoodUnit;
   quantity?: number;
   caloriesPerUnit?: number;
+  proteinPerUnit?: number;
+  carbsPerUnit?: number;
   proteinGrams?: number;
   carbsGrams?: number;
   totalCalories: number;
@@ -601,6 +609,8 @@ export interface CalorieLibraryItem {
   nameKey: string;
   unit?: FoodUnit;
   caloriesPerUnit?: number;
+  proteinPerUnit?: number;
+  carbsPerUnit?: number;
   lastCaloriesBurned?: number;
   timesLogged: number;
 }
