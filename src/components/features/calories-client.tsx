@@ -190,6 +190,8 @@ function DayDetailsModal({
   todayKey,
   onOpenChange,
   onLogDay,
+  onEditEntry,
+  onDeleteEntry,
 }: {
   open: boolean;
   dayKey: string;
@@ -199,6 +201,8 @@ function DayDetailsModal({
   todayKey: string;
   onOpenChange: (open: boolean) => void;
   onLogDay: () => void;
+  onEditEntry: (entry: CalorieEntry) => void;
+  onDeleteEntry: (entry: CalorieEntry) => void;
 }) {
   const foods = entries.filter((entry) => entry.kind === "food");
   const exercises = entries.filter((entry) => entry.kind === "exercise");
@@ -278,8 +282,26 @@ function DayDetailsModal({
                                 : `${entry.quantity} g · ${fmt(entry.caloriesPerUnit ?? 0)} kcal/100 g`}
                             </div>
                           </div>
-                          <div className="shrink-0 text-right font-mono text-sm font-semibold text-forest-slate">
-                            {fmt(entry.totalCalories)}
+                          <div className="flex shrink-0 items-start gap-1">
+                            <div className="px-1 text-right font-mono text-sm font-semibold text-forest-slate">
+                              {fmt(entry.totalCalories)}
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => onEditEntry(entry)}
+                              className="rounded-lg p-1.5 text-mossy-gray transition-colors hover:bg-surface hover:text-forest-slate"
+                              aria-label={`Edit ${entry.name}`}
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => onDeleteEntry(entry)}
+                              className="rounded-lg p-1.5 text-mossy-gray transition-colors hover:bg-destructive/10 hover:text-destructive"
+                              aria-label={`Delete ${entry.name}`}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
                           </div>
                         </div>
                         <div className="mt-2 flex flex-wrap gap-1.5 text-[11px]">
@@ -307,8 +329,26 @@ function DayDetailsModal({
                     exercises.map((entry) => (
                       <div key={entry.id} className="flex items-center justify-between gap-3 rounded-xl border border-border bg-canvas px-3 py-2.5">
                         <div className="min-w-0 truncate text-sm font-medium text-forest-slate">{entry.name}</div>
-                        <div className="shrink-0 font-mono text-sm font-semibold text-state-today">
-                          -{fmt(entry.totalCalories)}
+                        <div className="flex shrink-0 items-center gap-1">
+                          <div className="px-1 font-mono text-sm font-semibold text-state-today">
+                            -{fmt(entry.totalCalories)}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => onEditEntry(entry)}
+                            className="rounded-lg p-1.5 text-mossy-gray transition-colors hover:bg-surface hover:text-forest-slate"
+                            aria-label={`Edit ${entry.name}`}
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => onDeleteEntry(entry)}
+                            className="rounded-lg p-1.5 text-mossy-gray transition-colors hover:bg-destructive/10 hover:text-destructive"
+                            aria-label={`Delete ${entry.name}`}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
                         </div>
                       </div>
                     ))
@@ -664,6 +704,13 @@ export function CaloriesClient() {
           ? prev.map((x) => (x.id === entry.id ? entry : x))
           : [...prev, entry]
       );
+      if (detailsOpen && detailsDay === entry.dayKey) {
+        setDetailsEntries((prev) =>
+          foodForm.editingId
+            ? prev.map((x) => (x.id === entry.id ? entry : x))
+            : [...prev, entry]
+        );
+      }
       mergeLibraryItem(libraryItem);
       setFoodForm((f) => ({ ...EMPTY_FOOD_FORM, unit: f.unit }));
       refreshSummaries();
@@ -735,6 +782,11 @@ export function CaloriesClient() {
       setEntries((prev) =>
         exForm.editingId ? prev.map((x) => (x.id === entry.id ? entry : x)) : [...prev, entry]
       );
+      if (detailsOpen && detailsDay === entry.dayKey) {
+        setDetailsEntries((prev) =>
+          exForm.editingId ? prev.map((x) => (x.id === entry.id ? entry : x)) : [...prev, entry]
+        );
+      }
       mergeLibraryItem(libraryItem);
       setExForm(EMPTY_EXERCISE_FORM);
       refreshSummaries();
@@ -752,16 +804,32 @@ export function CaloriesClient() {
   // ── Shared ────────────────────────────────────────────────────────────────
 
   async function deleteEntry(entry: CalorieEntry) {
-    setEntries((prev) => prev.filter((x) => x.id !== entry.id));
+    const wasInSelectedDay = entry.dayKey === selectedDay;
+    const wasInDetailsDay = detailsOpen && entry.dayKey === detailsDay;
+    if (wasInSelectedDay) setEntries((prev) => prev.filter((x) => x.id !== entry.id));
+    if (wasInDetailsDay) setDetailsEntries((prev) => prev.filter((x) => x.id !== entry.id));
     if (foodForm.editingId === entry.id) cancelFoodEdit();
     if (exForm.editingId === entry.id) cancelExerciseEdit();
     const res = await deleteCalorieEntryAction(entry.id);
     if (res.success) {
       refreshSummaries();
     } else {
-      setEntries((prev) => [...prev, entry]); // restore on failure
+      if (wasInSelectedDay) setEntries((prev) => [...prev, entry]); // restore on failure
+      if (wasInDetailsDay) setDetailsEntries((prev) => [...prev, entry]);
       toast(res.error ?? "Could not delete entry.", { variant: "error" });
     }
+  }
+
+  async function editEntryFromDetails(entry: CalorieEntry) {
+    if (entry.dayKey !== selectedDay) {
+      await selectDay(entry.dayKey);
+    }
+    if (entry.kind === "food") {
+      startFoodEdit(entry);
+    } else {
+      startExerciseEdit(entry);
+    }
+    setDetailsOpen(false);
   }
 
   async function openDayDetails(dayKey: string) {
@@ -885,6 +953,12 @@ export function CaloriesClient() {
         onLogDay={() => {
           void selectDay(detailsDay);
           setDetailsOpen(false);
+        }}
+        onEditEntry={(entry) => {
+          void editEntryFromDetails(entry);
+        }}
+        onDeleteEntry={(entry) => {
+          void deleteEntry(entry);
         }}
       />
 
