@@ -100,6 +100,12 @@ function formatShort(dayKey: string): string {
   });
 }
 
+function formatRelativeDayLabel(dayKey: string, todayKey: string): string {
+  if (dayKey === todayKey) return "Today";
+  if (dayKey === shiftDay(todayKey, -1)) return "Yesterday";
+  return formatDayLabel(dayKey);
+}
+
 function formatMonth(monthKey: string): string {
   return new Date(`${monthKey}-15T12:00:00`).toLocaleDateString("en-US", {
     month: "long",
@@ -964,6 +970,13 @@ export function CaloriesClient() {
   }
 
   const isToday = selectedDay === todayKey;
+  const selectedDayLabel = formatRelativeDayLabel(selectedDay, todayKey);
+  const recentDietDays = [
+    { key: todayKey, label: "Today" },
+    { key: shiftDay(todayKey, -1), label: "Yesterday" },
+    { key: shiftDay(todayKey, -2), label: "2 days ago" },
+    { key: shiftDay(todayKey, -3), label: "3 days ago" },
+  ];
   const goalPct = goal != null && goal > 0 ? Math.min(100, Math.max(0, (net / goal) * 100)) : 0;
   const overGoal = goal != null && net > goal;
 
@@ -1186,12 +1199,47 @@ export function CaloriesClient() {
           <div className="mb-4 flex items-center justify-between">
             <h2 className="flex items-center gap-2 text-sm font-semibold text-forest-slate">
               <Utensils className="h-4 w-4 text-state-today" />
-              Food log
+              Food log for {selectedDayLabel}
             </h2>
             <div className="flex flex-wrap justify-end gap-2 font-mono text-xs tabular-nums text-mossy-gray">
               <span>{fmt(eaten)} kcal</span>
               <span>{fmtMacro(protein)}g protein</span>
               <span>{fmtMacro(carbs)}g carbs</span>
+            </div>
+          </div>
+
+          <div className="mb-3 flex flex-wrap items-center gap-2 rounded-xl border border-border bg-canvas/60 p-2.5">
+            <span className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-mossy-gray">
+              <CalendarDays className="h-3.5 w-3.5 text-state-today" />
+              Log diet for
+            </span>
+            <input
+              type="date"
+              value={selectedDay}
+              max={todayKey}
+              onChange={(e) => {
+                const v = e.target.value;
+                if (v && v <= todayKey) selectDay(v);
+              }}
+              className="h-8 rounded-lg border border-border bg-surface px-2 text-xs text-forest-slate outline-none focus-visible:ring-2 focus-visible:ring-state-today/50"
+              aria-label="Food log date"
+            />
+            <div className="flex flex-wrap gap-1.5">
+              {recentDietDays.map((day) => (
+                <button
+                  key={day.key}
+                  type="button"
+                  onClick={() => selectDay(day.key)}
+                  className={cn(
+                    "rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors",
+                    selectedDay === day.key
+                      ? "border-state-today/30 bg-state-today/10 text-state-today"
+                      : "border-border bg-surface text-mossy-gray hover:border-state-today/30 hover:text-state-today"
+                  )}
+                >
+                  {day.label}
+                </button>
+              ))}
             </div>
           </div>
 
@@ -1308,7 +1356,7 @@ export function CaloriesClient() {
             <div className="flex flex-wrap items-center gap-2">
               <div className="flex min-w-[160px] flex-1 items-center gap-2 sm:flex-none">
                 <span className="shrink-0 text-[11px] font-semibold uppercase tracking-wide text-mossy-gray">
-                  Today I ate
+                  {selectedDayLabel} I ate
                 </span>
                 <Input
                   ref={quantityRef}
