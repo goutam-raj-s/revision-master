@@ -26,6 +26,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  prepareBrowserAudioTrack,
+  probeBrowserAudioTracks,
+  type BrowserAudioTrack,
+} from "@/lib/browser-video-audio";
 
 const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
 const SKIP_SECONDS = 10;
@@ -43,6 +48,10 @@ type DesktopAudioTrack = {
   streamIndex: number;
   label: string;
   default: boolean;
+};
+
+type WebMediaFile = {
+  inputName: string;
 };
 
 type DesktopOpenVideoResult =
@@ -139,6 +148,11 @@ function revokeBlobUrl(url: string | null) {
   if (url?.startsWith("blob:")) URL.revokeObjectURL(url);
 }
 
+function canLikelyPlayDirectly(file: File) {
+  const ext = file.name.split(".").pop()?.toLowerCase();
+  return ["mp4", "m4v", "webm", "ogg", "ogv"].includes(ext ?? "");
+}
+
 export function VideoPlayerClient() {
   const videoRef = React.useRef<HTMLVideoElement>(null);
   const containerRef = React.useRef<HTMLDivElement>(null);
@@ -151,6 +165,9 @@ export function VideoPlayerClient() {
   const [src, setSrc] = React.useState<string | null>(null);
   const [fileName, setFileName] = React.useState<string>("");
   const [desktopFileId, setDesktopFileId] = React.useState<string | null>(null);
+  const [webMediaFile, setWebMediaFile] = React.useState<WebMediaFile | null>(
+    null
+  );
   const [playing, setPlaying] = React.useState(false);
   const [currentTime, setCurrentTime] = React.useState(0);
   const [duration, setDuration] = React.useState(0);
@@ -170,6 +187,7 @@ export function VideoPlayerClient() {
     null
   );
   const [switchingAudioTrack, setSwitchingAudioTrack] = React.useState(false);
+  const [probingAudioTracks, setProbingAudioTracks] = React.useState(false);
   const [mediaError, setMediaError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
@@ -209,7 +227,7 @@ export function VideoPlayerClient() {
       setSelectedSubtitleTrack("off");
     }
 
-    if (desktopFileId) return;
+    if (desktopFileId || webMediaFile) return;
 
     const browserAudioTracks = video.audioTracks;
     const audioOptions: MediaTrackOption[] = [];
@@ -228,7 +246,7 @@ export function VideoPlayerClient() {
       }
     }
     setAudioTracks(audioOptions);
-  }, [desktopFileId, selectedAudioTrack, selectedSubtitleTrack]);
+  }, [desktopFileId, selectedAudioTrack, selectedSubtitleTrack, webMediaFile]);
 
   React.useEffect(() => {
     const video = videoRef.current as VideoWithAudioTracks | null;
@@ -317,6 +335,7 @@ export function VideoPlayerClient() {
     setAudioTracks([]);
     setSelectedAudioTrack(null);
     setSwitchingAudioTrack(false);
+    setProbingAudioTracks(false);
     setMediaError(null);
   };
 
@@ -381,17 +400,55 @@ export function VideoPlayerClient() {
   const openFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    mediaRequestRef.current += 1;
     revokeBlobUrl(src);
     subtitleUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
     subtitleUrlsRef.current = [];
     const url = URL.createObjectURL(file);
     setSrc(url);
     setDesktopFileId(null);
+    setWebMediaFile(null);
     setFileName(file.name);
     resetVideoState();
+    void probeWebAudio(file, url);
     // auto-play after a tick so the video element picks up the new src
     setTimeout(() => videoRef.current?.play(), 100);
+  };
+
+  const probeWebAudio = async (file: File, currentUrl: string) => {
+    const requestId = mediaRequestRef.current;
+    setProbingAudioTracks(true);
+    setMediaError("Checking embedded audio tracks...");
+
+    try {
+      const result = await probeBrowserAudioTracks(file);
+      if (requestId !== mediaRequestRef.current) return;
+
+      const tracks = result.audioTracks.map((track) => ({
+        id: track.id,
+        index: track.streamIndex,
+        label: track.label,
+      }));
+      setWebMediaFile({ inputName: result.inputName });
+      setAudioTracks(tracks);
+      setSelectedAudioTrack(
+        result.audioTracks.find((track) => track.default)?.id ??
+          result.audioTracks[0]?.id ??
+          null
+      );
+      setMediaError(null);
+      if (tracks.length === 1 && !canLikelyPlayDirectly(file)) {
+        await switchWebAudioTrack(result.inputName, result.audioTracks[0], currentUrl);
+      }
+    } catch (error) {
+      if (requestId !== mediaRequestRef.current) return;
+      setMediaError(
+        error instanceof Error
+          ? error.message
+          : "Could not inspect audio tracks for this video."
+      );
+    } finally {
+      if (requestId === mediaRequestRef.current) setProbingAudioTracks(false);
+    }
   };
 
   function togglePlay() {
@@ -528,6 +585,19 @@ export function VideoPlayerClient() {
       return;
     }
 
+    if (webMediaFile) {
+      const track = audioTracks.find((item) => item.id === id);
+      if (!track) return;
+      await switchWebAudioTrack(webMediaFile.inputName, {
+        id: track.id,
+        streamIndex: track.index,
+        label: track.label,
+        default: false,
+      });
+      setSelectedAudioTrack(id);
+      return;
+    }
+
     const v = videoRef.current as VideoWithAudioTracks | null;
     const tracks = v?.audioTracks;
     if (!tracks) return;
@@ -538,6 +608,49 @@ export function VideoPlayerClient() {
     }
     setSelectedAudioTrack(id);
   };
+
+  async function switchWebAudioTrack(
+    inputName: string,
+    track: BrowserAudioTrack,
+    sourceToReplace = src
+  ) {
+    const requestId = mediaRequestRef.current;
+    const v = videoRef.current;
+    const resumeAt = v?.currentTime ?? 0;
+    const shouldResume = !!v && !v.paused;
+
+    setSwitchingAudioTrack(true);
+    setMediaError("Preparing selected audio track in your browser...");
+    try {
+      const videoUrl = await prepareBrowserAudioTrack(inputName, track.streamIndex);
+      if (requestId !== mediaRequestRef.current) {
+        revokeBlobUrl(videoUrl);
+        return;
+      }
+
+      if (sourceToReplace !== videoUrl) revokeBlobUrl(sourceToReplace);
+      setSrc(videoUrl);
+      setSelectedAudioTrack(track.id);
+      setTimeout(() => {
+        const video = videoRef.current;
+        if (!video) return;
+        video.currentTime = resumeAt;
+        if (shouldResume) void video.play();
+      }, 100);
+      setMediaError(null);
+    } catch (error) {
+      if (requestId !== mediaRequestRef.current) return;
+      setMediaError(
+        error instanceof Error
+          ? error.message
+          : "Could not prepare that audio track."
+      );
+    } finally {
+      if (requestId === mediaRequestRef.current) {
+        setSwitchingAudioTrack(false);
+      }
+    }
+  }
 
   const onProgress = () => {
     const v = videoRef.current;
@@ -920,7 +1033,9 @@ export function VideoPlayerClient() {
       {src && (
         <div className="space-y-1 text-center text-xs">
           <p className="text-muted-foreground">
-            {switchingAudioTrack
+            {probingAudioTracks
+              ? "Checking embedded audio tracks..."
+              : switchingAudioTrack
               ? "Switching audio track..."
               : "Space / K — play/pause · ← → — skip 10s · ↑ ↓ — volume · M — mute · F — fullscreen"}
           </p>
