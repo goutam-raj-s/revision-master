@@ -9,14 +9,13 @@ import {
   dialog,
   ipcMain,
   protocol,
-  net,
 } from "electron";
 import * as path from "path";
 import * as fs from "fs";
 import * as os from "os";
 import * as crypto from "crypto";
 import { spawn } from "child_process";
-import { pathToFileURL } from "url";
+import { Readable } from "stream";
 import { resolveEnv, appUrl, allowedNavigationHosts } from "./config";
 import { initAutoUpdate } from "./updater";
 import ffmpegPath from "ffmpeg-static";
@@ -44,6 +43,7 @@ protocol.registerSchemesAsPrivileged([
       stream: true,
       supportFetchAPI: true,
       corsEnabled: true,
+      bypassCSP: true,
     },
   },
 ]);
@@ -125,6 +125,23 @@ function mediaUrlFor(filePath: string) {
   const id = crypto.randomUUID();
   mediaFiles.set(id, filePath);
   return `${MEDIA_PROTOCOL}://${id}/${encodeURIComponent(path.basename(filePath))}`;
+}
+
+function contentTypeFor(filePath: string) {
+  switch (path.extname(filePath).toLowerCase()) {
+    case ".mp4":
+    case ".m4v":
+      return "video/mp4";
+    case ".webm":
+      return "video/webm";
+    case ".ogg":
+    case ".ogv":
+      return "video/ogg";
+    case ".mov":
+      return "video/quicktime";
+    default:
+      return "application/octet-stream";
+  }
 }
 
 function sourceIdFor(filePath: string) {
@@ -316,7 +333,40 @@ function registerMediaHandlers() {
     if (!filePath) {
       return new Response("Media not found", { status: 404 });
     }
-    return net.fetch(pathToFileURL(filePath).toString());
+
+    const stat = fs.statSync(filePath);
+    const range = request.headers.get("range");
+    const headers = new Headers({
+      "Accept-Ranges": "bytes",
+      "Content-Type": contentTypeFor(filePath),
+    });
+
+    if (range) {
+      const match = range.match(/bytes=(\d+)-(\d*)/);
+      if (match) {
+        const start = Number(match[1]);
+        const end = match[2] ? Number(match[2]) : stat.size - 1;
+        if (start >= stat.size || end >= stat.size || start > end) {
+          return new Response(null, {
+            status: 416,
+            headers: { "Content-Range": `bytes */${stat.size}` },
+          });
+        }
+
+        headers.set("Content-Length", String(end - start + 1));
+        headers.set("Content-Range", `bytes ${start}-${end}/${stat.size}`);
+        return new Response(
+          Readable.toWeb(fs.createReadStream(filePath, { start, end })) as BodyInit,
+          { status: 206, headers }
+        );
+      }
+    }
+
+    headers.set("Content-Length", String(stat.size));
+    return new Response(
+      Readable.toWeb(fs.createReadStream(filePath)) as BodyInit,
+      { status: 200, headers }
+    );
   });
 
   ipcMain.handle("desktop-media:open-video", async (event) => {
