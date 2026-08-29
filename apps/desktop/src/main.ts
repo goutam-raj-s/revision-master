@@ -7,19 +7,46 @@ import {
   session,
   nativeImage,
   dialog,
+  ipcMain,
+  protocol,
+  net,
 } from "electron";
 import * as path from "path";
 import * as fs from "fs";
+import * as os from "os";
+import * as crypto from "crypto";
+import { spawn } from "child_process";
+import { pathToFileURL } from "url";
 import { resolveEnv, appUrl, allowedNavigationHosts } from "./config";
 import { initAutoUpdate } from "./updater";
+import ffmpegPath from "ffmpeg-static";
+import ffprobeStatic from "ffprobe-static";
 
 const env = resolveEnv(process.argv);
 const targetUrl = appUrl(env);
 const allowedHosts = allowedNavigationHosts(env);
+const MEDIA_PROTOCOL = "lostbae-media";
 
 let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
 let isQuitting = false;
+const mediaFiles = new Map<string, string>();
+const sourceFiles = new Map<string, string>();
+const tempFilesBySource = new Map<string, string>();
+const mediaTempDir = path.join(os.tmpdir(), "lostbae-media");
+
+protocol.registerSchemesAsPrivileged([
+  {
+    scheme: MEDIA_PROTOCOL,
+    privileges: {
+      standard: true,
+      secure: true,
+      stream: true,
+      supportFetchAPI: true,
+      corsEnabled: true,
+    },
+  },
+]);
 
 // --- single instance lock ---
 const gotLock = app.requestSingleInstanceLock();
@@ -75,6 +102,281 @@ function iconImage() {
   return nativeImage.createFromPath(path.join(__dirname, "..", "build", "icon.png"));
 }
 
+type FfprobeStream = {
+  index: number;
+  codec_type?: string;
+  codec_name?: string;
+  channels?: number;
+  tags?: Record<string, string | undefined>;
+  disposition?: Record<string, number | undefined>;
+};
+
+type AudioTrackInfo = {
+  id: string;
+  streamIndex: number;
+  label: string;
+  language?: string;
+  codec?: string;
+  channels?: number;
+  default: boolean;
+};
+
+function mediaUrlFor(filePath: string) {
+  const id = crypto.randomUUID();
+  mediaFiles.set(id, filePath);
+  return `${MEDIA_PROTOCOL}://${id}/${encodeURIComponent(path.basename(filePath))}`;
+}
+
+function sourceIdFor(filePath: string) {
+  const id = crypto.randomUUID();
+  sourceFiles.set(id, filePath);
+  return id;
+}
+
+function cleanupTempFile(filePath: string | undefined) {
+  if (!filePath) return;
+  fs.rm(filePath, { force: true }, () => undefined);
+}
+
+function resetMediaSession() {
+  for (const filePath of tempFilesBySource.values()) cleanupTempFile(filePath);
+  mediaFiles.clear();
+  sourceFiles.clear();
+  tempFilesBySource.clear();
+}
+
+function runProcess(command: string, args: string[], timeoutMs: number, errorMessage: string) {
+  return new Promise<{ stdout: string; stderr: string }>((resolve, reject) => {
+    const child = spawn(command, args, { windowsHide: true });
+    let stdout = "";
+    let stderr = "";
+    let settled = false;
+    const timer = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      child.kill("SIGKILL");
+      reject(new Error(errorMessage));
+    }, timeoutMs);
+
+    child.stdout.on("data", (chunk) => {
+      stdout += String(chunk);
+    });
+    child.stderr.on("data", (chunk) => {
+      stderr += String(chunk);
+    });
+    child.on("error", () => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      reject(new Error(errorMessage));
+    });
+    child.on("close", (code) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      if (code === 0) {
+        resolve({ stdout, stderr });
+      } else {
+        console.error(stderr || `${command} exited with code ${code}`);
+        reject(new Error(errorMessage));
+      }
+    });
+  });
+}
+
+async function probeAudioTracks(filePath: string): Promise<AudioTrackInfo[]> {
+  const ffprobePath = ffprobeStatic.path || "ffprobe";
+  const { stdout } = await runProcess(
+    ffprobePath,
+    ["-v", "error", "-print_format", "json", "-show_streams", filePath],
+    20_000,
+    "Could not inspect audio tracks for this video."
+  );
+  const parsed = JSON.parse(stdout) as { streams?: FfprobeStream[] };
+  const streams = parsed.streams?.filter((stream) => stream.codec_type === "audio") ?? [];
+
+  return streams.map((stream, ordinal) => {
+    const language = stream.tags?.language;
+    const title = stream.tags?.title;
+    const codec = stream.codec_name?.toUpperCase();
+    const defaultTrack = stream.disposition?.default === 1;
+    const parts = [
+      title || `Audio ${ordinal + 1}`,
+      language?.toUpperCase(),
+      codec,
+      stream.channels ? `${stream.channels}ch` : undefined,
+      defaultTrack ? "Default" : undefined,
+    ].filter(Boolean);
+
+    return {
+      id: `desktop-audio-${stream.index}`,
+      streamIndex: stream.index,
+      label: parts.join(" · "),
+      language,
+      codec: stream.codec_name,
+      channels: stream.channels,
+      default: defaultTrack,
+    };
+  });
+}
+
+async function remuxWithAudioTrack(fileId: string, filePath: string, streamIndex: number) {
+  const command = ffmpegPath || "ffmpeg";
+  const safeBase = path.basename(filePath).replace(/[^a-z0-9._-]+/gi, "-");
+  fs.mkdirSync(mediaTempDir, { recursive: true });
+  const outputPath = path.join(
+    mediaTempDir,
+    `${crypto.randomUUID()}-${streamIndex}-${safeBase}.mp4`
+  );
+
+  const baseArgs = [
+    "-y",
+    "-i",
+    filePath,
+    "-map",
+    "0:v:0?",
+    "-map",
+    `0:${streamIndex}`,
+    "-sn",
+    "-c:v",
+    "copy",
+    "-movflags",
+    "faststart",
+  ];
+
+  try {
+    await runProcess(
+      command,
+      [...baseArgs, "-c:a", "copy", outputPath],
+      10 * 60_000,
+      "Could not prepare that audio track."
+    );
+  } catch {
+    try {
+      await runProcess(
+        command,
+        [...baseArgs, "-c:a", "aac", "-b:a", "192k", outputPath],
+        10 * 60_000,
+        "Could not prepare that audio track."
+      );
+    } catch {
+      await runProcess(
+        command,
+        [
+          "-y",
+          "-i",
+          filePath,
+          "-map",
+          "0:v:0?",
+          "-map",
+          `0:${streamIndex}`,
+          "-sn",
+          "-c:v",
+          "libx264",
+          "-preset",
+          "veryfast",
+          "-crf",
+          "22",
+          "-c:a",
+          "aac",
+          "-b:a",
+          "192k",
+          "-movflags",
+          "faststart",
+          outputPath,
+        ],
+        20 * 60_000,
+        "Could not prepare that audio track."
+      );
+    }
+  }
+
+  cleanupTempFile(tempFilesBySource.get(fileId));
+  tempFilesBySource.set(fileId, outputPath);
+  return mediaUrlFor(outputPath);
+}
+
+function shouldPrepareForBrowser(filePath: string) {
+  return ![".mp4", ".m4v", ".webm", ".ogg", ".ogv"].includes(
+    path.extname(filePath).toLowerCase()
+  );
+}
+
+function assertAllowedSender(event: Electron.IpcMainInvokeEvent) {
+  const url = event.senderFrame?.url;
+  if (!url || !isAllowedHost(url)) {
+    throw new Error("Desktop media is not available from this page.");
+  }
+}
+
+function registerMediaHandlers() {
+  protocol.handle(MEDIA_PROTOCOL, (request) => {
+    const id = new URL(request.url).hostname;
+    const filePath = mediaFiles.get(id);
+    if (!filePath) {
+      return new Response("Media not found", { status: 404 });
+    }
+    return net.fetch(pathToFileURL(filePath).toString());
+  });
+
+  ipcMain.handle("desktop-media:open-video", async (event) => {
+    assertAllowedSender(event);
+    const options: Electron.OpenDialogOptions = {
+      properties: ["openFile"],
+      filters: [
+        {
+          name: "Video",
+          extensions: ["mp4", "mkv", "webm", "avi", "mov", "wmv", "ogv", "3gp"],
+        },
+      ],
+    };
+    const result = mainWindow
+      ? await dialog.showOpenDialog(mainWindow, options)
+      : await dialog.showOpenDialog(options);
+
+    if (result.canceled || !result.filePaths[0]) {
+      return { canceled: true };
+    }
+
+    resetMediaSession();
+    const filePath = result.filePaths[0];
+    const fileId = sourceIdFor(filePath);
+    const audioTracks = await probeAudioTracks(filePath);
+    const defaultAudio = audioTracks.find((track) => track.default) ?? audioTracks[0];
+    const videoUrl =
+      shouldPrepareForBrowser(filePath) && defaultAudio
+        ? await remuxWithAudioTrack(fileId, filePath, defaultAudio.streamIndex)
+        : mediaUrlFor(filePath);
+
+    return {
+      canceled: false,
+      fileId,
+      fileName: path.basename(filePath),
+      videoUrl,
+      audioTracks,
+    };
+  });
+
+  ipcMain.handle(
+    "desktop-media:select-audio-track",
+    async (event, payload: { fileId?: string; streamIndex?: number }) => {
+      assertAllowedSender(event);
+      const filePath = payload.fileId ? sourceFiles.get(payload.fileId) : null;
+      if (!filePath || typeof payload.streamIndex !== "number") {
+        throw new Error("Missing media file or audio stream");
+      }
+
+      return {
+        videoUrl: await remuxWithAudioTrack(
+          payload.fileId!,
+          filePath,
+          payload.streamIndex
+        ),
+      };
+    }
+  );
+}
+
 function createWindow() {
   const state = loadWindowState();
   mainWindow = new BrowserWindow({
@@ -119,8 +421,12 @@ function createWindow() {
     }
   });
 
-  mainWindow.on("resized", () => mainWindow && saveWindowState(mainWindow));
-  mainWindow.on("moved", () => mainWindow && saveWindowState(mainWindow));
+  mainWindow.on("resized", () => {
+    if (mainWindow) saveWindowState(mainWindow);
+  });
+  mainWindow.on("moved", () => {
+    if (mainWindow) saveWindowState(mainWindow);
+  });
 
   // Tray "hide" keeps the app running; window close quits normally on Windows,
   // hides on macOS per platform convention.
@@ -129,7 +435,7 @@ function createWindow() {
       e.preventDefault();
       mainWindow?.hide();
     } else {
-      mainWindow && saveWindowState(mainWindow);
+      if (mainWindow) saveWindowState(mainWindow);
     }
   });
 
@@ -170,7 +476,11 @@ function createTray() {
   );
   tray.on("click", () => {
     if (mainWindow) {
-      mainWindow.isVisible() ? mainWindow.focus() : mainWindow.show();
+      if (mainWindow.isVisible()) {
+        mainWindow.focus();
+      } else {
+        mainWindow.show();
+      }
     }
   });
 }
@@ -298,6 +608,9 @@ function startBadgePolling() {
 }
 
 app.whenReady().then(async () => {
+  fs.rmSync(mediaTempDir, { recursive: true, force: true });
+  registerMediaHandlers();
+
   // Clipboard works for copy buttons / CollapsibleImage "Copy"; everything
   // else (camera, mic, geolocation…) is denied — the web app doesn't use them.
   session.defaultSession.setPermissionRequestHandler((_wc, permission, cb) => {
@@ -333,6 +646,7 @@ app.whenReady().then(async () => {
 
 app.on("before-quit", () => {
   isQuitting = true;
+  resetMediaSession();
 });
 
 app.on("window-all-closed", () => {

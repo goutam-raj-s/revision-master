@@ -38,6 +38,45 @@ type MediaTrackOption = {
   label: string;
 };
 
+type DesktopAudioTrack = {
+  id: string;
+  streamIndex: number;
+  label: string;
+  default: boolean;
+};
+
+type DesktopOpenVideoResult =
+  | { canceled: true }
+  | {
+      canceled: false;
+      fileId: string;
+      fileName: string;
+      videoUrl: string;
+      audioTracks: DesktopAudioTrack[];
+    };
+
+type DesktopSelectAudioResult = {
+  videoUrl: string;
+};
+
+type DesktopMediaApi = {
+  openVideo: () => Promise<DesktopOpenVideoResult>;
+  selectAudioTrack: (
+    fileId: string,
+    streamIndex: number
+  ) => Promise<DesktopSelectAudioResult>;
+};
+
+declare global {
+  interface Window {
+    __REVISON_DESKTOP__?: {
+      shell: string;
+      version: string;
+      media?: DesktopMediaApi;
+    };
+  }
+}
+
 type SubtitleFile = {
   id: string;
   label: string;
@@ -96,6 +135,10 @@ function srtToVtt(text: string) {
   return body.trimStart().startsWith("WEBVTT") ? body : `WEBVTT\n\n${body}`;
 }
 
+function revokeBlobUrl(url: string | null) {
+  if (url?.startsWith("blob:")) URL.revokeObjectURL(url);
+}
+
 export function VideoPlayerClient() {
   const videoRef = React.useRef<HTMLVideoElement>(null);
   const containerRef = React.useRef<HTMLDivElement>(null);
@@ -103,9 +146,11 @@ export function VideoPlayerClient() {
   const subtitleInputRef = React.useRef<HTMLInputElement>(null);
   const controlsTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const subtitleUrlsRef = React.useRef<string[]>([]);
+  const mediaRequestRef = React.useRef(0);
 
   const [src, setSrc] = React.useState<string | null>(null);
   const [fileName, setFileName] = React.useState<string>("");
+  const [desktopFileId, setDesktopFileId] = React.useState<string | null>(null);
   const [playing, setPlaying] = React.useState(false);
   const [currentTime, setCurrentTime] = React.useState(0);
   const [duration, setDuration] = React.useState(0);
@@ -124,10 +169,12 @@ export function VideoPlayerClient() {
   const [selectedAudioTrack, setSelectedAudioTrack] = React.useState<string | null>(
     null
   );
+  const [switchingAudioTrack, setSwitchingAudioTrack] = React.useState(false);
+  const [mediaError, setMediaError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     return () => {
-      if (src) URL.revokeObjectURL(src);
+      revokeBlobUrl(src);
       subtitleUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
     };
   }, [src]);
@@ -162,6 +209,8 @@ export function VideoPlayerClient() {
       setSelectedSubtitleTrack("off");
     }
 
+    if (desktopFileId) return;
+
     const browserAudioTracks = video.audioTracks;
     const audioOptions: MediaTrackOption[] = [];
     if (browserAudioTracks) {
@@ -179,7 +228,7 @@ export function VideoPlayerClient() {
       }
     }
     setAudioTracks(audioOptions);
-  }, [selectedAudioTrack, selectedSubtitleTrack]);
+  }, [desktopFileId, selectedAudioTrack, selectedSubtitleTrack]);
 
   React.useEffect(() => {
     const video = videoRef.current as VideoWithAudioTracks | null;
@@ -257,15 +306,8 @@ export function VideoPlayerClient() {
     }, 3000);
   }, [playing]);
 
-  const openFile = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (src) URL.revokeObjectURL(src);
-    subtitleUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
-    subtitleUrlsRef.current = [];
-    const url = URL.createObjectURL(file);
-    setSrc(url);
-    setFileName(file.name);
+  const resetVideoState = () => {
+    mediaRequestRef.current += 1;
     setPlaying(false);
     setCurrentTime(0);
     setDuration(0);
@@ -274,6 +316,80 @@ export function VideoPlayerClient() {
     setSubtitleFiles([]);
     setAudioTracks([]);
     setSelectedAudioTrack(null);
+    setSwitchingAudioTrack(false);
+    setMediaError(null);
+  };
+
+  const openDesktopVideo = async () => {
+    const media = window.__REVISON_DESKTOP__?.media;
+    if (!media) {
+      fileInputRef.current?.click();
+      return;
+    }
+
+    const requestId = mediaRequestRef.current + 1;
+    mediaRequestRef.current = requestId;
+    const result = await media.openVideo().catch((error) => {
+      setMediaError(
+        error instanceof Error ? error.message : "Could not open this video."
+      );
+      return null;
+    });
+    if (requestId !== mediaRequestRef.current) return;
+    if (!result) return;
+    if (result.canceled) return;
+
+    revokeBlobUrl(src);
+    subtitleUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
+    subtitleUrlsRef.current = [];
+
+    setSrc(result.videoUrl);
+    setDesktopFileId(result.fileId);
+    setFileName(result.fileName);
+    setPlaying(false);
+    setCurrentTime(0);
+    setDuration(0);
+    setSubtitleTracks([]);
+    setSelectedSubtitleTrack("off");
+    setSubtitleFiles([]);
+    setAudioTracks([]);
+    setSelectedAudioTrack(null);
+    setSwitchingAudioTrack(false);
+    setMediaError(null);
+    const tracks = result.audioTracks.map((track) => ({
+      id: track.id,
+      index: track.streamIndex,
+      label: track.label,
+    }));
+    setAudioTracks(tracks);
+    setSelectedAudioTrack(
+      result.audioTracks.find((track) => track.default)?.id ??
+        result.audioTracks[0]?.id ??
+        null
+    );
+    setTimeout(() => videoRef.current?.play(), 100);
+  };
+
+  const openVideo = () => {
+    if (window.__REVISON_DESKTOP__?.media) {
+      void openDesktopVideo();
+      return;
+    }
+    fileInputRef.current?.click();
+  };
+
+  const openFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    mediaRequestRef.current += 1;
+    revokeBlobUrl(src);
+    subtitleUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
+    subtitleUrlsRef.current = [];
+    const url = URL.createObjectURL(file);
+    setSrc(url);
+    setDesktopFileId(null);
+    setFileName(file.name);
+    resetVideoState();
     // auto-play after a tick so the video element picks up the new src
     setTimeout(() => videoRef.current?.play(), 100);
   };
@@ -372,7 +488,46 @@ export function VideoPlayerClient() {
     setSelectedSubtitleTrack(id);
   };
 
-  const selectAudioTrack = (id: string) => {
+  const selectAudioTrack = async (id: string) => {
+    const desktopTrack = audioTracks.find((track) => track.id === id);
+    const desktopMedia = window.__REVISON_DESKTOP__?.media;
+    if (desktopFileId && desktopTrack && desktopMedia) {
+      const requestId = mediaRequestRef.current;
+      const v = videoRef.current;
+      const resumeAt = v?.currentTime ?? 0;
+      const shouldResume = !!v && !v.paused;
+
+      setSwitchingAudioTrack(true);
+      try {
+        const result = await desktopMedia.selectAudioTrack(
+          desktopFileId,
+          desktopTrack.index
+        );
+        if (requestId !== mediaRequestRef.current) return;
+        setSrc(result.videoUrl);
+        setSelectedAudioTrack(id);
+        setTimeout(() => {
+          const video = videoRef.current;
+          if (!video) return;
+          video.currentTime = resumeAt;
+          if (shouldResume) void video.play();
+        }, 100);
+        setMediaError(null);
+      } catch (error) {
+        if (requestId !== mediaRequestRef.current) return;
+        setMediaError(
+          error instanceof Error
+            ? error.message
+            : "Could not switch to that audio track."
+        );
+      } finally {
+        if (requestId === mediaRequestRef.current) {
+          setSwitchingAudioTrack(false);
+        }
+      }
+      return;
+    }
+
     const v = videoRef.current as VideoWithAudioTracks | null;
     const tracks = v?.audioTracks;
     if (!tracks) return;
@@ -399,7 +554,7 @@ export function VideoPlayerClient() {
       {!src && (
         <div
           className="flex flex-col items-center justify-center gap-4 rounded-2xl border-2 border-dashed border-border bg-muted/30 py-20 text-center cursor-pointer hover:bg-muted/50 transition-colors"
-          onClick={() => fileInputRef.current?.click()}
+          onClick={openVideo}
         >
           <Upload className="h-12 w-12 text-muted-foreground" />
           <div>
@@ -455,6 +610,9 @@ export function VideoPlayerClient() {
               setMuted(v.muted);
             }}
             onEnded={() => setPlaying(false)}
+            onError={() =>
+              setMediaError("This video format could not be played here.")
+            }
           >
             {subtitleFiles.map((track) => (
               <track
@@ -667,7 +825,8 @@ export function VideoPlayerClient() {
                       {audioTracks.map((track) => (
                         <DropdownMenuItem
                           key={track.id}
-                          onClick={() => selectAudioTrack(track.id)}
+                          onClick={() => void selectAudioTrack(track.id)}
+                          disabled={switchingAudioTrack}
                         >
                           <Check
                             className={cn(
@@ -715,7 +874,7 @@ export function VideoPlayerClient() {
                   size="sm"
                   variant="ghost"
                   className="text-white hover:text-white hover:bg-white/20 h-8 px-2 text-xs shrink-0"
-                  onClick={() => fileInputRef.current?.click()}
+                  onClick={openVideo}
                   title="Open file"
                   type="button"
                 >
@@ -759,9 +918,14 @@ export function VideoPlayerClient() {
       )}
 
       {src && (
-        <p className="text-xs text-muted-foreground text-center">
-          Space / K — play/pause · ← → — skip 10s · ↑ ↓ — volume · M — mute · F — fullscreen
-        </p>
+        <div className="space-y-1 text-center text-xs">
+          <p className="text-muted-foreground">
+            {switchingAudioTrack
+              ? "Switching audio track..."
+              : "Space / K — play/pause · ← → — skip 10s · ↑ ↓ — volume · M — mute · F — fullscreen"}
+          </p>
+          {mediaError && <p className="text-destructive">{mediaError}</p>}
+        </div>
       )}
     </div>
   );
