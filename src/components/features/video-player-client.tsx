@@ -12,6 +12,9 @@ import {
   SkipForward,
   Upload,
   Settings2,
+  Captions,
+  Languages,
+  Check,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -19,6 +22,8 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
@@ -26,6 +31,38 @@ const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
 const SKIP_SECONDS = 10;
 const ACCEPTED_TYPES =
   "video/mp4,video/webm,video/ogg,video/x-matroska,video/avi,video/x-msvideo,video/quicktime,video/x-ms-wmv,.mkv,.mp4,.webm,.avi,.mov,.wmv,.ogv,.3gp";
+
+type MediaTrackOption = {
+  id: string;
+  index: number;
+  label: string;
+};
+
+type SubtitleFile = {
+  id: string;
+  label: string;
+  src: string;
+  language: string;
+};
+
+type AudioTrackLike = {
+  enabled: boolean;
+  id?: string;
+  label?: string;
+  language?: string;
+  kind?: string;
+};
+
+type AudioTrackListLike = {
+  length: number;
+  [index: number]: AudioTrackLike;
+  addEventListener?: (type: string, listener: EventListener) => void;
+  removeEventListener?: (type: string, listener: EventListener) => void;
+};
+
+type VideoWithAudioTracks = HTMLVideoElement & {
+  audioTracks?: AudioTrackListLike;
+};
 
 function formatTime(secs: number): string {
   if (!isFinite(secs)) return "0:00";
@@ -37,11 +74,35 @@ function formatTime(secs: number): string {
   return `${m}:${String(s).padStart(2, "0")}`;
 }
 
+function formatTrackLabel(
+  track: { label?: string; language?: string; kind?: string },
+  fallback: string
+) {
+  const parts = [track.label, track.language?.toUpperCase(), track.kind]
+    .filter(Boolean)
+    .map(String);
+  return parts.length ? parts.join(" · ") : fallback;
+}
+
+function srtToVtt(text: string) {
+  const body = text
+    .replace(/^\uFEFF/, "")
+    .replace(/\r+/g, "")
+    .replace(
+      /(\d{2}:\d{2}:\d{2}),(\d{3})\s+-->\s+(\d{2}:\d{2}:\d{2}),(\d{3})/g,
+      "$1.$2 --> $3.$4"
+    );
+
+  return body.trimStart().startsWith("WEBVTT") ? body : `WEBVTT\n\n${body}`;
+}
+
 export function VideoPlayerClient() {
   const videoRef = React.useRef<HTMLVideoElement>(null);
   const containerRef = React.useRef<HTMLDivElement>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const subtitleInputRef = React.useRef<HTMLInputElement>(null);
   const controlsTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const subtitleUrlsRef = React.useRef<string[]>([]);
 
   const [src, setSrc] = React.useState<string | null>(null);
   const [fileName, setFileName] = React.useState<string>("");
@@ -54,10 +115,20 @@ export function VideoPlayerClient() {
   const [fullscreen, setFullscreen] = React.useState(false);
   const [showControls, setShowControls] = React.useState(true);
   const [buffered, setBuffered] = React.useState(0);
+  const [subtitleTracks, setSubtitleTracks] = React.useState<
+    MediaTrackOption[]
+  >([]);
+  const [selectedSubtitleTrack, setSelectedSubtitleTrack] = React.useState("off");
+  const [subtitleFiles, setSubtitleFiles] = React.useState<SubtitleFile[]>([]);
+  const [audioTracks, setAudioTracks] = React.useState<MediaTrackOption[]>([]);
+  const [selectedAudioTrack, setSelectedAudioTrack] = React.useState<string | null>(
+    null
+  );
 
   React.useEffect(() => {
     return () => {
       if (src) URL.revokeObjectURL(src);
+      subtitleUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
     };
   }, [src]);
 
@@ -66,6 +137,75 @@ export function VideoPlayerClient() {
     document.addEventListener("fullscreenchange", onFsChange);
     return () => document.removeEventListener("fullscreenchange", onFsChange);
   }, []);
+
+  const syncMediaTracks = React.useCallback(() => {
+    const video = videoRef.current as VideoWithAudioTracks | null;
+    if (!video) return;
+
+    const textOptions: MediaTrackOption[] = [];
+    for (let i = 0; i < video.textTracks.length; i += 1) {
+      const track = video.textTracks[i];
+      if (track.kind === "metadata" || track.kind === "chapters") continue;
+      const id = `text-${i}`;
+      textOptions.push({
+        id,
+        index: i,
+        label: formatTrackLabel(track, `Subtitle ${textOptions.length + 1}`),
+      });
+      track.mode = selectedSubtitleTrack === id ? "showing" : "disabled";
+    }
+    setSubtitleTracks(textOptions);
+    if (
+      selectedSubtitleTrack !== "off" &&
+      !textOptions.some((track) => track.id === selectedSubtitleTrack)
+    ) {
+      setSelectedSubtitleTrack("off");
+    }
+
+    const browserAudioTracks = video.audioTracks;
+    const audioOptions: MediaTrackOption[] = [];
+    if (browserAudioTracks) {
+      for (let i = 0; i < browserAudioTracks.length; i += 1) {
+        const track = browserAudioTracks[i];
+        const id = `audio-${i}`;
+        audioOptions.push({
+          id,
+          index: i,
+          label: formatTrackLabel(track, `Audio ${i + 1}`),
+        });
+        if (track.enabled && selectedAudioTrack !== id) {
+          setSelectedAudioTrack(id);
+        }
+      }
+    }
+    setAudioTracks(audioOptions);
+  }, [selectedAudioTrack, selectedSubtitleTrack]);
+
+  React.useEffect(() => {
+    const video = videoRef.current as VideoWithAudioTracks | null;
+    if (!video || !src) return;
+
+    const textTracks = video.textTracks;
+    const audioTracksList = video.audioTracks;
+    const onTrackChange = () => syncMediaTracks();
+
+    syncMediaTracks();
+    textTracks.addEventListener("addtrack", onTrackChange);
+    textTracks.addEventListener("removetrack", onTrackChange);
+    textTracks.addEventListener("change", onTrackChange);
+    audioTracksList?.addEventListener?.("addtrack", onTrackChange);
+    audioTracksList?.addEventListener?.("removetrack", onTrackChange);
+    audioTracksList?.addEventListener?.("change", onTrackChange);
+
+    return () => {
+      textTracks.removeEventListener("addtrack", onTrackChange);
+      textTracks.removeEventListener("removetrack", onTrackChange);
+      textTracks.removeEventListener("change", onTrackChange);
+      audioTracksList?.removeEventListener?.("addtrack", onTrackChange);
+      audioTracksList?.removeEventListener?.("removetrack", onTrackChange);
+      audioTracksList?.removeEventListener?.("change", onTrackChange);
+    };
+  }, [src, syncMediaTracks]);
 
   React.useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -121,29 +261,40 @@ export function VideoPlayerClient() {
     const file = e.target.files?.[0];
     if (!file) return;
     if (src) URL.revokeObjectURL(src);
+    subtitleUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
+    subtitleUrlsRef.current = [];
     const url = URL.createObjectURL(file);
     setSrc(url);
     setFileName(file.name);
     setPlaying(false);
     setCurrentTime(0);
     setDuration(0);
+    setSubtitleTracks([]);
+    setSelectedSubtitleTrack("off");
+    setSubtitleFiles([]);
+    setAudioTracks([]);
+    setSelectedAudioTrack(null);
     // auto-play after a tick so the video element picks up the new src
     setTimeout(() => videoRef.current?.play(), 100);
   };
 
-  const togglePlay = () => {
+  function togglePlay() {
     const v = videoRef.current;
     if (!v) return;
-    v.paused ? v.play() : v.pause();
-  };
+    if (v.paused) {
+      v.play();
+    } else {
+      v.pause();
+    }
+  }
 
-  const skip = (secs: number) => {
+  function skip(secs: number) {
     const v = videoRef.current;
     if (!v) return;
     v.currentTime = Math.max(0, Math.min(duration, v.currentTime + secs));
-  };
+  }
 
-  const changeVolume = (val: number) => {
+  function changeVolume(val: number) {
     const v = videoRef.current;
     if (!v) return;
     v.volume = val;
@@ -152,16 +303,16 @@ export function VideoPlayerClient() {
       v.muted = false;
       setMuted(false);
     }
-  };
+  }
 
-  const toggleMute = () => {
+  function toggleMute() {
     const v = videoRef.current;
     if (!v) return;
     v.muted = !v.muted;
     setMuted(v.muted);
-  };
+  }
 
-  const toggleFullscreen = () => {
+  function toggleFullscreen() {
     const el = containerRef.current;
     if (!el) return;
     if (!document.fullscreenElement) {
@@ -169,7 +320,7 @@ export function VideoPlayerClient() {
     } else {
       document.exitFullscreen();
     }
-  };
+  }
 
   const seek = (e: React.ChangeEvent<HTMLInputElement>) => {
     const v = videoRef.current;
@@ -184,6 +335,53 @@ export function VideoPlayerClient() {
     if (!v) return;
     v.playbackRate = s;
     setSpeed(s);
+  };
+
+  const addSubtitleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const ext = file.name.split(".").pop()?.toLowerCase();
+    const sourceText = await file.text();
+    const text = ext === "srt" ? srtToVtt(sourceText) : sourceText;
+    const blob = new Blob([text], { type: "text/vtt" });
+    const url = URL.createObjectURL(blob);
+    const id = `${file.name}-${Date.now()}`;
+    subtitleUrlsRef.current.push(url);
+
+    setSubtitleFiles((tracks) => [
+      ...tracks,
+      {
+        id,
+        label: file.name.replace(/\.(srt|vtt)$/i, ""),
+        src: url,
+        language: "en",
+      },
+    ]);
+    e.target.value = "";
+    setTimeout(syncMediaTracks, 0);
+  };
+
+  const selectSubtitleTrack = (id: string) => {
+    const v = videoRef.current;
+    if (!v) return;
+
+    for (let i = 0; i < v.textTracks.length; i += 1) {
+      v.textTracks[i].mode = `text-${i}` === id ? "showing" : "disabled";
+    }
+    setSelectedSubtitleTrack(id);
+  };
+
+  const selectAudioTrack = (id: string) => {
+    const v = videoRef.current as VideoWithAudioTracks | null;
+    const tracks = v?.audioTracks;
+    if (!tracks) return;
+
+    for (let i = 0; i < tracks.length; i += 1) {
+      const track = tracks[i];
+      track.enabled = `audio-${i}` === id;
+    }
+    setSelectedAudioTrack(id);
   };
 
   const onProgress = () => {
@@ -248,6 +446,7 @@ export function VideoPlayerClient() {
             onDurationChange={() =>
               setDuration(videoRef.current?.duration ?? 0)
             }
+            onLoadedMetadata={syncMediaTracks}
             onProgress={onProgress}
             onVolumeChange={() => {
               const v = videoRef.current;
@@ -256,7 +455,17 @@ export function VideoPlayerClient() {
               setMuted(v.muted);
             }}
             onEnded={() => setPlaying(false)}
-          />
+          >
+            {subtitleFiles.map((track) => (
+              <track
+                key={track.id}
+                kind="subtitles"
+                label={track.label}
+                src={track.src}
+                srcLang={track.language}
+              />
+            ))}
+          </video>
 
           {/* Controls overlay */}
           <div
@@ -301,7 +510,7 @@ export function VideoPlayerClient() {
               </div>
 
               {/* Buttons row */}
-              <div className="flex items-center gap-1">
+              <div className="flex min-w-0 items-center gap-1 overflow-x-auto pb-1">
                 <Button
                   size="icon"
                   variant="ghost"
@@ -355,7 +564,10 @@ export function VideoPlayerClient() {
                 </Button>
 
                 {/* Volume slider */}
-                <div className="w-20 shrink-0" onClick={(e) => e.stopPropagation()}>
+                <div
+                  className="hidden w-20 shrink-0 sm:block"
+                  onClick={(e) => e.stopPropagation()}
+                >
                   <input
                     type="range"
                     min={0}
@@ -368,11 +580,109 @@ export function VideoPlayerClient() {
                 </div>
 
                 {/* Time */}
-                <span className="text-white text-xs tabular-nums ml-1 shrink-0">
+                <span className="ml-1 hidden shrink-0 text-xs tabular-nums text-white sm:inline">
                   {formatTime(currentTime)} / {formatTime(duration)}
                 </span>
 
                 <div className="flex-1" />
+
+                {/* Subtitles */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className={cn(
+                        "text-white hover:text-white hover:bg-white/20 h-8 w-8 shrink-0",
+                        selectedSubtitleTrack !== "off" && "bg-white/15"
+                      )}
+                      title="Subtitles"
+                      type="button"
+                    >
+                      <Captions className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent
+                    align="end"
+                    className="w-64 max-w-[calc(100vw-2rem)]"
+                  >
+                    <DropdownMenuLabel>Subtitles</DropdownMenuLabel>
+                    <DropdownMenuItem onClick={() => selectSubtitleTrack("off")}>
+                      <Check
+                        className={cn(
+                          "h-3.5 w-3.5 shrink-0",
+                          selectedSubtitleTrack === "off"
+                            ? "opacity-100"
+                            : "opacity-0"
+                        )}
+                      />
+                      Off
+                    </DropdownMenuItem>
+                    {subtitleTracks.length > 0 && <DropdownMenuSeparator />}
+                    {subtitleTracks.map((track) => (
+                      <DropdownMenuItem
+                        key={track.id}
+                        onClick={() => selectSubtitleTrack(track.id)}
+                      >
+                        <Check
+                          className={cn(
+                            "h-3.5 w-3.5 shrink-0",
+                            selectedSubtitleTrack === track.id
+                              ? "opacity-100"
+                              : "opacity-0"
+                          )}
+                        />
+                        <span className="min-w-0 truncate">{track.label}</span>
+                      </DropdownMenuItem>
+                    ))}
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onClick={() => subtitleInputRef.current?.click()}
+                    >
+                      <Upload className="h-3.5 w-3.5 shrink-0" />
+                      Add .srt / .vtt file
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
+                {/* Audio track */}
+                {audioTracks.length > 1 && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="text-white hover:text-white hover:bg-white/20 h-8 w-8 shrink-0"
+                        title="Audio track"
+                        type="button"
+                      >
+                        <Languages className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent
+                      align="end"
+                      className="w-64 max-w-[calc(100vw-2rem)]"
+                    >
+                      <DropdownMenuLabel>Audio track</DropdownMenuLabel>
+                      {audioTracks.map((track) => (
+                        <DropdownMenuItem
+                          key={track.id}
+                          onClick={() => selectAudioTrack(track.id)}
+                        >
+                          <Check
+                            className={cn(
+                              "h-3.5 w-3.5 shrink-0",
+                              selectedAudioTrack === track.id
+                                ? "opacity-100"
+                                : "opacity-0"
+                            )}
+                          />
+                          <span className="min-w-0 truncate">{track.label}</span>
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
 
                 {/* Speed */}
                 <DropdownMenu>
@@ -409,8 +719,8 @@ export function VideoPlayerClient() {
                   title="Open file"
                   type="button"
                 >
-                  <Upload className="h-3 w-3 mr-1" />
-                  Open
+                  <Upload className="h-3 w-3 sm:mr-1" />
+                  <span className="hidden sm:inline">Open</span>
                 </Button>
                 <input
                   ref={fileInputRef}
@@ -418,6 +728,13 @@ export function VideoPlayerClient() {
                   accept={ACCEPTED_TYPES}
                   className="hidden"
                   onChange={openFile}
+                />
+                <input
+                  ref={subtitleInputRef}
+                  type="file"
+                  accept=".srt,.vtt,text/vtt"
+                  className="hidden"
+                  onChange={addSubtitleFile}
                 />
 
                 {/* Fullscreen */}
