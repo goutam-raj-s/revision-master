@@ -36,6 +36,15 @@ export const PROVIDERS: Record<SocialProvider, ProviderConfig> = {
     pkce: true,
     label: "X (Twitter)",
   },
+  tumblr: {
+    clientId: process.env.TUMBLR_CLIENT_ID,
+    clientSecret: process.env.TUMBLR_CLIENT_SECRET,
+    authUrl: "https://www.tumblr.com/oauth2/authorize",
+    tokenUrl: "https://api.tumblr.com/v2/oauth2/token",
+    scope: "basic write offline_access",
+    pkce: false,
+    label: "Tumblr",
+  },
 };
 
 export function isProviderConfigured(provider: SocialProvider): boolean {
@@ -44,7 +53,7 @@ export function isProviderConfigured(provider: SocialProvider): boolean {
 }
 
 export function isSocialProvider(value: string): value is SocialProvider {
-  return value === "linkedin" || value === "twitter";
+  return value === "linkedin" || value === "twitter" || value === "tumblr";
 }
 
 // ─── Token exchange ─────────────────────────────────────────────────────────
@@ -115,6 +124,24 @@ async function refreshTwitterToken(refreshToken: string): Promise<TokenResponse>
   return res.json() as Promise<TokenResponse>;
 }
 
+async function refreshTumblrToken(refreshToken: string): Promise<TokenResponse> {
+  const cfg = PROVIDERS.tumblr;
+  const res = await fetch(cfg.tokenUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      grant_type: "refresh_token",
+      refresh_token: refreshToken,
+      client_id: cfg.clientId!,
+      client_secret: cfg.clientSecret!,
+    }),
+  });
+  if (!res.ok) {
+    throw new Error(`[tumblr] token refresh failed: ${await res.text()}`);
+  }
+  return res.json() as Promise<TokenResponse>;
+}
+
 // ─── Identity lookup (called right after token exchange) ────────────────────
 
 async function fetchLinkedInIdentity(accessToken: string) {
@@ -135,6 +162,32 @@ async function fetchTwitterIdentity(accessToken: string) {
   return { providerUserId: j.data.id, displayName: j.data.username ?? j.data.name };
 }
 
+async function fetchTumblrIdentity(accessToken: string) {
+  const res = await fetch("https://api.tumblr.com/v2/user/info", {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "User-Agent": "lostbae",
+    },
+  });
+  if (!res.ok) throw new Error(`[tumblr] user/info failed: ${await res.text()}`);
+  const j = (await res.json()) as {
+    response?: {
+      user?: {
+        name?: string;
+        blogs?: { name?: string; url?: string; primary?: boolean }[];
+      };
+    };
+  };
+  const blogs = j.response?.user?.blogs ?? [];
+  const primaryBlog = blogs.find((blog) => blog.primary) ?? blogs[0];
+  const blogIdentifier = primaryBlog?.url ?? primaryBlog?.name;
+  if (!blogIdentifier) throw new Error("Tumblr account does not have a blog available for posting.");
+  return {
+    providerUserId: blogIdentifier.replace(/^https?:\/\//, "").replace(/\/$/, ""),
+    displayName: primaryBlog?.name ?? j.response?.user?.name,
+  };
+}
+
 // ─── Persistence ────────────────────────────────────────────────────────────
 
 export async function storeConnection(
@@ -145,7 +198,9 @@ export async function storeConnection(
   const identity =
     provider === "linkedin"
       ? await fetchLinkedInIdentity(tokens.access_token)
-      : await fetchTwitterIdentity(tokens.access_token);
+      : provider === "twitter"
+        ? await fetchTwitterIdentity(tokens.access_token)
+        : await fetchTumblrIdentity(tokens.access_token);
 
   const col = await getSocialConnectionsCollection();
   const now = new Date();
@@ -184,7 +239,7 @@ export async function getConnection(
   return col.findOne({ userId: new ObjectId(userId), provider });
 }
 
-/** Returns a usable access token, transparently refreshing Twitter tokens. */
+/** Returns a usable access token, transparently refreshing providers with refresh tokens. */
 async function getValidAccessToken(conn: DbSocialConnection): Promise<string> {
   const stillValid =
     !conn.accessTokenExpiresAt ||
@@ -192,10 +247,11 @@ async function getValidAccessToken(conn: DbSocialConnection): Promise<string> {
 
   if (stillValid) return conn.accessToken;
 
-  // Only Twitter issues refresh tokens (offline.access). LinkedIn member
-  // tokens last ~60 days and must be re-consented when expired.
-  if (conn.provider === "twitter" && conn.refreshTokenEncrypted) {
-    const refreshed = await refreshTwitterToken(decrypt(conn.refreshTokenEncrypted));
+  if ((conn.provider === "twitter" || conn.provider === "tumblr") && conn.refreshTokenEncrypted) {
+    const refreshed =
+      conn.provider === "twitter"
+        ? await refreshTwitterToken(decrypt(conn.refreshTokenEncrypted))
+        : await refreshTumblrToken(decrypt(conn.refreshTokenEncrypted));
     const col = await getSocialConnectionsCollection();
     const expiresAt = refreshed.expires_in
       ? new Date(Date.now() + refreshed.expires_in * 1000)
@@ -417,6 +473,41 @@ async function publishToTwitter(
   return { providerPostId: id, url: twitterPostUrl(handle, id) };
 }
 
+async function publishToTumblr(
+  conn: DbSocialConnection,
+  text: string,
+  options: PublishOptions = {}
+): Promise<PublishResult> {
+  if (options.images?.length || options.imageDataUrl) {
+    throw new Error("Tumblr image publishing is not wired yet; publish text posts from lostbae for now.");
+  }
+  const accessToken = await getValidAccessToken(conn);
+  const blogIdentifier = conn.providerUserId;
+  const res = await fetch(`https://api.tumblr.com/v2/blog/${encodeURIComponent(blogIdentifier)}/posts`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+      "User-Agent": "lostbae",
+    },
+    body: JSON.stringify({
+      content: [{ type: "text", text }],
+      state: "published",
+    }),
+  });
+  if (!res.ok) {
+    throw new Error(`Tumblr publish failed: ${await readError(res)}`);
+  }
+  const payload = (await res.json()) as {
+    response?: { id_string?: string; id?: number; post_url?: string };
+  };
+  const id = payload.response?.id_string ?? String(payload.response?.id ?? "");
+  return {
+    providerPostId: id,
+    url: payload.response?.post_url ?? `https://${blogIdentifier}/post/${id}`,
+  };
+}
+
 export async function publish(
   conn: DbSocialConnection,
   text: string,
@@ -425,9 +516,9 @@ export async function publish(
   if (conn.provider === "twitter" && text.length > 280) {
     throw new Error(`X posts are limited to 280 characters (yours is ${text.length}).`);
   }
-  return conn.provider === "linkedin"
-    ? publishToLinkedIn(conn, text, options)
-    : publishToTwitter(conn, text, options);
+  if (conn.provider === "linkedin") return publishToLinkedIn(conn, text, options);
+  if (conn.provider === "twitter") return publishToTwitter(conn, text, options);
+  return publishToTumblr(conn, text, options);
 }
 
 function twitterPostUrl(handle: string | undefined, id: string): string {

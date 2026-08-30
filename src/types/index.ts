@@ -396,7 +396,7 @@ export interface DbStatShare {
   createdAt: Date;
 }
 
-export type PostPlatform = "linkedin" | "twitter" | "instagram" | "other";
+export type PostPlatform = "linkedin" | "twitter" | "tumblr" | "instagram" | "other";
 export type PostStatus = "draft" | "scheduled" | "published";
 
 export interface PostImageAttachment {
@@ -442,7 +442,7 @@ export interface PostDraft {
 }
 
 // ─── Social connections (direct publishing) ─────────────────────────────────
-export type SocialProvider = "linkedin" | "twitter";
+export type SocialProvider = "linkedin" | "twitter" | "tumblr";
 
 export interface DbSocialConnection {
   _id: ObjectId;

@@ -58,11 +58,16 @@ import type { LinkedInPostSummary, TwitterDmEventSummary, TwitterPostSummary } f
 const PLATFORMS: { id: PostPlatform; label: string; icon: typeof Linkedin; max?: number }[] = [
   { id: "linkedin", label: "LinkedIn", icon: Linkedin, max: 3000 },
   { id: "twitter", label: "X / Twitter", icon: Twitter, max: 280 },
+  { id: "tumblr", label: "Tumblr", icon: FileText },
   { id: "instagram", label: "Instagram", icon: Camera },
   { id: "other", label: "Other", icon: FileText },
 ];
 
-const DIRECT: Record<string, SocialProvider> = { linkedin: "linkedin", twitter: "twitter" };
+const DIRECT: Record<string, SocialProvider> = {
+  linkedin: "linkedin",
+  twitter: "twitter",
+  tumblr: "tumblr",
+};
 type LinkedInActivity = "posts" | "comments" | "reactions" | "profile";
 type TwitterActivity = "posts" | "replies" | "delete" | "tweets" | "dms";
 
@@ -97,6 +102,9 @@ function openToPost(platform: PostPlatform, body: string) {
   } else if (platform === "linkedin") {
     window.open("https://www.linkedin.com/feed/?shareActive=true", "_blank", "noopener");
     toast("Text copied - paste it into LinkedIn", { variant: "default" });
+  } else if (platform === "tumblr") {
+    window.open("https://www.tumblr.com/new/text", "_blank", "noopener");
+    toast("Text copied - paste it into Tumblr", { variant: "default" });
   } else {
     toast("Text copied to clipboard", { variant: "default" });
   }
@@ -179,7 +187,7 @@ export function PostsClient({
       />
 
       <Card className="p-3 shadow-card sm:p-4">
-        <div className="grid gap-2 sm:grid-cols-4">
+        <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
           {PLATFORMS.map((p) => {
             const Icon = p.icon;
             const provider = DIRECT[p.id];
@@ -1113,8 +1121,9 @@ function ConnectionsBar({
   const meta: Record<SocialProvider, { label: string; icon: typeof Linkedin }> = {
     linkedin: { label: "LinkedIn", icon: Linkedin },
     twitter: { label: "X (Twitter)", icon: Twitter },
+    tumblr: { label: "Tumblr", icon: FileText },
   };
-  const providers: SocialProvider[] = ["linkedin", "twitter"];
+  const providers: SocialProvider[] = ["linkedin", "twitter", "tumblr"];
 
   async function disconnect(p: SocialProvider) {
     const res = await disconnectSocialAction(p);

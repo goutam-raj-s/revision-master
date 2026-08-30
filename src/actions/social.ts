@@ -41,6 +41,7 @@ import type {
 const PLATFORM_TO_PROVIDER: Partial<Record<PostPlatform, SocialProvider>> = {
   linkedin: "linkedin",
   twitter: "twitter",
+  tumblr: "tumblr",
 };
 
 export async function getSocialConnectionsAction(): Promise<{

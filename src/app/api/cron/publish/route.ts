@@ -10,6 +10,7 @@ export const dynamic = "force-dynamic";
 const PLATFORM_TO_PROVIDER: Partial<Record<PostPlatform, SocialProvider>> = {
   linkedin: "linkedin",
   twitter: "twitter",
+  tumblr: "tumblr",
 };
 
 /**
