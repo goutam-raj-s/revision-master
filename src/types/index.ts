@@ -15,7 +15,7 @@ export interface DbUser {
   name: string;
   role: UserRole;
   geminiApiKeyEncrypted?: string;
-  provider?: "email" | "google" | "github" | "discord";
+  provider?: "email" | "google" | "github" | "discord" | "linkedin";
   providerAccountId?: string;
   emailReminders?: boolean;
   lastReminderSentAt?: Date;

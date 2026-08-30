@@ -3,7 +3,7 @@ import type { NextRequest } from "next/server";
 import { randomBytes } from "crypto";
 import { getOAuthAppUrl } from "@/lib/auth/oauth-url";
 
-const VALID_PROVIDERS = ["google", "github", "discord"] as const;
+const VALID_PROVIDERS = ["google", "github", "discord", "linkedin"] as const;
 type Provider = (typeof VALID_PROVIDERS)[number];
 
 export async function GET(
@@ -41,13 +41,20 @@ export async function GET(
     url.searchParams.set("scope", "read:user user:email");
     url.searchParams.set("state", state);
     authUrl = url.toString();
-  } else {
-    // discord
+  } else if (p === "discord") {
     const url = new URL("https://discord.com/api/oauth2/authorize");
     url.searchParams.set("client_id", process.env.DISCORD_CLIENT_ID!);
     url.searchParams.set("redirect_uri", redirectUri);
     url.searchParams.set("response_type", "code");
     url.searchParams.set("scope", "identify email");
+    url.searchParams.set("state", state);
+    authUrl = url.toString();
+  } else {
+    const url = new URL("https://www.linkedin.com/oauth/v2/authorization");
+    url.searchParams.set("client_id", process.env.LINKEDIN_CLIENT_ID!);
+    url.searchParams.set("redirect_uri", redirectUri);
+    url.searchParams.set("response_type", "code");
+    url.searchParams.set("scope", "openid profile email");
     url.searchParams.set("state", state);
     authUrl = url.toString();
   }

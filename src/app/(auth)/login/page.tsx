@@ -57,6 +57,15 @@ const OAUTH_PROVIDERS = [
       </svg>
     ),
   },
+  {
+    id: "linkedin",
+    label: "LinkedIn",
+    icon: (
+      <svg viewBox="0 0 24 24" className="h-4 w-4 fill-[#0A66C2]" aria-hidden="true">
+        <path d="M20.45 20.45h-3.56v-5.57c0-1.33-.02-3.04-1.85-3.04-1.85 0-2.13 1.45-2.13 2.95v5.66H9.35V9h3.42v1.56h.05c.48-.9 1.64-1.85 3.37-1.85 3.6 0 4.27 2.37 4.27 5.46v6.28zM5.34 7.43a2.06 2.06 0 1 1 0-4.12 2.06 2.06 0 0 1 0 4.12zM7.12 20.45H3.56V9h3.56v11.45zM22.23 0H1.77C.79 0 0 .77 0 1.72v20.56C0 23.23.79 24 1.77 24h20.46c.98 0 1.77-.77 1.77-1.72V1.72C24 .77 23.21 0 22.23 0z" />
+      </svg>
+    ),
+  },
 ] as const;
 
 function OAuthButtons() {
@@ -67,7 +76,7 @@ function OAuthButtons() {
         <span className="mx-3 text-xs text-mossy-gray bg-card px-1">or continue with</span>
         <div className="flex-1 border-t border-border/60" />
       </div>
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         {OAUTH_PROVIDERS.map((p) => (
           <a
             key={p.id}

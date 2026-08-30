@@ -11,7 +11,7 @@ const SECTIONS = [
     title: "Information We Collect",
     content: [
       "**Account information:** When you register, we collect your name, email address, and password (stored as a secure hash).",
-      "**OAuth data:** If you sign in via Google, GitHub, or Discord, we receive your name, email, and profile photo from that provider.",
+      "**OAuth data:** If you sign in via Google, GitHub, Discord, or LinkedIn, we receive your name, email, and profile photo from that provider when available.",
       "**Content you create:** Documents, flashcards, notes, and any other material you add to Lostbae.",
       "**Usage data:** Study session activity, review results, and feature interactions — used to power spaced-repetition scheduling.",
       "**Device data:** Browser type, operating system, and IP address for security and diagnostics.",

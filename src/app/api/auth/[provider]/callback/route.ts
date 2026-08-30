@@ -5,7 +5,7 @@ import { createSession } from "@/lib/auth/session";
 import { getOAuthAppUrl } from "@/lib/auth/oauth-url";
 import { getUsersCollection } from "@/lib/db/collections";
 
-const VALID_PROVIDERS = ["google", "github", "discord"] as const;
+const VALID_PROVIDERS = ["google", "github", "discord", "linkedin"] as const;
 type Provider = (typeof VALID_PROVIDERS)[number];
 
 interface OAuthProfile {
@@ -49,8 +49,7 @@ async function exchangeCodeForToken(
     });
     const data = await res.json();
     return data.access_token;
-  } else {
-    // discord
+  } else if (provider === "discord") {
     const res = await fetch("https://discord.com/api/oauth2/token", {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -58,6 +57,20 @@ async function exchangeCodeForToken(
         code,
         client_id: process.env.DISCORD_CLIENT_ID!,
         client_secret: process.env.DISCORD_CLIENT_SECRET!,
+        redirect_uri: redirectUri,
+        grant_type: "authorization_code",
+      }),
+    });
+    const data = await res.json();
+    return data.access_token;
+  } else {
+    const res = await fetch("https://www.linkedin.com/oauth/v2/accessToken", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        code,
+        client_id: process.env.LINKEDIN_CLIENT_ID!,
+        client_secret: process.env.LINKEDIN_CLIENT_SECRET!,
         redirect_uri: redirectUri,
         grant_type: "authorization_code",
       }),
@@ -91,13 +104,22 @@ async function fetchUserProfile(provider: Provider, accessToken: string): Promis
     }
 
     return { id: String(user.id), email, name: user.name ?? user.login };
-  } else {
-    // discord
+  } else if (provider === "discord") {
     const res = await fetch("https://discord.com/api/users/@me", {
       headers: { Authorization: `Bearer ${accessToken}` },
     });
     const data = await res.json();
     return { id: data.id, email: data.email, name: data.username };
+  } else {
+    const res = await fetch("https://api.linkedin.com/v2/userinfo", {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    const data = await res.json();
+    return {
+      id: data.sub,
+      email: data.email,
+      name: (data.name ?? [data.given_name, data.family_name].filter(Boolean).join(" ")) || "LinkedIn user",
+    };
   }
 }
 
@@ -183,9 +205,8 @@ export async function GET(
     return NextResponse.redirect(new URL("/login?error=oauth_failed", appUrl));
   }
 
-  await createSession(user._id.toString());
-
   const response = NextResponse.redirect(new URL("/dashboard", appUrl));
+  await createSession(user._id.toString(), response);
   response.cookies.set("oauth_state", "", { maxAge: 0, path: "/" });
   return response;
 }

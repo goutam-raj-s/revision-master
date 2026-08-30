@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import type { NextResponse } from "next/server";
 import { cache } from "react";
 import { ObjectId } from "mongodb";
 import { generateToken } from "@/lib/crypto";
@@ -7,8 +8,20 @@ import type { User } from "@/types";
 
 const SESSION_COOKIE = "rm_session";
 const SESSION_DURATION_DAYS = 30;
+const SESSION_DURATION_SECONDS = SESSION_DURATION_DAYS * 24 * 60 * 60;
 
-export async function createSession(userId: string): Promise<string> {
+function sessionCookieOptions(expiresAt: Date) {
+  return {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax" as const,
+    expires: expiresAt,
+    maxAge: SESSION_DURATION_SECONDS,
+    path: "/",
+  };
+}
+
+export async function createSession(userId: string, response?: NextResponse): Promise<string> {
   const token = generateToken();
   const expiresAt = new Date();
   expiresAt.setDate(expiresAt.getDate() + SESSION_DURATION_DAYS);
@@ -22,14 +35,13 @@ export async function createSession(userId: string): Promise<string> {
     createdAt: new Date(),
   });
 
-  const cookieStore = await cookies();
-  cookieStore.set(SESSION_COOKIE, token, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    expires: expiresAt,
-    path: "/",
-  });
+  const options = sessionCookieOptions(expiresAt);
+  if (response) {
+    response.cookies.set(SESSION_COOKIE, token, options);
+  } else {
+    const cookieStore = await cookies();
+    cookieStore.set(SESSION_COOKIE, token, options);
+  }
 
   return token;
 }
