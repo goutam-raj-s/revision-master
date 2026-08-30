@@ -161,6 +161,38 @@ async function requireLinkedInConnection(userId: string) {
   return conn;
 }
 
+async function listTrackedLinkedInPosts(userId: string): Promise<LinkedInPostSummary[]> {
+  const drafts = await getPostDraftsCollection();
+  const rows = await drafts
+    .find({
+      userId: new ObjectId(userId),
+      platform: "linkedin",
+      status: "published",
+      $or: [
+        { providerPostId: { $type: "string" } },
+        { publishedUrl: { $type: "string" } },
+      ],
+    })
+    .sort({ updatedAt: -1 })
+    .limit(50)
+    .toArray();
+
+  const posts: LinkedInPostSummary[] = [];
+  for (const post of rows) {
+    const id = post.providerPostId ?? normalizeLinkedInTarget(post.publishedUrl ?? "");
+    if (!id) continue;
+    posts.push({
+      id,
+      url: post.publishedUrl ?? `https://www.linkedin.com/feed/update/${encodeURIComponent(id)}`,
+      commentary: post.body,
+      publishedAt: post.updatedAt.getTime(),
+      lastModifiedAt: post.updatedAt.getTime(),
+      source: "lostbae",
+    });
+  }
+  return posts;
+}
+
 export async function createLinkedInCommentAction(
   target: string,
   text: string
@@ -185,10 +217,30 @@ export async function createLinkedInCommentAction(
 export async function listLinkedInPostsAction(): Promise<ActionResult<LinkedInPostSummary[]>> {
   const user = await requireAuth();
   try {
-    const posts = await listLinkedInPosts(await requireLinkedInConnection(user.id));
+    const [linkedInPosts, trackedPosts] = await Promise.all([
+      listLinkedInPosts(await requireLinkedInConnection(user.id)),
+      listTrackedLinkedInPosts(user.id),
+    ]);
+    const seen = new Set<string>();
+    const posts = [...linkedInPosts, ...trackedPosts].filter((post) => {
+      if (seen.has(post.id)) return false;
+      seen.add(post.id);
+      return true;
+    });
     return { success: true, data: posts };
   } catch (err) {
-    return { success: false, error: err instanceof Error ? err.message : "Could not load LinkedIn posts." };
+    const trackedPosts = await listTrackedLinkedInPosts(user.id);
+    if (trackedPosts.length > 0) {
+      return { success: true, data: trackedPosts };
+    }
+    const message = err instanceof Error ? err.message : "Could not load LinkedIn posts.";
+    if (message.includes("ACCESS_DENIED") || message.includes("403")) {
+      return {
+        success: false,
+        error: "LinkedIn did not grant this app permission to fetch your full post history. Posts published or tracked in lostbae will appear here after you create them.",
+      };
+    }
+    return { success: false, error: message };
   }
 }
 

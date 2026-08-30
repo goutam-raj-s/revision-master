@@ -552,9 +552,11 @@ function LinkedInPostTargetPicker({
   const [posts, setPosts] = React.useState<LinkedInPostSummary[]>([]);
   const [loading, setLoading] = React.useState(false);
   const [loaded, setLoaded] = React.useState(false);
+  const [loadError, setLoadError] = React.useState<string | null>(null);
 
   async function loadPosts() {
     setLoading(true);
+    setLoadError(null);
     const res = await listLinkedInPostsAction();
     setLoading(false);
     setLoaded(true);
@@ -562,6 +564,8 @@ function LinkedInPostTargetPicker({
       setPosts(res.data ?? []);
       if (!res.data?.length) toast("No recent LinkedIn posts found");
     } else {
+      setPosts([]);
+      setLoadError(res.error ?? "Could not load LinkedIn posts");
       toast(res.error ?? "Could not load LinkedIn posts", { variant: "error" });
     }
   }
@@ -601,6 +605,7 @@ function LinkedInPostTargetPicker({
                 {post.publishedAt || post.lastModifiedAt
                   ? new Date(post.publishedAt ?? post.lastModifiedAt ?? 0).toLocaleString()
                   : "Date unavailable"}
+                {post.source === "lostbae" ? " - tracked in lostbae" : ""}
               </span>
             </button>
           ))}
@@ -608,7 +613,7 @@ function LinkedInPostTargetPicker({
       )}
       {loaded && posts.length === 0 && (
         <p className="rounded-lg border border-dashed border-border bg-surface px-3 py-2 text-xs text-mossy-gray">
-          No authored LinkedIn posts came back from the API. You can still paste a post URL or URN manually.
+          {loadError ?? "No authored LinkedIn posts came back. Posts published or marked posted in lostbae will appear here."}
         </p>
       )}
     </div>

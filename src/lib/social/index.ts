@@ -248,6 +248,7 @@ export interface LinkedInPostSummary {
   commentary?: string;
   publishedAt?: number;
   lastModifiedAt?: number;
+  source?: "linkedin" | "lostbae";
 }
 
 function linkedInRestHeaders(accessToken: string, json = false): HeadersInit {
@@ -431,6 +432,7 @@ export async function listLinkedInPosts(
       commentary: post.commentary,
       publishedAt: post.publishedAt,
       lastModifiedAt: post.lastModifiedAt,
+      source: "linkedin",
     }));
 }
 
