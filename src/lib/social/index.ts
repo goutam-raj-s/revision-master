@@ -31,7 +31,8 @@ export const PROVIDERS: Record<SocialProvider, ProviderConfig> = {
     clientSecret: process.env.TWITTER_CLIENT_SECRET,
     authUrl: "https://twitter.com/i/oauth2/authorize",
     tokenUrl: "https://api.twitter.com/2/oauth2/token",
-    scope: "tweet.read tweet.write users.read offline.access",
+    scope:
+      "tweet.read tweet.write tweet.moderate.write users.read follows.read follows.write offline.access space.read mute.read mute.write like.read like.write list.read list.write block.read block.write bookmark.read bookmark.write dm.read dm.write media.write",
     pkce: true,
     label: "X (Twitter)",
   },
