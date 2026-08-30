@@ -22,7 +22,10 @@ export async function GET(
     return new NextResponse("App URL could not be determined", { status: 500 });
   }
   const state = randomBytes(16).toString("hex");
-  const redirectUri = `${appUrl}/api/auth/${p}/callback`;
+  const redirectUri =
+    p === "linkedin" && process.env.LINKEDIN_AUTH_REDIRECT_URI
+      ? process.env.LINKEDIN_AUTH_REDIRECT_URI
+      : `${appUrl}/api/auth/${p}/callback`;
 
   let authUrl: string;
 

@@ -155,7 +155,10 @@ export async function GET(
     return resp;
   }
 
-  const redirectUri = `${appUrl}/api/auth/${p}/callback`;
+  const redirectUri =
+    p === "linkedin" && process.env.LINKEDIN_AUTH_REDIRECT_URI
+      ? process.env.LINKEDIN_AUTH_REDIRECT_URI
+      : `${appUrl}/api/auth/${p}/callback`;
 
   let accessToken: string;
   let profile: OAuthProfile;
