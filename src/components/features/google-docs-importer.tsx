@@ -76,6 +76,7 @@ export function GoogleDocsTab({ onSuccess, initialStatus }: GoogleDocsTabProps) 
   const [disconnecting, setDisconnecting] = React.useState(false);
 
   const pickerApiKey = process.env.NEXT_PUBLIC_GOOGLE_PICKER_API_KEY ?? "";
+  const pickerAppId = process.env.NEXT_PUBLIC_GOOGLE_PICKER_APP_ID ?? "";
 
   // Check connection on mount
   React.useEffect(() => {
@@ -154,6 +155,9 @@ export function GoogleDocsTab({ onSuccess, initialStatus }: GoogleDocsTabProps) 
 
       if (pickerApiKey) {
         pickerBuilder.setDeveloperKey(pickerApiKey);
+      }
+      if (pickerAppId) {
+        pickerBuilder.setAppId(pickerAppId);
       }
 
       pickerBuilder.build().setVisible(true);
