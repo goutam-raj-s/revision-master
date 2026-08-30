@@ -242,6 +242,14 @@ export interface LinkedInCommentResult {
   commentUrn?: string;
 }
 
+export interface LinkedInPostSummary {
+  id: string;
+  url: string;
+  commentary?: string;
+  publishedAt?: number;
+  lastModifiedAt?: number;
+}
+
 function linkedInRestHeaders(accessToken: string, json = false): HeadersInit {
   return {
     Authorization: `Bearer ${accessToken}`,
@@ -384,6 +392,46 @@ export async function publish(
   return conn.provider === "linkedin"
     ? publishToLinkedIn(conn, text, options)
     : publishToTwitter(conn, text);
+}
+
+export async function listLinkedInPosts(
+  conn: DbSocialConnection,
+  count = 20
+): Promise<LinkedInPostSummary[]> {
+  const accessToken = await getValidAccessToken(conn);
+  const author = linkedInActor(conn);
+  const params = new URLSearchParams({
+    author,
+    q: "author",
+    count: String(Math.min(Math.max(count, 1), 100)),
+    sortBy: "LAST_MODIFIED",
+    viewContext: "AUTHOR",
+  });
+  const res = await fetch(`https://api.linkedin.com/rest/posts?${params.toString()}`, {
+    headers: {
+      ...linkedInRestHeaders(accessToken),
+      "X-RestLi-Method": "FINDER",
+    },
+  });
+  if (!res.ok) throw new Error(`LinkedIn posts lookup failed: ${await readError(res)}`);
+
+  const payload = (await res.json()) as {
+    elements?: {
+      id?: string;
+      commentary?: string;
+      publishedAt?: number;
+      lastModifiedAt?: number;
+    }[];
+  };
+  return (payload.elements ?? [])
+    .filter((post) => Boolean(post.id))
+    .map((post) => ({
+      id: post.id!,
+      url: `https://www.linkedin.com/feed/update/${encodeURIComponent(post.id!)}`,
+      commentary: post.commentary,
+      publishedAt: post.publishedAt,
+      lastModifiedAt: post.lastModifiedAt,
+    }));
 }
 
 export async function createLinkedInComment(

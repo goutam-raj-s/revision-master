@@ -42,10 +42,12 @@ import {
   deleteLinkedInReactionAction,
   disconnectSocialAction,
   editLinkedInCommentAction,
+  listLinkedInPostsAction,
   publishPostAction,
 } from "@/actions/social";
 import type { PostDraft, PostPlatform, SocialConnection, SocialProvider } from "@/types";
 import type { LinkedInReactionType } from "@/lib/social";
+import type { LinkedInPostSummary } from "@/lib/social";
 
 const PLATFORMS: { id: PostPlatform; label: string; icon: typeof Linkedin; max?: number }[] = [
   { id: "linkedin", label: "LinkedIn", icon: Linkedin, max: 3000 },
@@ -424,9 +426,9 @@ function LinkedInComments({ connected }: { connected: boolean }) {
 
   return (
     <Card className="space-y-4 p-5 shadow-card">
-      <Input
+      <LinkedInPostTargetPicker
         value={target}
-        onChange={(e) => setTarget(e.target.value)}
+        onChange={setTarget}
         placeholder="LinkedIn post URL or URN"
         disabled={disabled}
       />
@@ -499,9 +501,9 @@ function LinkedInReactions({ connected }: { connected: boolean }) {
 
   return (
     <Card className="space-y-4 p-5 shadow-card">
-      <Input
+      <LinkedInPostTargetPicker
         value={target}
-        onChange={(e) => setTarget(e.target.value)}
+        onChange={setTarget}
         placeholder="LinkedIn post, comment URL, or URN"
         disabled={disabled}
       />
@@ -533,6 +535,83 @@ function LinkedInReactions({ connected }: { connected: boolean }) {
       </div>
       {!connected && <ConnectNotice />}
     </Card>
+  );
+}
+
+function LinkedInPostTargetPicker({
+  value,
+  onChange,
+  placeholder,
+  disabled,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+  disabled: boolean;
+}) {
+  const [posts, setPosts] = React.useState<LinkedInPostSummary[]>([]);
+  const [loading, setLoading] = React.useState(false);
+  const [loaded, setLoaded] = React.useState(false);
+
+  async function loadPosts() {
+    setLoading(true);
+    const res = await listLinkedInPostsAction();
+    setLoading(false);
+    setLoaded(true);
+    if (res.success) {
+      setPosts(res.data ?? []);
+      if (!res.data?.length) toast("No recent LinkedIn posts found");
+    } else {
+      toast(res.error ?? "Could not load LinkedIn posts", { variant: "error" });
+    }
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap gap-2">
+        <Input
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
+          disabled={disabled}
+          className="min-w-0 flex-1"
+        />
+        <Button variant="outline" onClick={loadPosts} disabled={disabled || loading} className="gap-1.5">
+          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Link2 className="h-4 w-4" />}
+          Load my posts
+        </Button>
+      </div>
+      {posts.length > 0 && (
+        <div className="grid gap-2 sm:grid-cols-2">
+          {posts.map((post) => (
+            <button
+              key={post.id}
+              type="button"
+              onClick={() => onChange(post.id)}
+              className={`min-h-20 rounded-lg border p-3 text-left transition-colors ${
+                value === post.id
+                  ? "border-state-today bg-state-today/10"
+                  : "border-border bg-canvas hover:border-state-today/60"
+              }`}
+            >
+              <span className="line-clamp-2 block text-sm text-forest-slate">
+                {post.commentary || "LinkedIn post"}
+              </span>
+              <span className="mt-2 block text-[11px] text-mossy-gray">
+                {post.publishedAt || post.lastModifiedAt
+                  ? new Date(post.publishedAt ?? post.lastModifiedAt ?? 0).toLocaleString()
+                  : "Date unavailable"}
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
+      {loaded && posts.length === 0 && (
+        <p className="rounded-lg border border-dashed border-border bg-surface px-3 py-2 text-xs text-mossy-gray">
+          No authored LinkedIn posts came back from the API. You can still paste a post URL or URN manually.
+        </p>
+      )}
+    </div>
   );
 }
 

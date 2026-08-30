@@ -14,6 +14,7 @@ import {
   deleteLinkedInReaction,
   editLinkedInComment,
   getConnection,
+  listLinkedInPosts,
   publish,
   isProviderConfigured,
   PROVIDERS,
@@ -25,6 +26,7 @@ import type {
   PostPlatform,
 } from "@/types";
 import type { LinkedInReactionType } from "@/lib/social";
+import type { LinkedInPostSummary } from "@/lib/social";
 
 const PLATFORM_TO_PROVIDER: Partial<Record<PostPlatform, SocialProvider>> = {
   linkedin: "linkedin",
@@ -177,6 +179,16 @@ export async function createLinkedInCommentAction(
     return { success: true, data: result };
   } catch (err) {
     return { success: false, error: err instanceof Error ? err.message : "Comment failed." };
+  }
+}
+
+export async function listLinkedInPostsAction(): Promise<ActionResult<LinkedInPostSummary[]>> {
+  const user = await requireAuth();
+  try {
+    const posts = await listLinkedInPosts(await requireLinkedInConnection(user.id));
+    return { success: true, data: posts };
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : "Could not load LinkedIn posts." };
   }
 }
 
