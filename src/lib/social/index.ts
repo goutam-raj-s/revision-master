@@ -1,7 +1,7 @@
 import { ObjectId } from "mongodb";
 import { encrypt, decrypt } from "@/lib/crypto";
 import { getSocialConnectionsCollection } from "@/lib/db/collections";
-import type { DbSocialConnection, SocialProvider } from "@/types";
+import type { DbSocialConnection, PostImageAttachment, SocialProvider } from "@/types";
 
 // ─── Provider config ────────────────────────────────────────────────────────
 
@@ -225,6 +225,7 @@ export interface PublishResult {
 }
 
 export interface PublishOptions {
+  images?: PostImageAttachment[];
   imageDataUrl?: string;
   imageName?: string;
   imageMimeType?: string;
@@ -252,6 +253,28 @@ export interface LinkedInPostSummary {
   source?: "linkedin" | "lostbae";
 }
 
+export interface TwitterPostSummary {
+  id: string;
+  url: string;
+  text: string;
+  createdAt?: string;
+  source?: "twitter" | "lostbae";
+}
+
+export interface TwitterDmEventSummary {
+  id: string;
+  eventType: string;
+  text?: string;
+  senderId?: string;
+  conversationId?: string;
+  createdAt?: string;
+}
+
+export interface TwitterDmSendResult {
+  conversationId: string;
+  eventId: string;
+}
+
 function linkedInRestHeaders(accessToken: string, json = false): HeadersInit {
   return {
     Authorization: `Bearer ${accessToken}`,
@@ -270,12 +293,13 @@ async function readError(res: Response): Promise<string> {
   return text || `${res.status} ${res.statusText}`;
 }
 
-function dataUrlToBuffer(dataUrl: string): { buffer: Buffer; mimeType: string } {
+function dataUrlToBuffer(dataUrl: string): { buffer: Buffer; mimeType: string; base64: string } {
   const match = dataUrl.match(/^data:([^;]+);base64,(.+)$/);
   if (!match) throw new Error("Image attachment is not a valid data URL.");
   const mimeType = match[1];
-  if (!mimeType.startsWith("image/")) throw new Error("LinkedIn attachment must be an image.");
-  return { buffer: Buffer.from(match[2], "base64"), mimeType };
+  if (!mimeType.startsWith("image/")) throw new Error("Attachment must be an image.");
+  const buffer = Buffer.from(match[2], "base64");
+  return { buffer, mimeType, base64: match[2] };
 }
 
 async function uploadLinkedInImage(
@@ -360,24 +384,37 @@ async function publishToLinkedIn(
 
 async function publishToTwitter(
   conn: DbSocialConnection,
-  text: string
+  text: string,
+  options: PublishOptions = {}
 ): Promise<PublishResult> {
   const accessToken = await getValidAccessToken(conn);
-  const res = await fetch("https://api.twitter.com/2/tweets", {
+  const images = options.images?.length
+    ? options.images
+    : options.imageDataUrl
+      ? [{ imageDataUrl: options.imageDataUrl, imageName: options.imageName, imageMimeType: options.imageMimeType }]
+      : [];
+  if (images.length > 4) throw new Error("X posts support up to 4 image attachments.");
+  const mediaIds = images.length
+    ? await Promise.all(images.map((image) => uploadTwitterImage(accessToken, image)))
+    : [];
+  const res = await fetch("https://api.x.com/2/tweets", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${accessToken}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ text }),
+    body: JSON.stringify({
+      text,
+      ...(mediaIds.length ? { media: { media_ids: mediaIds } } : {}),
+    }),
   });
   if (!res.ok) {
-    throw new Error(`X publish failed: ${await res.text()}`);
+    throw new Error(`X publish failed: ${await readError(res)}`);
   }
   const j = (await res.json()) as { data: { id: string } };
   const id = j.data.id;
   const handle = conn.displayName ?? "i";
-  return { providerPostId: id, url: `https://twitter.com/${handle}/status/${id}` };
+  return { providerPostId: id, url: twitterPostUrl(handle, id) };
 }
 
 export async function publish(
@@ -388,12 +425,174 @@ export async function publish(
   if (conn.provider === "twitter" && text.length > 280) {
     throw new Error(`X posts are limited to 280 characters (yours is ${text.length}).`);
   }
-  if (conn.provider === "twitter" && options.imageDataUrl) {
-    throw new Error("Image publishing is only wired for LinkedIn right now.");
-  }
   return conn.provider === "linkedin"
     ? publishToLinkedIn(conn, text, options)
-    : publishToTwitter(conn, text);
+    : publishToTwitter(conn, text, options);
+}
+
+function twitterPostUrl(handle: string | undefined, id: string): string {
+  return `https://twitter.com/${handle ?? "i"}/status/${id}`;
+}
+
+async function uploadTwitterImage(
+  accessToken: string,
+  image: PostImageAttachment
+): Promise<string> {
+  const { buffer, mimeType, base64 } = dataUrlToBuffer(image.imageDataUrl);
+  if (buffer.length > 5 * 1024 * 1024) {
+    throw new Error(`${image.imageName ?? "Image"} is over X's 5 MB image limit.`);
+  }
+  const res = await fetch("https://api.x.com/2/media/upload", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      media: base64,
+      media_category: "tweet_image",
+      media_type: image.imageMimeType ?? mimeType,
+    }),
+  });
+  if (!res.ok) throw new Error(`X media upload failed: ${await readError(res)}`);
+  const payload = (await res.json()) as { data?: { id?: string } };
+  if (!payload.data?.id) throw new Error("X did not return a media ID.");
+  return payload.data.id;
+}
+
+export async function createTwitterReply(
+  conn: DbSocialConnection,
+  tweetId: string,
+  text: string
+): Promise<PublishResult> {
+  const accessToken = await getValidAccessToken(conn);
+  const res = await fetch("https://api.x.com/2/tweets", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ text, reply: { in_reply_to_tweet_id: tweetId } }),
+  });
+  if (!res.ok) throw new Error(`X reply failed: ${await readError(res)}`);
+  const j = (await res.json()) as { data: { id: string } };
+  return { providerPostId: j.data.id, url: twitterPostUrl(conn.displayName, j.data.id) };
+}
+
+export async function deleteTwitterTweet(
+  conn: DbSocialConnection,
+  tweetId: string
+): Promise<void> {
+  const accessToken = await getValidAccessToken(conn);
+  const res = await fetch(`https://api.x.com/2/tweets/${encodeURIComponent(tweetId)}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!res.ok) throw new Error(`X delete failed: ${await readError(res)}`);
+}
+
+export async function listTwitterTweets(
+  conn: DbSocialConnection,
+  count = 20
+): Promise<TwitterPostSummary[]> {
+  const accessToken = await getValidAccessToken(conn);
+  const params = new URLSearchParams({
+    max_results: String(Math.min(Math.max(count, 5), 100)),
+    "tweet.fields": "created_at",
+  });
+  const res = await fetch(
+    `https://api.x.com/2/users/${encodeURIComponent(conn.providerUserId)}/tweets?${params.toString()}`,
+    { headers: { Authorization: `Bearer ${accessToken}` } }
+  );
+  if (!res.ok) throw new Error(`X tweets lookup failed: ${await readError(res)}`);
+  const payload = (await res.json()) as {
+    data?: { id: string; text?: string; created_at?: string }[];
+  };
+  return (payload.data ?? []).map((tweet) => ({
+    id: tweet.id,
+    url: twitterPostUrl(conn.displayName, tweet.id),
+    text: tweet.text ?? "",
+    createdAt: tweet.created_at,
+    source: "twitter",
+  }));
+}
+
+export async function listTwitterDmEvents(
+  conn: DbSocialConnection,
+  count = 50
+): Promise<TwitterDmEventSummary[]> {
+  const accessToken = await getValidAccessToken(conn);
+  const params = new URLSearchParams({
+    max_results: String(Math.min(Math.max(count, 1), 100)),
+    event_types: "MessageCreate",
+    "dm_event.fields": "created_at,sender_id,text,dm_conversation_id",
+  });
+  const res = await fetch(`https://api.x.com/2/dm_events?${params.toString()}`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!res.ok) throw new Error(`X DM lookup failed: ${await readError(res)}`);
+  const payload = (await res.json()) as {
+    data?: {
+      id: string;
+      event_type: string;
+      text?: string;
+      sender_id?: string;
+      dm_conversation_id?: string;
+      created_at?: string;
+    }[];
+  };
+  return (payload.data ?? []).map((event) => ({
+    id: event.id,
+    eventType: event.event_type,
+    text: event.text,
+    senderId: event.sender_id,
+    conversationId: event.dm_conversation_id,
+    createdAt: event.created_at,
+  }));
+}
+
+export async function sendTwitterDirectMessage(
+  conn: DbSocialConnection,
+  target: string,
+  text: string,
+  mode: "participant" | "conversation"
+): Promise<TwitterDmSendResult> {
+  const accessToken = await getValidAccessToken(conn);
+  const path =
+    mode === "participant"
+      ? `/2/dm_conversations/with/${encodeURIComponent(target)}/messages`
+      : `/2/dm_conversations/${encodeURIComponent(target)}/messages`;
+  const res = await fetch(`https://api.x.com${path}`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ text }),
+  });
+  if (!res.ok) throw new Error(`X DM send failed: ${await readError(res)}`);
+  const payload = (await res.json()) as {
+    data?: { dm_conversation_id?: string; dm_event_id?: string };
+  };
+  if (!payload.data?.dm_conversation_id || !payload.data.dm_event_id) {
+    throw new Error("X did not return DM confirmation IDs.");
+  }
+  return {
+    conversationId: payload.data.dm_conversation_id,
+    eventId: payload.data.dm_event_id,
+  };
+}
+
+export async function deleteTwitterDirectMessage(
+  conn: DbSocialConnection,
+  eventId: string
+): Promise<void> {
+  const accessToken = await getValidAccessToken(conn);
+  const res = await fetch(`https://api.x.com/2/dm_events/${encodeURIComponent(eventId)}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!res.ok) throw new Error(`X DM delete failed: ${await readError(res)}`);
 }
 
 export async function listLinkedInPosts(

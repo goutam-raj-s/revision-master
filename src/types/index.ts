@@ -399,12 +399,19 @@ export interface DbStatShare {
 export type PostPlatform = "linkedin" | "twitter" | "instagram" | "other";
 export type PostStatus = "draft" | "scheduled" | "published";
 
+export interface PostImageAttachment {
+  imageDataUrl: string;
+  imageName?: string;
+  imageMimeType?: string;
+}
+
 export interface DbPostDraft {
   _id: ObjectId;
   userId: ObjectId;
   platform: PostPlatform;
   status: PostStatus;
   body: string;
+  images?: PostImageAttachment[];
   imageDataUrl?: string;
   imageName?: string;
   imageMimeType?: string;
@@ -422,6 +429,7 @@ export interface PostDraft {
   platform: PostPlatform;
   status: PostStatus;
   body: string;
+  images?: PostImageAttachment[];
   imageDataUrl?: string;
   imageName?: string;
   imageMimeType?: string;

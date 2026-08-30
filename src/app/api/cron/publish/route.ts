@@ -56,6 +56,7 @@ export async function GET(request: NextRequest) {
     }
     try {
       const result = await publish(conn, draft.body, {
+        images: draft.images,
         imageDataUrl: draft.imageDataUrl,
         imageName: draft.imageName,
         imageMimeType: draft.imageMimeType,

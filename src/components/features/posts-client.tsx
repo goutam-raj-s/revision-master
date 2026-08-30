@@ -38,16 +38,22 @@ import {
 import {
   createLinkedInCommentAction,
   createLinkedInReactionAction,
+  createTwitterReplyAction,
   deleteLinkedInCommentAction,
   deleteLinkedInReactionAction,
+  deleteTwitterDirectMessageAction,
+  deleteTwitterTweetAction,
   disconnectSocialAction,
   editLinkedInCommentAction,
   listLinkedInPostsAction,
+  listTwitterDmEventsAction,
+  listTwitterTweetsAction,
   publishPostAction,
+  sendTwitterDirectMessageAction,
 } from "@/actions/social";
 import type { PostDraft, PostPlatform, SocialConnection, SocialProvider } from "@/types";
 import type { LinkedInReactionType } from "@/lib/social";
-import type { LinkedInPostSummary } from "@/lib/social";
+import type { LinkedInPostSummary, TwitterDmEventSummary, TwitterPostSummary } from "@/lib/social";
 
 const PLATFORMS: { id: PostPlatform; label: string; icon: typeof Linkedin; max?: number }[] = [
   { id: "linkedin", label: "LinkedIn", icon: Linkedin, max: 3000 },
@@ -58,12 +64,21 @@ const PLATFORMS: { id: PostPlatform; label: string; icon: typeof Linkedin; max?:
 
 const DIRECT: Record<string, SocialProvider> = { linkedin: "linkedin", twitter: "twitter" };
 type LinkedInActivity = "posts" | "comments" | "reactions" | "profile";
+type TwitterActivity = "posts" | "replies" | "delete" | "tweets" | "dms";
 
 const LINKEDIN_ACTIVITIES: { id: LinkedInActivity; label: string; icon: typeof PenLine }[] = [
   { id: "posts", label: "Posts", icon: PenLine },
   { id: "comments", label: "Comments", icon: MessageCircle },
   { id: "reactions", label: "Reactions", icon: Heart },
   { id: "profile", label: "Profile", icon: UserRound },
+];
+
+const TWITTER_ACTIVITIES: { id: TwitterActivity; label: string; icon: typeof PenLine }[] = [
+  { id: "posts", label: "Posts", icon: PenLine },
+  { id: "replies", label: "Replies", icon: MessageCircle },
+  { id: "delete", label: "Delete", icon: Trash2 },
+  { id: "tweets", label: "My tweets", icon: Link2 },
+  { id: "dms", label: "DMs", icon: MessageCircle },
 ];
 
 const REACTIONS: { id: LinkedInReactionType; label: string }[] = [
@@ -123,6 +138,7 @@ export function PostsClient({
   const params = useSearchParams();
   const [account, setAccount] = React.useState<PostPlatform>("linkedin");
   const [linkedinActivity, setLinkedinActivity] = React.useState<LinkedInActivity>("posts");
+  const [twitterActivity, setTwitterActivity] = React.useState<TwitterActivity>("posts");
 
   React.useEffect(() => {
     const status = params.get("status");
@@ -175,6 +191,7 @@ export function PostsClient({
                 onClick={() => {
                   setAccount(p.id);
                   if (p.id !== "linkedin") setLinkedinActivity("posts");
+                  if (p.id !== "twitter") setTwitterActivity("posts");
                 }}
                 className={`flex min-h-16 items-center gap-3 rounded-lg border px-3 py-2 text-left transition-colors ${
                   active
@@ -238,6 +255,52 @@ export function PostsClient({
             <LinkedInProfile connection={activeConnection} configured={configured.includes("linkedin")} />
           )}
         </div>
+      ) : account === "twitter" ? (
+        <div className="space-y-4">
+          <div className="flex flex-wrap gap-1.5">
+            {TWITTER_ACTIVITIES.map((activity) => {
+              const Icon = activity.icon;
+              const active = twitterActivity === activity.id;
+              return (
+                <button
+                  key={activity.id}
+                  onClick={() => setTwitterActivity(activity.id)}
+                  className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm transition-colors ${
+                    active
+                      ? "bg-state-today/10 text-state-today"
+                      : "text-mossy-gray hover:bg-canvas"
+                  }`}
+                >
+                  <Icon className="h-3.5 w-3.5" />
+                  {activity.label}
+                </button>
+              );
+            })}
+          </div>
+
+          {twitterActivity === "posts" && (
+            <PostsActivity
+              platform="twitter"
+              drafts={activeDrafts}
+              connected={Boolean(activeConnection && !activeConnection.expired)}
+              onPatch={patch}
+              onRemove={remove}
+              onPublished={() => router.refresh()}
+            />
+          )}
+          {twitterActivity === "replies" && (
+            <TwitterReplies connected={Boolean(activeConnection && !activeConnection.expired)} />
+          )}
+          {twitterActivity === "delete" && (
+            <TwitterDelete connected={Boolean(activeConnection && !activeConnection.expired)} />
+          )}
+          {twitterActivity === "tweets" && (
+            <TwitterTweets connected={Boolean(activeConnection && !activeConnection.expired)} />
+          )}
+          {twitterActivity === "dms" && (
+            <TwitterDms connected={Boolean(activeConnection && !activeConnection.expired)} />
+          )}
+        </div>
       ) : (
         <PostsActivity
           platform={account}
@@ -269,24 +332,24 @@ function PostsActivity({
 }) {
   const router = useRouter();
   const [body, setBody] = React.useState("");
-  const [image, setImage] = React.useState<{
+  const [images, setImages] = React.useState<{
     imageDataUrl: string;
     imageName: string;
     imageMimeType: string;
-  } | null>(null);
+  }[]>([]);
   const [saving, setSaving] = React.useState(false);
   const activeMax = PLATFORMS.find((p) => p.id === platform)?.max;
   const overLimit = activeMax !== undefined && body.length > activeMax;
   const label = PLATFORMS.find((p) => p.id === platform)?.label ?? "Social";
 
   async function create() {
-    if (!body.trim() && !image) return;
+    if (!body.trim() && images.length === 0) return;
     setSaving(true);
-    const res = await createPostDraftAction(body, platform, image ?? undefined);
+    const res = await createPostDraftAction(body, platform, images.length ? { images } : undefined);
     setSaving(false);
     if (res.success) {
       setBody("");
-      setImage(null);
+      setImages([]);
       toast("Draft saved", { variant: "success" });
       router.refresh();
     } else {
@@ -309,17 +372,28 @@ function PostsActivity({
           placeholder={`Draft a ${label} post about what you learned...`}
           className="min-h-[140px] resize-none text-sm"
         />
-        {image && (
-          <div className="mt-3 flex items-center gap-3 rounded-lg border border-border bg-canvas p-2">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={image.imageDataUrl} alt="" className="h-16 w-16 rounded-md object-cover" />
-            <div className="min-w-0 flex-1">
-              <div className="truncate text-xs font-medium text-forest-slate">{image.imageName}</div>
-              <div className="text-[11px] text-mossy-gray">LinkedIn image attachment</div>
-            </div>
-            <button type="button" onClick={() => setImage(null)} className="rounded-md p-1.5 text-mossy-gray hover:text-destructive" title="Remove image">
-              <X className="h-4 w-4" />
-            </button>
+        {images.length > 0 && (
+          <div className="mt-3 grid gap-2 sm:grid-cols-2">
+            {images.map((image, index) => (
+              <div key={`${image.imageName}-${index}`} className="flex items-center gap-3 rounded-lg border border-border bg-canvas p-2">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={image.imageDataUrl} alt="" className="h-16 w-16 rounded-md object-cover" />
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-xs font-medium text-forest-slate">{image.imageName}</div>
+                  <div className="text-[11px] text-mossy-gray">
+                    {platform === "twitter" ? "X image attachment" : "LinkedIn image attachment"}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setImages((current) => current.filter((_, i) => i !== index))}
+                  className="rounded-md p-1.5 text-mossy-gray hover:text-destructive"
+                  title="Remove image"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            ))}
           </div>
         )}
         <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
@@ -327,20 +401,30 @@ function PostsActivity({
             {body.length}{activeMax ? ` / ${activeMax}` : ""} characters
           </span>
           <div className="flex items-center gap-2">
-            {platform === "linkedin" && (
+            {(platform === "linkedin" || platform === "twitter") && (
               <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-sm text-forest-slate hover:border-state-today hover:bg-state-today/5">
                 <ImageIcon className="h-4 w-4" />
-                Image
+                {platform === "twitter" ? "Images" : "Image"}
                 <input
                   type="file"
+                  multiple={platform === "twitter"}
                   accept="image/*"
                   className="sr-only"
                   onChange={async (e) => {
-                    const file = e.target.files?.[0];
+                    const files = Array.from(e.target.files ?? []);
                     e.target.value = "";
-                    if (!file) return;
+                    if (files.length === 0) return;
+                    if (platform === "linkedin" && files.length > 1) {
+                      toast("LinkedIn drafts support one image right now", { variant: "error" });
+                      return;
+                    }
+                    if (platform === "twitter" && images.length + files.length > 4) {
+                      toast("X posts support up to 4 images", { variant: "error" });
+                      return;
+                    }
                     try {
-                      setImage(await readImageFile(file));
+                      const next = await Promise.all(files.map(readImageFile));
+                      setImages((current) => platform === "twitter" ? [...current, ...next].slice(0, 4) : next.slice(0, 1));
                     } catch (err) {
                       toast(err instanceof Error ? err.message : "Could not attach image", { variant: "error" });
                     }
@@ -348,7 +432,7 @@ function PostsActivity({
                 />
               </label>
             )}
-            <Button onClick={create} disabled={saving || (!body.trim() && !image) || overLimit} className="gap-1.5">
+            <Button onClick={create} disabled={saving || (!body.trim() && images.length === 0) || overLimit} className="gap-1.5">
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
               Save draft
             </Button>
@@ -620,6 +704,347 @@ function LinkedInPostTargetPicker({
   );
 }
 
+function TwitterPostTargetPicker({
+  value,
+  onChange,
+  placeholder,
+  disabled,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+  disabled: boolean;
+}) {
+  const [tweets, setTweets] = React.useState<TwitterPostSummary[]>([]);
+  const [loading, setLoading] = React.useState(false);
+  const [loaded, setLoaded] = React.useState(false);
+  const [loadError, setLoadError] = React.useState<string | null>(null);
+
+  async function loadTweets() {
+    setLoading(true);
+    setLoadError(null);
+    const res = await listTwitterTweetsAction();
+    setLoading(false);
+    setLoaded(true);
+    if (res.success) {
+      setTweets(res.data ?? []);
+      if (!res.data?.length) toast("No recent X posts found");
+    } else {
+      setTweets([]);
+      setLoadError(res.error ?? "Could not load X posts");
+      toast(res.error ?? "Could not load X posts", { variant: "error" });
+    }
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap gap-2">
+        <Input
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
+          disabled={disabled}
+          className="min-w-0 flex-1"
+        />
+        <Button variant="outline" onClick={loadTweets} disabled={disabled || loading} className="gap-1.5">
+          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Link2 className="h-4 w-4" />}
+          Load my tweets
+        </Button>
+      </div>
+      {tweets.length > 0 && (
+        <div className="grid gap-2 sm:grid-cols-2">
+          {tweets.map((tweet) => (
+            <button
+              key={tweet.id}
+              type="button"
+              onClick={() => onChange(tweet.id)}
+              className={`min-h-20 rounded-lg border p-3 text-left transition-colors ${
+                value === tweet.id
+                  ? "border-state-today bg-state-today/10"
+                  : "border-border bg-canvas hover:border-state-today/60"
+              }`}
+            >
+              <span className="line-clamp-2 block text-sm text-forest-slate">
+                {tweet.text || "X post"}
+              </span>
+              <span className="mt-2 block text-[11px] text-mossy-gray">
+                {tweet.createdAt ? new Date(tweet.createdAt).toLocaleString() : "Date unavailable"}
+                {tweet.source === "lostbae" ? " - tracked in lostbae" : ""}
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
+      {loaded && tweets.length === 0 && (
+        <p className="rounded-lg border border-dashed border-border bg-surface px-3 py-2 text-xs text-mossy-gray">
+          {loadError ?? "No authored X posts came back. Posts published or marked posted in lostbae will appear here."}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function TwitterReplies({ connected }: { connected: boolean }) {
+  const [target, setTarget] = React.useState("");
+  const [reply, setReply] = React.useState("");
+  const [busy, setBusy] = React.useState(false);
+  const disabled = !connected;
+
+  async function sendReply() {
+    setBusy(true);
+    const res = await createTwitterReplyAction(target, reply);
+    setBusy(false);
+    if (res.success) {
+      toast("Reply posted", { variant: "success" });
+      setReply("");
+      if (res.data?.url) window.open(res.data.url, "_blank", "noopener");
+    } else {
+      toast(res.error ?? "Reply failed", { variant: "error" });
+    }
+  }
+
+  return (
+    <Card className="space-y-4 p-5 shadow-card">
+      <TwitterPostTargetPicker
+        value={target}
+        onChange={setTarget}
+        placeholder="X post URL or ID"
+        disabled={disabled}
+      />
+      <Textarea
+        value={reply}
+        onChange={(e) => setReply(e.target.value)}
+        placeholder="Write a reply..."
+        className="min-h-[112px] resize-none text-sm"
+        disabled={disabled}
+      />
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <span className={`text-xs ${reply.length > 280 ? "text-destructive" : "text-mossy-gray"}`}>
+          {reply.length} / 280 characters
+        </span>
+        <Button onClick={sendReply} disabled={disabled || busy || !target.trim() || !reply.trim() || reply.length > 280} className="gap-1.5">
+          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <MessageCircle className="h-4 w-4" />}
+          Reply
+        </Button>
+      </div>
+      {!connected && <ConnectNotice provider="X" />}
+    </Card>
+  );
+}
+
+function TwitterDelete({ connected }: { connected: boolean }) {
+  const [target, setTarget] = React.useState("");
+  const [busy, setBusy] = React.useState(false);
+  const disabled = !connected;
+
+  async function removeTweet() {
+    setBusy(true);
+    const res = await deleteTwitterTweetAction(target);
+    setBusy(false);
+    if (res.success) {
+      toast("Tweet deleted", { variant: "success" });
+      setTarget("");
+    } else {
+      toast(res.error ?? "Delete failed", { variant: "error" });
+    }
+  }
+
+  return (
+    <Card className="space-y-4 p-5 shadow-card">
+      <TwitterPostTargetPicker
+        value={target}
+        onChange={setTarget}
+        placeholder="X post URL or ID to delete"
+        disabled={disabled}
+      />
+      <Button variant="ghost" onClick={removeTweet} disabled={disabled || busy || !target.trim()} className="gap-1.5 text-destructive hover:text-destructive">
+        {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+        Delete tweet
+      </Button>
+      {!connected && <ConnectNotice provider="X" />}
+    </Card>
+  );
+}
+
+function TwitterTweets({ connected }: { connected: boolean }) {
+  const [tweets, setTweets] = React.useState<TwitterPostSummary[]>([]);
+  const [loading, setLoading] = React.useState(false);
+  const [loaded, setLoaded] = React.useState(false);
+
+  async function loadTweets() {
+    setLoading(true);
+    const res = await listTwitterTweetsAction();
+    setLoading(false);
+    setLoaded(true);
+    if (res.success) setTweets(res.data ?? []);
+    else toast(res.error ?? "Could not load X posts", { variant: "error" });
+  }
+
+  return (
+    <Card className="space-y-4 p-5 shadow-card">
+      <Button variant="outline" onClick={loadTweets} disabled={!connected || loading} className="gap-1.5">
+        {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Link2 className="h-4 w-4" />}
+        Load my tweets
+      </Button>
+      {tweets.length > 0 && (
+        <div className="space-y-2">
+          {tweets.map((tweet) => (
+            <a
+              key={tweet.id}
+              href={tweet.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block rounded-lg border border-border bg-canvas p-3 hover:border-state-today/60"
+            >
+              <span className="line-clamp-3 block text-sm text-forest-slate">{tweet.text || "X post"}</span>
+              <span className="mt-2 block text-[11px] text-mossy-gray">
+                {tweet.createdAt ? new Date(tweet.createdAt).toLocaleString() : tweet.id}
+                {tweet.source === "lostbae" ? " - tracked in lostbae" : ""}
+              </span>
+            </a>
+          ))}
+        </div>
+      )}
+      {loaded && tweets.length === 0 && (
+        <p className="rounded-lg border border-dashed border-border bg-surface px-3 py-2 text-xs text-mossy-gray">
+          No recent X posts found.
+        </p>
+      )}
+      {!connected && <ConnectNotice provider="X" />}
+    </Card>
+  );
+}
+
+function TwitterDms({ connected }: { connected: boolean }) {
+  const [events, setEvents] = React.useState<TwitterDmEventSummary[]>([]);
+  const [target, setTarget] = React.useState("");
+  const [message, setMessage] = React.useState("");
+  const [deleteId, setDeleteId] = React.useState("");
+  const [mode, setMode] = React.useState<"participant" | "conversation">("participant");
+  const [busy, setBusy] = React.useState<"load" | "send" | "delete" | null>(null);
+  const disabled = !connected;
+
+  async function loadDms() {
+    setBusy("load");
+    const res = await listTwitterDmEventsAction();
+    setBusy(null);
+    if (res.success) setEvents(res.data ?? []);
+    else toast(res.error ?? "Could not load X DMs", { variant: "error" });
+  }
+
+  async function sendDm() {
+    setBusy("send");
+    const res = await sendTwitterDirectMessageAction(target, message, mode);
+    setBusy(null);
+    if (res.success) {
+      toast(`DM sent (${res.data?.eventId ?? "sent"})`, { variant: "success" });
+      setMessage("");
+      if (res.data?.conversationId) setTarget(res.data.conversationId);
+      setMode("conversation");
+      await loadDms();
+    } else {
+      toast(res.error ?? "DM send failed", { variant: "error" });
+    }
+  }
+
+  async function deleteDm() {
+    setBusy("delete");
+    const res = await deleteTwitterDirectMessageAction(deleteId);
+    setBusy(null);
+    if (res.success) {
+      toast("DM deleted", { variant: "success" });
+      setDeleteId("");
+      await loadDms();
+    } else {
+      toast(res.error ?? "DM delete failed", { variant: "error" });
+    }
+  }
+
+  return (
+    <Card className="space-y-4 p-5 shadow-card">
+      <div className="flex flex-wrap gap-2">
+        <Button variant="outline" onClick={loadDms} disabled={disabled || busy !== null} className="gap-1.5">
+          {busy === "load" ? <Loader2 className="h-4 w-4 animate-spin" /> : <MessageCircle className="h-4 w-4" />}
+          Load DMs
+        </Button>
+        <div className="inline-flex rounded-lg border border-border bg-canvas p-1">
+          {(["participant", "conversation"] as const).map((item) => (
+            <button
+              key={item}
+              type="button"
+              onClick={() => setMode(item)}
+              disabled={disabled}
+              className={`rounded-md px-3 py-1.5 text-xs ${
+                mode === item ? "bg-state-today text-white" : "text-mossy-gray hover:text-forest-slate"
+              }`}
+            >
+              {item === "participant" ? "User ID" : "Conversation ID"}
+            </button>
+          ))}
+        </div>
+      </div>
+      {events.length > 0 && (
+        <div className="max-h-80 space-y-2 overflow-auto rounded-lg border border-border bg-canvas p-2">
+          {events.map((event) => (
+            <button
+              key={event.id}
+              type="button"
+              onClick={() => {
+                setDeleteId(event.id);
+                if (event.conversationId) {
+                  setTarget(event.conversationId);
+                  setMode("conversation");
+                }
+              }}
+              className="block w-full rounded-md p-2 text-left hover:bg-surface"
+            >
+              <span className="line-clamp-2 block text-sm text-forest-slate">{event.text ?? event.eventType}</span>
+              <span className="mt-1 block text-[11px] text-mossy-gray">
+                {event.createdAt ? new Date(event.createdAt).toLocaleString() : event.id}
+                {event.senderId ? ` - from ${event.senderId}` : ""}
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
+      <div className="grid gap-4 lg:grid-cols-2">
+        <div className="space-y-3">
+          <Input
+            value={target}
+            onChange={(e) => setTarget(e.target.value)}
+            placeholder={mode === "participant" ? "Recipient user ID" : "Conversation ID"}
+            disabled={disabled}
+          />
+          <Textarea
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            placeholder="Write a DM..."
+            className="min-h-[112px] resize-none text-sm"
+            disabled={disabled}
+          />
+          <Button onClick={sendDm} disabled={disabled || busy !== null || !target.trim() || !message.trim()} className="gap-1.5">
+            {busy === "send" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+            Send DM
+          </Button>
+        </div>
+        <div className="space-y-3">
+          <Input
+            value={deleteId}
+            onChange={(e) => setDeleteId(e.target.value)}
+            placeholder="DM event ID to delete"
+            disabled={disabled}
+          />
+          <Button variant="ghost" onClick={deleteDm} disabled={disabled || busy !== null || !deleteId.trim()} className="gap-1.5 text-destructive hover:text-destructive">
+            {busy === "delete" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+            Delete DM
+          </Button>
+        </div>
+      </div>
+      {!connected && <ConnectNotice provider="X" />}
+    </Card>
+  );
+}
+
 function LinkedInProfile({
   connection,
   configured,
@@ -667,11 +1092,11 @@ function LinkedInProfile({
   );
 }
 
-function ConnectNotice() {
+function ConnectNotice({ provider = "LinkedIn" }: { provider?: string }) {
   return (
     <p className="flex items-start gap-1.5 rounded-lg bg-state-today/5 px-3 py-2 text-xs text-mossy-gray">
       <AlertCircle className="mt-px h-3.5 w-3.5 shrink-0 text-state-today" />
-      Connect or reconnect LinkedIn above before running this activity.
+      Connect or reconnect {provider} above before running this activity.
     </p>
   );
 }
@@ -811,23 +1236,42 @@ function PostCard({
         <p onClick={() => setEditing(true)} className="cursor-text whitespace-pre-wrap text-sm text-forest-slate">{draft.body}</p>
       )}
 
-      {draft.imageDataUrl && (
-        <div className="mt-3 flex items-center gap-3 rounded-lg border border-border bg-canvas p-2">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={draft.imageDataUrl} alt="" className="h-20 w-20 rounded-md object-cover" />
-          <div className="min-w-0 flex-1">
-            <div className="truncate text-xs font-medium text-forest-slate">{draft.imageName ?? "Image attachment"}</div>
-            <div className="text-[11px] text-mossy-gray">Publishes with this LinkedIn post</div>
-          </div>
-          {draft.status !== "published" && (
-            <button
-              onClick={() => onPatch(draft.id, { imageDataUrl: null, imageName: null, imageMimeType: null })}
-              className="rounded-md p-1.5 text-mossy-gray hover:text-destructive"
-              title="Remove image"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          )}
+      {(draft.images?.length || draft.imageDataUrl) && (
+        <div className="mt-3 grid gap-2 sm:grid-cols-2">
+          {(draft.images?.length
+            ? draft.images
+            : draft.imageDataUrl
+              ? [{ imageDataUrl: draft.imageDataUrl, imageName: draft.imageName, imageMimeType: draft.imageMimeType }]
+              : []
+          ).map((image, index) => (
+            <div key={`${image.imageName ?? "image"}-${index}`} className="flex items-center gap-3 rounded-lg border border-border bg-canvas p-2">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={image.imageDataUrl} alt="" className="h-20 w-20 rounded-md object-cover" />
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-xs font-medium text-forest-slate">{image.imageName ?? "Image attachment"}</div>
+                <div className="text-[11px] text-mossy-gray">
+                  Publishes with this {draft.platform === "twitter" ? "X" : "LinkedIn"} post
+                </div>
+              </div>
+              {draft.status !== "published" && (
+                <button
+                  onClick={() => {
+                    const nextImages = (draft.images ?? []).filter((_, i) => i !== index);
+                    onPatch(draft.id, {
+                      images: nextImages.length ? nextImages : null,
+                      imageDataUrl: nextImages[0]?.imageDataUrl ?? null,
+                      imageName: nextImages[0]?.imageName ?? null,
+                      imageMimeType: nextImages[0]?.imageMimeType ?? null,
+                    });
+                  }}
+                  className="rounded-md p-1.5 text-mossy-gray hover:text-destructive"
+                  title="Remove image"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+          ))}
         </div>
       )}
 
