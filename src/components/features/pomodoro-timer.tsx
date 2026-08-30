@@ -9,8 +9,13 @@ const BREAK_MIN = 5;
 
 type Phase = "focus" | "break";
 
-/** Floating Pomodoro focus timer. Persists across navigation in this tab. */
-export function PomodoroTimer() {
+interface PomodoroTimerProps {
+  variant?: "floating" | "sidebar";
+  collapsed?: boolean;
+}
+
+/** Pomodoro focus timer. Persists while its app shell stays mounted. */
+export function PomodoroTimer({ variant = "floating", collapsed = false }: PomodoroTimerProps) {
   const [open, setOpen] = React.useState(false);
   const [phase, setPhase] = React.useState<Phase>("focus");
   const [secondsLeft, setSecondsLeft] = React.useState(FOCUS_MIN * 60);
@@ -52,22 +57,8 @@ export function PomodoroTimer() {
   const ss = String(secondsLeft % 60).padStart(2, "0");
   const progress = 1 - secondsLeft / total;
 
-  if (!open) {
-    return (
-      <button
-        onClick={() => setOpen(true)}
-        title="Focus timer"
-        className="fixed bottom-20 left-4 z-40 flex h-11 w-11 items-center justify-center rounded-full border border-border bg-surface text-mossy-gray shadow-soft transition-all hover:scale-105 hover:text-forest-slate"
-        aria-label="Open focus timer"
-      >
-        <Timer className="h-5 w-5" />
-        {running && <span className="absolute -right-0.5 -top-0.5 h-3 w-3 rounded-full bg-state-today animate-pulse" />}
-      </button>
-    );
-  }
-
-  return (
-    <div className="fixed bottom-20 left-4 z-40 w-56 rounded-2xl border border-border bg-surface p-4 shadow-glass">
+  const panel = (
+    <div className="w-56 rounded-2xl border border-border bg-surface p-4 shadow-glass">
       <div className="mb-3 flex items-center justify-between">
         <div className="flex items-center gap-1.5 text-sm font-medium text-forest-slate">
           {phase === "focus" ? <Timer className="h-4 w-4 text-state-today" /> : <Coffee className="h-4 w-4 text-state-upcoming" />}
@@ -117,5 +108,44 @@ export function PomodoroTimer() {
         </button>
       </div>
     </div>
+  );
+
+  if (variant === "sidebar") {
+    return (
+      <div className="relative">
+        {open && <div className="absolute bottom-0 left-full z-[80] ml-2">{panel}</div>}
+        <button
+          onClick={() => setOpen(true)}
+          title={collapsed ? "Focus timer" : undefined}
+          className={cn(
+            "relative flex w-full items-center rounded-xl py-2 text-sm font-medium text-mossy-gray transition-all duration-200 hover:bg-canvas hover:text-forest-slate",
+            collapsed ? "justify-center px-2" : "gap-3 px-3"
+          )}
+          aria-label="Open focus timer"
+        >
+          <Timer className="h-4 w-4 shrink-0 text-mossy-gray" />
+          <span className={cn(collapsed && "sr-only")}>Timer</span>
+          {running && <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-state-today animate-pulse" />}
+        </button>
+      </div>
+    );
+  }
+
+  if (!open) {
+    return (
+      <button
+        onClick={() => setOpen(true)}
+        title="Focus timer"
+        className="fixed bottom-20 left-4 z-40 flex h-11 w-11 items-center justify-center rounded-full border border-border bg-surface text-mossy-gray shadow-soft transition-all hover:scale-105 hover:text-forest-slate"
+        aria-label="Open focus timer"
+      >
+        <Timer className="h-5 w-5" />
+        {running && <span className="absolute -right-0.5 -top-0.5 h-3 w-3 rounded-full bg-state-today animate-pulse" />}
+      </button>
+    );
+  }
+
+  return (
+    <div className="fixed bottom-20 left-4 z-40">{panel}</div>
   );
 }

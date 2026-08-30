@@ -189,7 +189,12 @@ const TRACKS: Track[] = [
   },
 ];
 
-export function FocusMusicPlayer() {
+interface FocusMusicPlayerProps {
+  variant?: "floating" | "sidebar";
+  collapsed?: boolean;
+}
+
+export function FocusMusicPlayer({ variant = "floating", collapsed = false }: FocusMusicPlayerProps) {
   const pathname = usePathname();
   const onAppRoute = APP_ROUTE_PREFIXES.some(
     (p) => pathname === p || pathname.startsWith(p + "/")
@@ -248,60 +253,84 @@ export function FocusMusicPlayer() {
 
   // Outside the app, hide the widget — unless music is playing, so the user can
   // still pause it. The component stays mounted either way, so audio persists.
-  if (!onAppRoute && !active) return null;
+  if (variant === "floating" && !onAppRoute && !active) return null;
+
+  const panel = (
+    <div className="w-64 rounded-2xl border border-border bg-surface p-3 shadow-hover">
+      <div className="mb-2 flex items-center justify-between">
+        <span className="flex items-center gap-1.5 text-sm font-semibold text-forest-slate">
+          <Music className="h-4 w-4 text-state-today" /> Focus music
+        </span>
+        <button onClick={() => setOpen(false)} className="p-1 text-mossy-gray hover:text-forest-slate" aria-label="Close">
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+
+      <div className="grid grid-cols-2 gap-1.5">
+        {TRACKS.map((t) => {
+          const on = active === t.id;
+          return (
+            <button
+              key={t.id}
+              onClick={() => (on ? stop() : playTrack(t.id))}
+              className={`flex items-center gap-1.5 rounded-xl border px-2.5 py-2 text-xs font-medium transition-colors ${
+                on
+                  ? "border-state-today bg-state-today/10 text-state-today"
+                  : "border-border text-mossy-gray hover:bg-canvas hover:text-forest-slate"
+              }`}
+              aria-pressed={on}
+            >
+              <span className="text-base leading-none">{t.emoji}</span>
+              <span className="flex-1 text-left">{t.label}</span>
+              {on ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="mt-3 flex items-center gap-2">
+        <Volume2 className="h-3.5 w-3.5 text-mossy-gray" />
+        <input
+          type="range"
+          min={0}
+          max={1}
+          step={0.01}
+          value={volume}
+          onChange={(e) => setVolume(parseFloat(e.target.value))}
+          className="h-1 flex-1 cursor-pointer accent-state-today"
+          aria-label="Volume"
+        />
+      </div>
+      <p className="mt-2 text-[10px] leading-snug text-mossy-gray">
+        Generated locally — ambient soundscapes to help you focus while reading.
+      </p>
+    </div>
+  );
+
+  if (variant === "sidebar") {
+    return (
+      <div className="relative">
+        {open && <div className="absolute bottom-0 left-full z-[80] ml-2">{panel}</div>}
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className={`flex w-full items-center rounded-xl py-2 text-sm font-medium transition-all duration-200 hover:bg-canvas hover:text-forest-slate ${
+            collapsed ? "justify-center px-2" : "gap-3 px-3"
+          } ${active ? "text-state-today" : "text-mossy-gray"}`}
+          aria-label="Focus music"
+          title={collapsed ? "Focus music" : undefined}
+        >
+          <Music className={`h-4 w-4 shrink-0 ${active ? "animate-pulse text-state-today" : "text-mossy-gray"}`} />
+          <span className={collapsed ? "sr-only" : undefined}>Music</span>
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed bottom-4 left-4 z-[60] print:hidden">
       {open ? (
-        <div className="w-64 rounded-2xl border border-border bg-surface p-3 shadow-hover">
-          <div className="mb-2 flex items-center justify-between">
-            <span className="flex items-center gap-1.5 text-sm font-semibold text-forest-slate">
-              <Music className="h-4 w-4 text-state-today" /> Focus music
-            </span>
-            <button onClick={() => setOpen(false)} className="p-1 text-mossy-gray hover:text-forest-slate" aria-label="Close">
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-
-          <div className="grid grid-cols-2 gap-1.5">
-            {TRACKS.map((t) => {
-              const on = active === t.id;
-              return (
-                <button
-                  key={t.id}
-                  onClick={() => (on ? stop() : playTrack(t.id))}
-                  className={`flex items-center gap-1.5 rounded-xl border px-2.5 py-2 text-xs font-medium transition-colors ${
-                    on
-                      ? "border-state-today bg-state-today/10 text-state-today"
-                      : "border-border text-mossy-gray hover:bg-canvas hover:text-forest-slate"
-                  }`}
-                  aria-pressed={on}
-                >
-                  <span className="text-base leading-none">{t.emoji}</span>
-                  <span className="flex-1 text-left">{t.label}</span>
-                  {on ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
-                </button>
-              );
-            })}
-          </div>
-
-          <div className="mt-3 flex items-center gap-2">
-            <Volume2 className="h-3.5 w-3.5 text-mossy-gray" />
-            <input
-              type="range"
-              min={0}
-              max={1}
-              step={0.01}
-              value={volume}
-              onChange={(e) => setVolume(parseFloat(e.target.value))}
-              className="h-1 flex-1 cursor-pointer accent-state-today"
-              aria-label="Volume"
-            />
-          </div>
-          <p className="mt-2 text-[10px] leading-snug text-mossy-gray">
-            Generated locally — ambient soundscapes to help you focus while reading.
-          </p>
-        </div>
+        panel
       ) : (
         <button
           onClick={() => setOpen(true)}

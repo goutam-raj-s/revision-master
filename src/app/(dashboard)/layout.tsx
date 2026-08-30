@@ -7,7 +7,6 @@ import { GlobalClipperWidget } from "@/components/features/global-clipper-widget
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ShortcutsHelp } from "@/components/features/shortcuts-help";
 import { HiddenDocsController } from "@/components/features/hidden-docs-controller";
-import { PomodoroTimer } from "@/components/features/pomodoro-timer";
 
 
 export default async function DashboardLayout({
@@ -31,7 +30,6 @@ export default async function DashboardLayout({
         <CommandPalette />
         <HiddenDocsController />
         <ShortcutsHelp />
-        <PomodoroTimer />
         <GlobalClipperWidget />
       </div>
     </TooltipProvider>

@@ -24,9 +24,10 @@ import {
   Utensils,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
 import { logoutAction } from "@/actions/auth";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { FocusMusicPlayer } from "@/components/features/focus-music-player";
+import { PomodoroTimer } from "@/components/features/pomodoro-timer";
 import type { User } from "@/types";
 
 interface SidebarProps {
@@ -46,20 +47,22 @@ const navItems = [
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 
-export function Sidebar({ user }: SidebarProps) {
-  const pathname = usePathname();
-  const [mobileOpen, setMobileOpen] = React.useState(false);
-  const [desktopCollapsed, setDesktopCollapsed] = React.useState(false);
+interface SidebarContentProps {
+  user: User;
+  collapsed?: boolean;
+  pathname: string;
+  onNavigate: () => void;
+  onToggleCollapsed: () => void;
+}
 
-  React.useEffect(() => {
-    setDesktopCollapsed(window.localStorage.getItem("lostbae_sidebar_collapsed") === "1");
-  }, []);
-
-  React.useEffect(() => {
-    window.localStorage.setItem("lostbae_sidebar_collapsed", desktopCollapsed ? "1" : "0");
-  }, [desktopCollapsed]);
-
-  const NavContent = ({ collapsed = false }: { collapsed?: boolean }) => (
+function SidebarContent({
+  user,
+  collapsed = false,
+  pathname,
+  onNavigate,
+  onToggleCollapsed,
+}: SidebarContentProps) {
+  return (
     <>
       {/* Logo */}
       <div className={cn("flex items-center border-b border-border", collapsed ? "justify-center px-2 py-4" : "gap-2 px-4 py-5")}>
@@ -80,7 +83,7 @@ export function Sidebar({ user }: SidebarProps) {
             <Link
               key={item.href}
               href={item.href}
-              onClick={() => setMobileOpen(false)}
+              onClick={onNavigate}
               className={cn(
                 "flex items-center rounded-xl py-2 text-sm font-medium transition-all duration-200",
                 collapsed ? "justify-center px-2" : "gap-3 px-3",
@@ -102,7 +105,7 @@ export function Sidebar({ user }: SidebarProps) {
         {user.role === "admin" && (
           <Link
             href="/admin"
-            onClick={() => setMobileOpen(false)}
+            onClick={onNavigate}
             className={cn(
               "flex items-center rounded-xl py-2 text-sm font-medium transition-all duration-200",
               collapsed ? "justify-center px-2" : "gap-3 px-3",
@@ -120,6 +123,10 @@ export function Sidebar({ user }: SidebarProps) {
 
       {/* User */}
       <div className={cn("border-t border-border", collapsed ? "p-2" : "p-3")}>
+        <div className="mb-2 space-y-0.5">
+          <PomodoroTimer variant="sidebar" collapsed={collapsed} />
+          <FocusMusicPlayer variant="sidebar" collapsed={collapsed} />
+        </div>
         <div className={cn("mb-1 flex items-center", collapsed ? "justify-center" : "justify-between px-1")}>
           <ThemeToggle showLabel={!collapsed} />
           {/* Discreet, unlabeled toggle for private documents. */}
@@ -135,7 +142,7 @@ export function Sidebar({ user }: SidebarProps) {
         </div>
         <button
           type="button"
-          onClick={() => setDesktopCollapsed((current) => !current)}
+          onClick={onToggleCollapsed}
           className={cn(
             "mb-2 hidden w-full items-center rounded-xl py-2 text-sm text-mossy-gray transition-colors hover:bg-canvas hover:text-forest-slate md:flex",
             collapsed ? "justify-center px-2" : "gap-3 px-3"
@@ -171,12 +178,31 @@ export function Sidebar({ user }: SidebarProps) {
       </div>
     </>
   );
+}
+
+export function Sidebar({ user }: SidebarProps) {
+  const pathname = usePathname();
+  const [mobileOpen, setMobileOpen] = React.useState(false);
+  const [desktopCollapsed, setDesktopCollapsed] = React.useState(() => {
+    if (typeof window === "undefined") return false;
+    return window.localStorage.getItem("lostbae_sidebar_collapsed") === "1";
+  });
+
+  React.useEffect(() => {
+    window.localStorage.setItem("lostbae_sidebar_collapsed", desktopCollapsed ? "1" : "0");
+  }, [desktopCollapsed]);
 
   return (
     <>
       {/* Desktop sidebar */}
       <aside className={cn("hidden md:flex flex-col shrink-0 border-r border-border bg-surface h-screen sticky top-0 transition-[width] duration-200", desktopCollapsed ? "w-16" : "w-56")}>
-        <NavContent collapsed={desktopCollapsed} />
+        <SidebarContent
+          user={user}
+          collapsed={desktopCollapsed}
+          pathname={pathname}
+          onNavigate={() => setMobileOpen(false)}
+          onToggleCollapsed={() => setDesktopCollapsed((current) => !current)}
+        />
       </aside>
 
       {/* Mobile hamburger */}
@@ -199,7 +225,12 @@ export function Sidebar({ user }: SidebarProps) {
             className="absolute left-0 top-0 h-full w-56 flex flex-col bg-surface border-r border-border shadow-hover animate-slide-up"
             onClick={(event) => event.stopPropagation()}
           >
-            <NavContent />
+            <SidebarContent
+              user={user}
+              pathname={pathname}
+              onNavigate={() => setMobileOpen(false)}
+              onToggleCollapsed={() => setDesktopCollapsed((current) => !current)}
+            />
           </aside>
         </div>
       )}
