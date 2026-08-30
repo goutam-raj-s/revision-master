@@ -22,7 +22,7 @@ export const PROVIDERS: Record<SocialProvider, ProviderConfig> = {
     clientSecret: process.env.LINKEDIN_CLIENT_SECRET,
     authUrl: "https://www.linkedin.com/oauth/v2/authorization",
     tokenUrl: "https://www.linkedin.com/oauth/v2/accessToken",
-    scope: "openid profile w_member_social w_member_social_feed",
+    scope: "openid profile w_member_social",
     pkce: false,
     label: "LinkedIn",
   },
