@@ -57,7 +57,7 @@ export function PomodoroTimer() {
       <button
         onClick={() => setOpen(true)}
         title="Focus timer"
-        className="fixed bottom-6 left-6 z-40 flex h-11 w-11 items-center justify-center rounded-full border border-border bg-surface text-mossy-gray shadow-soft transition-all hover:scale-105 hover:text-forest-slate"
+        className="fixed bottom-20 left-4 z-40 flex h-11 w-11 items-center justify-center rounded-full border border-border bg-surface text-mossy-gray shadow-soft transition-all hover:scale-105 hover:text-forest-slate"
         aria-label="Open focus timer"
       >
         <Timer className="h-5 w-5" />
@@ -67,7 +67,7 @@ export function PomodoroTimer() {
   }
 
   return (
-    <div className="fixed bottom-6 left-6 z-40 w-56 rounded-2xl border border-border bg-surface p-4 shadow-glass">
+    <div className="fixed bottom-20 left-4 z-40 w-56 rounded-2xl border border-border bg-surface p-4 shadow-glass">
       <div className="mb-3 flex items-center justify-between">
         <div className="flex items-center gap-1.5 text-sm font-medium text-forest-slate">
           {phase === "focus" ? <Timer className="h-4 w-4 text-state-today" /> : <Coffee className="h-4 w-4 text-state-upcoming" />}
