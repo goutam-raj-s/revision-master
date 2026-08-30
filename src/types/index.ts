@@ -405,6 +405,9 @@ export interface DbPostDraft {
   platform: PostPlatform;
   status: PostStatus;
   body: string;
+  imageDataUrl?: string;
+  imageName?: string;
+  imageMimeType?: string;
   scheduledFor?: Date;
   publishedUrl?: string;
   providerPostId?: string;
@@ -419,6 +422,9 @@ export interface PostDraft {
   platform: PostPlatform;
   status: PostStatus;
   body: string;
+  imageDataUrl?: string;
+  imageName?: string;
+  imageMimeType?: string;
   scheduledFor?: string;
   publishedUrl?: string;
   providerPostId?: string;

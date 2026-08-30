@@ -7,13 +7,24 @@ import {
   getSocialConnectionsCollection,
   getPostDraftsCollection,
 } from "@/lib/db/collections";
-import { getConnection, publish, isProviderConfigured, PROVIDERS } from "@/lib/social";
+import {
+  createLinkedInComment,
+  createLinkedInReaction,
+  deleteLinkedInComment,
+  deleteLinkedInReaction,
+  editLinkedInComment,
+  getConnection,
+  publish,
+  isProviderConfigured,
+  PROVIDERS,
+} from "@/lib/social";
 import type {
   ActionResult,
   SocialConnection,
   SocialProvider,
   PostPlatform,
 } from "@/types";
+import type { LinkedInReactionType } from "@/lib/social";
 
 const PLATFORM_TO_PROVIDER: Partial<Record<PostPlatform, SocialProvider>> = {
   linkedin: "linkedin",
@@ -87,7 +98,11 @@ export async function publishPostAction(draftId: string): Promise<ActionResult<{
   }
 
   try {
-    const result = await publish(conn, draft.body);
+    const result = await publish(conn, draft.body, {
+      imageDataUrl: draft.imageDataUrl,
+      imageName: draft.imageName,
+      imageMimeType: draft.imageMimeType,
+    });
     await drafts.updateOne(
       { _id: draft._id },
       {
@@ -110,5 +125,129 @@ export async function publishPostAction(draftId: string): Promise<ActionResult<{
     );
     revalidatePath("/posts");
     return { success: false, error: message };
+  }
+}
+
+function normalizeLinkedInTarget(input: string): string | null {
+  const raw = input.trim();
+  if (!raw) return null;
+  const decoded = decodeURIComponent(raw);
+  const urnMatch = decoded.match(/urn:li:(?:activity|share|ugcPost|comment):(?:\([^)\s]+,[^)]+\)|[A-Za-z0-9_-]+)/);
+  if (urnMatch) return urnMatch[0];
+
+  const activityMatch =
+    decoded.match(/activity[-/:](\d{10,})/) ??
+    decoded.match(/linkedin\.com\/feed\/update\/(\d{10,})/);
+  if (activityMatch?.[1]) return `urn:li:activity:${activityMatch[1]}`;
+
+  return null;
+}
+
+function normalizeLinkedInCommentId(input: string): string | null {
+  const raw = input.trim();
+  if (!raw) return null;
+  const decoded = decodeURIComponent(raw);
+  const commentUrn = decoded.match(/urn:li:comment:\([^,]+,([^)]+)\)/);
+  if (commentUrn?.[1]) return commentUrn[1];
+  const id = decoded.match(/\d{10,}/);
+  return id?.[0] ?? null;
+}
+
+async function requireLinkedInConnection(userId: string) {
+  const conn = await getConnection(userId, "linkedin");
+  if (!conn) throw new Error("Connect your LinkedIn account first.");
+  return conn;
+}
+
+export async function createLinkedInCommentAction(
+  target: string,
+  text: string
+): Promise<ActionResult<{ id: string; commentUrn?: string }>> {
+  const user = await requireAuth();
+  const targetUrn = normalizeLinkedInTarget(target);
+  if (!targetUrn) return { success: false, error: "Paste a LinkedIn post URL or URN." };
+  if (!text.trim()) return { success: false, error: "Write a comment first." };
+
+  try {
+    const result = await createLinkedInComment(
+      await requireLinkedInConnection(user.id),
+      targetUrn,
+      text.trim()
+    );
+    return { success: true, data: result };
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : "Comment failed." };
+  }
+}
+
+export async function editLinkedInCommentAction(
+  target: string,
+  commentIdOrUrn: string,
+  text: string
+): Promise<ActionResult> {
+  const user = await requireAuth();
+  const targetUrn = normalizeLinkedInTarget(target);
+  const commentId = normalizeLinkedInCommentId(commentIdOrUrn);
+  if (!targetUrn) return { success: false, error: "Paste the LinkedIn post URL or URN." };
+  if (!commentId) return { success: false, error: "Paste the comment ID or comment URN." };
+  if (!text.trim()) return { success: false, error: "Write the updated comment text." };
+
+  try {
+    await editLinkedInComment(
+      await requireLinkedInConnection(user.id),
+      targetUrn,
+      commentId,
+      text.trim()
+    );
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : "Comment edit failed." };
+  }
+}
+
+export async function deleteLinkedInCommentAction(
+  target: string,
+  commentIdOrUrn: string
+): Promise<ActionResult> {
+  const user = await requireAuth();
+  const targetUrn = normalizeLinkedInTarget(target);
+  const commentId = normalizeLinkedInCommentId(commentIdOrUrn);
+  if (!targetUrn) return { success: false, error: "Paste the LinkedIn post URL or URN." };
+  if (!commentId) return { success: false, error: "Paste the comment ID or comment URN." };
+
+  try {
+    await deleteLinkedInComment(await requireLinkedInConnection(user.id), targetUrn, commentId);
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : "Comment delete failed." };
+  }
+}
+
+export async function createLinkedInReactionAction(
+  target: string,
+  reactionType: LinkedInReactionType
+): Promise<ActionResult> {
+  const user = await requireAuth();
+  const targetUrn = normalizeLinkedInTarget(target);
+  if (!targetUrn) return { success: false, error: "Paste a LinkedIn post, comment URL, or URN." };
+
+  try {
+    await createLinkedInReaction(await requireLinkedInConnection(user.id), targetUrn, reactionType);
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : "Reaction failed." };
+  }
+}
+
+export async function deleteLinkedInReactionAction(target: string): Promise<ActionResult> {
+  const user = await requireAuth();
+  const targetUrn = normalizeLinkedInTarget(target);
+  if (!targetUrn) return { success: false, error: "Paste a LinkedIn post, comment URL, or URN." };
+
+  try {
+    await deleteLinkedInReaction(await requireLinkedInConnection(user.id), targetUrn);
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : "Reaction delete failed." };
   }
 }

@@ -22,7 +22,7 @@ export const PROVIDERS: Record<SocialProvider, ProviderConfig> = {
     clientSecret: process.env.LINKEDIN_CLIENT_SECRET,
     authUrl: "https://www.linkedin.com/oauth/v2/authorization",
     tokenUrl: "https://www.linkedin.com/oauth/v2/accessToken",
-    scope: "openid profile w_member_social",
+    scope: "openid profile w_member_social w_member_social_feed",
     pkce: false,
     label: "LinkedIn",
   },
@@ -216,40 +216,132 @@ async function getValidAccessToken(conn: DbSocialConnection): Promise<string> {
 
 // ─── Publishing ─────────────────────────────────────────────────────────────
 
+const LINKEDIN_REST_VERSION = process.env.LINKEDIN_API_VERSION ?? "202606";
+
 export interface PublishResult {
   providerPostId: string;
   url: string;
 }
 
-async function publishToLinkedIn(
+export interface PublishOptions {
+  imageDataUrl?: string;
+  imageName?: string;
+  imageMimeType?: string;
+}
+
+export type LinkedInReactionType =
+  | "LIKE"
+  | "PRAISE"
+  | "EMPATHY"
+  | "INTEREST"
+  | "APPRECIATION"
+  | "ENTERTAINMENT";
+
+export interface LinkedInCommentResult {
+  id: string;
+  commentUrn?: string;
+}
+
+function linkedInRestHeaders(accessToken: string, json = false): HeadersInit {
+  return {
+    Authorization: `Bearer ${accessToken}`,
+    "Linkedin-Version": LINKEDIN_REST_VERSION,
+    "X-Restli-Protocol-Version": "2.0.0",
+    ...(json ? { "Content-Type": "application/json" } : {}),
+  };
+}
+
+function linkedInActor(conn: DbSocialConnection): string {
+  return `urn:li:person:${conn.providerUserId}`;
+}
+
+async function readError(res: Response): Promise<string> {
+  const text = await res.text();
+  return text || `${res.status} ${res.statusText}`;
+}
+
+function dataUrlToBuffer(dataUrl: string): { buffer: Buffer; mimeType: string } {
+  const match = dataUrl.match(/^data:([^;]+);base64,(.+)$/);
+  if (!match) throw new Error("Image attachment is not a valid data URL.");
+  const mimeType = match[1];
+  if (!mimeType.startsWith("image/")) throw new Error("LinkedIn attachment must be an image.");
+  return { buffer: Buffer.from(match[2], "base64"), mimeType };
+}
+
+async function uploadLinkedInImage(
   conn: DbSocialConnection,
-  text: string
-): Promise<PublishResult> {
-  const accessToken = await getValidAccessToken(conn);
-  const author = `urn:li:person:${conn.providerUserId}`;
-  const res = await fetch("https://api.linkedin.com/v2/ugcPosts", {
+  accessToken: string,
+  imageDataUrl: string
+): Promise<string> {
+  const owner = linkedInActor(conn);
+  const init = await fetch("https://api.linkedin.com/rest/images?action=initializeUpload", {
     method: "POST",
+    headers: linkedInRestHeaders(accessToken, true),
+    body: JSON.stringify({ initializeUploadRequest: { owner } }),
+  });
+  if (!init.ok) throw new Error(`LinkedIn image upload init failed: ${await readError(init)}`);
+
+  const payload = (await init.json()) as {
+    value?: { uploadUrl?: string; image?: string };
+  };
+  const uploadUrl = payload.value?.uploadUrl;
+  const image = payload.value?.image;
+  if (!uploadUrl || !image) throw new Error("LinkedIn did not return an image upload URL.");
+
+  const { buffer, mimeType } = dataUrlToBuffer(imageDataUrl);
+  const upload = await fetch(uploadUrl, {
+    method: "PUT",
     headers: {
       Authorization: `Bearer ${accessToken}`,
-      "Content-Type": "application/json",
-      "X-Restli-Protocol-Version": "2.0.0",
+      "Content-Type": mimeType,
     },
+    body: new Blob([new Uint8Array(buffer)], { type: mimeType }),
+  });
+  if (!upload.ok) throw new Error(`LinkedIn image upload failed: ${await readError(upload)}`);
+
+  return image;
+}
+
+async function publishToLinkedIn(
+  conn: DbSocialConnection,
+  text: string,
+  options: PublishOptions = {}
+): Promise<PublishResult> {
+  const accessToken = await getValidAccessToken(conn);
+  const author = linkedInActor(conn);
+  const image = options.imageDataUrl
+    ? await uploadLinkedInImage(conn, accessToken, options.imageDataUrl)
+    : undefined;
+  const res = await fetch("https://api.linkedin.com/rest/posts", {
+    method: "POST",
+    headers: linkedInRestHeaders(accessToken, true),
     body: JSON.stringify({
       author,
-      lifecycleState: "PUBLISHED",
-      specificContent: {
-        "com.linkedin.ugc.ShareContent": {
-          shareCommentary: { text },
-          shareMediaCategory: "NONE",
-        },
+      commentary: text,
+      visibility: "PUBLIC",
+      distribution: {
+        feedDistribution: "MAIN_FEED",
+        targetEntities: [],
+        thirdPartyDistributionChannels: [],
       },
-      visibility: { "com.linkedin.ugc.MemberNetworkVisibility": "PUBLIC" },
+      ...(image
+        ? {
+            content: {
+              media: {
+                id: image,
+                title: options.imageName ?? "Image",
+              },
+            },
+          }
+        : {}),
+      lifecycleState: "PUBLISHED",
+      isReshareDisabledByAuthor: false,
     }),
   });
   if (!res.ok) {
-    throw new Error(`LinkedIn publish failed: ${await res.text()}`);
+    throw new Error(`LinkedIn publish failed: ${await readError(res)}`);
   }
-  const id = res.headers.get("x-restli-id") ?? ((await res.json()) as { id?: string }).id ?? "";
+  const id = res.headers.get("x-restli-id") ?? ((await res.json().catch(() => ({}))) as { id?: string }).id ?? "";
   const url = id
     ? `https://www.linkedin.com/feed/update/${encodeURIComponent(id)}`
     : "https://www.linkedin.com/feed/";
@@ -280,12 +372,113 @@ async function publishToTwitter(
 
 export async function publish(
   conn: DbSocialConnection,
-  text: string
+  text: string,
+  options: PublishOptions = {}
 ): Promise<PublishResult> {
   if (conn.provider === "twitter" && text.length > 280) {
     throw new Error(`X posts are limited to 280 characters (yours is ${text.length}).`);
   }
+  if (conn.provider === "twitter" && options.imageDataUrl) {
+    throw new Error("Image publishing is only wired for LinkedIn right now.");
+  }
   return conn.provider === "linkedin"
-    ? publishToLinkedIn(conn, text)
+    ? publishToLinkedIn(conn, text, options)
     : publishToTwitter(conn, text);
+}
+
+export async function createLinkedInComment(
+  conn: DbSocialConnection,
+  targetUrn: string,
+  text: string
+): Promise<LinkedInCommentResult> {
+  const accessToken = await getValidAccessToken(conn);
+  const res = await fetch(
+    `https://api.linkedin.com/rest/socialActions/${encodeURIComponent(targetUrn)}/comments`,
+    {
+      method: "POST",
+      headers: linkedInRestHeaders(accessToken, true),
+      body: JSON.stringify({
+        actor: linkedInActor(conn),
+        object: targetUrn,
+        message: { text },
+      }),
+    }
+  );
+  if (!res.ok) throw new Error(`LinkedIn comment failed: ${await readError(res)}`);
+  const body = (await res.json().catch(() => ({}))) as { id?: string; commentUrn?: string };
+  return {
+    id: res.headers.get("x-restli-id") ?? body.id ?? "",
+    commentUrn: body.commentUrn,
+  };
+}
+
+export async function editLinkedInComment(
+  conn: DbSocialConnection,
+  targetUrn: string,
+  commentId: string,
+  text: string
+): Promise<void> {
+  const accessToken = await getValidAccessToken(conn);
+  const res = await fetch(
+    `https://api.linkedin.com/rest/socialActions/${encodeURIComponent(targetUrn)}/comments/${encodeURIComponent(commentId)}`,
+    {
+      method: "POST",
+      headers: {
+        ...linkedInRestHeaders(accessToken, true),
+        "X-RestLi-Method": "PARTIAL_UPDATE",
+      },
+      body: JSON.stringify({
+        patch: { message: { $set: { text } } },
+      }),
+    }
+  );
+  if (!res.ok) throw new Error(`LinkedIn comment edit failed: ${await readError(res)}`);
+}
+
+export async function deleteLinkedInComment(
+  conn: DbSocialConnection,
+  targetUrn: string,
+  commentId: string
+): Promise<void> {
+  const accessToken = await getValidAccessToken(conn);
+  const res = await fetch(
+    `https://api.linkedin.com/rest/socialActions/${encodeURIComponent(targetUrn)}/comments/${encodeURIComponent(commentId)}`,
+    {
+      method: "DELETE",
+      headers: linkedInRestHeaders(accessToken),
+    }
+  );
+  if (!res.ok) throw new Error(`LinkedIn comment delete failed: ${await readError(res)}`);
+}
+
+export async function createLinkedInReaction(
+  conn: DbSocialConnection,
+  targetUrn: string,
+  reactionType: LinkedInReactionType
+): Promise<void> {
+  const accessToken = await getValidAccessToken(conn);
+  const actor = linkedInActor(conn);
+  const res = await fetch(
+    `https://api.linkedin.com/rest/reactions?actor=${encodeURIComponent(actor)}`,
+    {
+      method: "POST",
+      headers: linkedInRestHeaders(accessToken, true),
+      body: JSON.stringify({ root: targetUrn, reactionType }),
+    }
+  );
+  if (!res.ok) throw new Error(`LinkedIn reaction failed: ${await readError(res)}`);
+}
+
+export async function deleteLinkedInReaction(
+  conn: DbSocialConnection,
+  targetUrn: string
+): Promise<void> {
+  const accessToken = await getValidAccessToken(conn);
+  const actor = linkedInActor(conn);
+  const id = `(actor:${encodeURIComponent(actor)},entity:${encodeURIComponent(targetUrn)})`;
+  const res = await fetch(`https://api.linkedin.com/rest/reactions/${id}`, {
+    method: "DELETE",
+    headers: linkedInRestHeaders(accessToken),
+  });
+  if (!res.ok) throw new Error(`LinkedIn reaction delete failed: ${await readError(res)}`);
 }

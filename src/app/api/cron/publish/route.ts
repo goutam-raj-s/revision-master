@@ -55,7 +55,11 @@ export async function GET(request: NextRequest) {
       continue;
     }
     try {
-      const result = await publish(conn, draft.body);
+      const result = await publish(conn, draft.body, {
+        imageDataUrl: draft.imageDataUrl,
+        imageName: draft.imageName,
+        imageMimeType: draft.imageMimeType,
+      });
       await drafts.updateOne(
         { _id: draft._id },
         {
