@@ -37,11 +37,13 @@ export interface FoodEntryInput {
   /** Grams when per100g, pieces when perPiece. */
   quantity: number;
   /** kcal per 100 g or per piece. */
-  caloriesPerUnit: number;
+  caloriesPerUnit?: number;
   /** Protein grams per 100 g or per piece. */
   proteinPerUnit?: number;
   /** Carbohydrate grams per 100 g or per piece. */
   carbsPerUnit?: number;
+  /** Fat grams per 100 g or per piece. */
+  fatPerUnit?: number;
 }
 
 export interface ExerciseEntryInput {
@@ -70,7 +72,8 @@ function isValidNonNegative(n: unknown, max: number): n is number {
   return typeof n === "number" && Number.isFinite(n) && n >= 0 && n <= max;
 }
 
-function computeFoodTotal(unit: FoodUnit, quantity: number, caloriesPerUnit: number): number {
+function computeFoodTotal(unit: FoodUnit, quantity: number, caloriesPerUnit?: number): number {
+  if (caloriesPerUnit == null) return 0;
   const total = unit === "per100g" ? (quantity / 100) * caloriesPerUnit : quantity * caloriesPerUnit;
   return Math.round(total);
 }
@@ -87,9 +90,10 @@ function validateFoodInput(input: FoodEntryInput): string | null {
   if (!name || name.length > MAX_NAME_LEN) return "Dish name is required.";
   if (input.unit !== "per100g" && input.unit !== "perPiece") return "Invalid unit.";
   if (!isValidNumber(input.quantity, MAX_QUANTITY)) return "Quantity must be a positive number.";
-  if (!isValidNonNegative(input.caloriesPerUnit, MAX_KCAL)) return "Calories can't be negative.";
+  if (input.caloriesPerUnit != null && !isValidNonNegative(input.caloriesPerUnit, MAX_KCAL)) return "Calories can't be negative.";
   if (input.proteinPerUnit != null && !isValidNonNegative(input.proteinPerUnit, MAX_QUANTITY)) return "Protein can't be negative.";
   if (input.carbsPerUnit != null && !isValidNonNegative(input.carbsPerUnit, MAX_QUANTITY)) return "Carbs can't be negative.";
+  if (input.fatPerUnit != null && !isValidNonNegative(input.fatPerUnit, MAX_QUANTITY)) return "Fat can't be negative.";
   return null;
 }
 
@@ -128,7 +132,7 @@ async function upsertLibraryItem(
   userId: ObjectId,
   kind: "food" | "exercise",
   name: string,
-  values: { unit?: FoodUnit; caloriesPerUnit?: number; proteinPerUnit?: number; carbsPerUnit?: number; lastCaloriesBurned?: number },
+  values: { unit?: FoodUnit; caloriesPerUnit?: number; proteinPerUnit?: number; carbsPerUnit?: number; fatPerUnit?: number; lastCaloriesBurned?: number },
   countAsLog: boolean
 ): Promise<DbCalorieLibraryItem | null> {
   const library = await getCalorieLibraryCollection();
@@ -210,7 +214,7 @@ export async function getCaloriesOverviewAction(
     entriesCol.find({ userId, dayKey: todayKey }).sort({ createdAt: 1 }).toArray(),
     libraryCol.find({ userId }).sort({ timesLogged: -1, lastLoggedAt: -1 }).limit(300).toArray(),
     entriesCol
-      .aggregate<{ _id: string; food: number; protein: number; carbs: number; exercise: number; count: number }>([
+      .aggregate<{ _id: string; food: number; protein: number; carbs: number; fat: number; exercise: number; count: number }>([
         { $match: { userId, dayKey: { $gte: rangeStart, $lte: todayKey } } },
         {
           $group: {
@@ -218,6 +222,7 @@ export async function getCaloriesOverviewAction(
             food: { $sum: { $cond: [{ $eq: ["$kind", "food"] }, "$totalCalories", 0] } },
             protein: { $sum: { $cond: [{ $eq: ["$kind", "food"] }, { $ifNull: ["$proteinGrams", 0] }, 0] } },
             carbs: { $sum: { $cond: [{ $eq: ["$kind", "food"] }, { $ifNull: ["$carbsGrams", 0] }, 0] } },
+            fat: { $sum: { $cond: [{ $eq: ["$kind", "food"] }, { $ifNull: ["$fatGrams", 0] }, 0] } },
             exercise: { $sum: { $cond: [{ $eq: ["$kind", "exercise"] }, "$totalCalories", 0] } },
             count: { $sum: 1 },
           },
@@ -236,6 +241,7 @@ export async function getCaloriesOverviewAction(
       foodCalories: food,
       proteinGrams: d?.protein ?? 0,
       carbsGrams: d?.carbs ?? 0,
+      fatGrams: d?.fat ?? 0,
       exerciseCalories: exercise,
       netCalories: food - exercise,
       entryCount: d?.count ?? 0,
@@ -340,8 +346,10 @@ export async function addFoodEntryAction(
     caloriesPerUnit: input.caloriesPerUnit,
     proteinPerUnit: input.proteinPerUnit,
     carbsPerUnit: input.carbsPerUnit,
+    fatPerUnit: input.fatPerUnit,
     proteinGrams: computeMacroTotal(input.unit, input.quantity, input.proteinPerUnit),
     carbsGrams: computeMacroTotal(input.unit, input.quantity, input.carbsPerUnit),
+    fatGrams: computeMacroTotal(input.unit, input.quantity, input.fatPerUnit),
     totalCalories: computeFoodTotal(input.unit, input.quantity, input.caloriesPerUnit),
     createdAt: now,
     updatedAt: now,
@@ -357,6 +365,7 @@ export async function addFoodEntryAction(
       caloriesPerUnit: input.caloriesPerUnit,
       proteinPerUnit: input.proteinPerUnit,
       carbsPerUnit: input.carbsPerUnit,
+      fatPerUnit: input.fatPerUnit,
     },
     true
   );
@@ -432,11 +441,13 @@ export async function updateFoodEntryAction(
     nameKey: normalizeName(name),
     unit: input.unit,
     quantity: input.quantity,
-    caloriesPerUnit: input.caloriesPerUnit,
     totalCalories: computeFoodTotal(input.unit, input.quantity, input.caloriesPerUnit),
     updatedAt: now,
   };
   const unsetFields: Record<string, ""> = {};
+
+  if (input.caloriesPerUnit != null) setFields.caloriesPerUnit = input.caloriesPerUnit;
+  else unsetFields.caloriesPerUnit = "";
 
   if (input.proteinPerUnit != null) setFields.proteinPerUnit = input.proteinPerUnit;
   else unsetFields.proteinPerUnit = "";
@@ -444,11 +455,17 @@ export async function updateFoodEntryAction(
   if (input.carbsPerUnit != null) setFields.carbsPerUnit = input.carbsPerUnit;
   else unsetFields.carbsPerUnit = "";
 
+  if (input.fatPerUnit != null) setFields.fatPerUnit = input.fatPerUnit;
+  else unsetFields.fatPerUnit = "";
+
   if (input.proteinPerUnit != null) setFields.proteinGrams = computeMacroTotal(input.unit, input.quantity, input.proteinPerUnit);
   else unsetFields.proteinGrams = "";
 
   if (input.carbsPerUnit != null) setFields.carbsGrams = computeMacroTotal(input.unit, input.quantity, input.carbsPerUnit);
   else unsetFields.carbsGrams = "";
+
+  if (input.fatPerUnit != null) setFields.fatGrams = computeMacroTotal(input.unit, input.quantity, input.fatPerUnit);
+  else unsetFields.fatGrams = "";
 
   const updated = await col.findOneAndUpdate(
     { _id: new ObjectId(entryId), userId, kind: "food" },
@@ -470,6 +487,7 @@ export async function updateFoodEntryAction(
       caloriesPerUnit: input.caloriesPerUnit,
       proteinPerUnit: input.proteinPerUnit,
       carbsPerUnit: input.carbsPerUnit,
+      fatPerUnit: input.fatPerUnit,
     },
     false
   );

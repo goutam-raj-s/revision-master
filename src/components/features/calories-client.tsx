@@ -4,6 +4,7 @@ import * as React from "react";
 import {
   Activity,
   CalendarDays,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Download,
@@ -29,6 +30,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Select,
   SelectContent,
@@ -117,10 +124,20 @@ const fmt = (n: number) => Math.round(n).toLocaleString("en-US");
 const fmtMacro = (n: number) =>
   Number.isInteger(n) ? n.toLocaleString("en-US") : n.toLocaleString("en-US", { maximumFractionDigits: 1 });
 
-function macroPerUnitFromEntry(entry: CalorieEntry, macro: "protein" | "carbs"): string {
-  const stored = macro === "protein" ? entry.proteinPerUnit : entry.carbsPerUnit;
+function macroPerUnitFromEntry(entry: CalorieEntry, macro: "protein" | "carbs" | "fat"): string {
+  const stored =
+    macro === "protein"
+      ? entry.proteinPerUnit
+      : macro === "carbs"
+        ? entry.carbsPerUnit
+        : entry.fatPerUnit;
   if (stored != null) return String(stored);
-  const total = macro === "protein" ? entry.proteinGrams : entry.carbsGrams;
+  const total =
+    macro === "protein"
+      ? entry.proteinGrams
+      : macro === "carbs"
+        ? entry.carbsGrams
+        : entry.fatGrams;
   if (total == null || entry.quantity == null || entry.quantity <= 0) return "";
   const perUnit = entry.unit === "perPiece" ? total / entry.quantity : (total / entry.quantity) * 100;
   return String(Math.round(perUnit * 10) / 10);
@@ -128,6 +145,24 @@ function macroPerUnitFromEntry(entry: CalorieEntry, macro: "protein" | "carbs"):
 
 function normalizeName(name: string): string {
   return name.trim().replace(/\s+/g, " ").toLowerCase();
+}
+
+function formatNutritionFacts(item: CalorieLibraryItem) {
+  const unitLabel = item.unit === "perPiece" ? "pc" : "100 g";
+  return [
+    item.caloriesPerUnit != null ? `${fmt(item.caloriesPerUnit)} kcal/${unitLabel}` : null,
+    item.proteinPerUnit != null ? `P ${fmtMacro(item.proteinPerUnit)}g` : null,
+    item.carbsPerUnit != null ? `C ${fmtMacro(item.carbsPerUnit)}g` : null,
+    item.fatPerUnit != null ? `F ${fmtMacro(item.fatPerUnit)}g` : null,
+  ].filter(Boolean).join(" · ") || `${item.timesLogged}× logged`;
+}
+
+function formatEntryMacros(entry: CalorieEntry) {
+  return [
+    entry.proteinGrams != null ? `P ${fmtMacro(entry.proteinGrams)}g` : null,
+    entry.carbsGrams != null ? `C ${fmtMacro(entry.carbsGrams)}g` : null,
+    entry.fatGrams != null ? `F ${fmtMacro(entry.fatGrams)}g` : null,
+  ].filter(Boolean).join(" · ");
 }
 
 // ─── Small building blocks ─────────────────────────────────────────────────────
@@ -225,6 +260,7 @@ function DayDetailsModal({
   const burned = exercises.reduce((sum, entry) => sum + entry.totalCalories, 0);
   const protein = foods.reduce((sum, entry) => sum + (entry.proteinGrams ?? 0), 0);
   const carbs = foods.reduce((sum, entry) => sum + (entry.carbsGrams ?? 0), 0);
+  const fat = foods.reduce((sum, entry) => sum + (entry.fatGrams ?? 0), 0);
   const net = eaten - burned;
   const delta = goal != null && entries.length > 0 ? goal - net : null;
 
@@ -248,7 +284,7 @@ function DayDetailsModal({
           </div>
         ) : (
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-6">
               <div className="rounded-xl border border-border bg-canvas p-3">
                 <div className="text-[11px] text-mossy-gray">Eaten</div>
                 <div className="font-mono text-lg font-semibold text-forest-slate">{fmt(eaten)}</div>
@@ -268,6 +304,10 @@ function DayDetailsModal({
               <div className="rounded-xl border border-border bg-canvas p-3">
                 <div className="text-[11px] text-mossy-gray">Carbs</div>
                 <div className="font-mono text-lg font-semibold text-forest-slate">{fmtMacro(carbs)}g</div>
+              </div>
+              <div className="rounded-xl border border-border bg-canvas p-3">
+                <div className="text-[11px] text-mossy-gray">Fat</div>
+                <div className="font-mono text-lg font-semibold text-forest-slate">{fmtMacro(fat)}g</div>
               </div>
             </div>
 
@@ -293,8 +333,10 @@ function DayDetailsModal({
                             <div className="truncate text-sm font-medium text-forest-slate">{entry.name}</div>
                             <div className="mt-0.5 text-[11px] text-mossy-gray">
                               {entry.unit === "perPiece"
-                                ? `Ate ${entry.quantity} pc · product ${fmt(entry.caloriesPerUnit ?? 0)} kcal/pc`
-                                : `Ate ${entry.quantity} g · product ${fmt(entry.caloriesPerUnit ?? 0)} kcal/100 g`}
+                                ? `Ate ${entry.quantity} pc`
+                                : `Ate ${entry.quantity} g`}
+                              {entry.caloriesPerUnit != null &&
+                                ` · product ${fmt(entry.caloriesPerUnit)} kcal/${entry.unit === "perPiece" ? "pc" : "100 g"}`}
                             </div>
                           </div>
                           <div className="flex shrink-0 items-start gap-1">
@@ -319,14 +361,25 @@ function DayDetailsModal({
                             </button>
                           </div>
                         </div>
-                        <div className="mt-2 flex flex-wrap gap-1.5 text-[11px]">
-                          <span className="rounded-full bg-surface px-2 py-0.5 text-mossy-gray">
-                            Protein {fmtMacro(entry.proteinGrams ?? 0)}g
-                          </span>
-                          <span className="rounded-full bg-surface px-2 py-0.5 text-mossy-gray">
-                            Carbs {fmtMacro(entry.carbsGrams ?? 0)}g
-                          </span>
-                        </div>
+                        {(entry.proteinGrams != null || entry.carbsGrams != null || entry.fatGrams != null) && (
+                          <div className="mt-2 flex flex-wrap gap-1.5 text-[11px]">
+                            {entry.proteinGrams != null && (
+                              <span className="rounded-full bg-surface px-2 py-0.5 text-mossy-gray">
+                                Protein {fmtMacro(entry.proteinGrams)}g
+                              </span>
+                            )}
+                            {entry.carbsGrams != null && (
+                              <span className="rounded-full bg-surface px-2 py-0.5 text-mossy-gray">
+                                Carbs {fmtMacro(entry.carbsGrams)}g
+                              </span>
+                            )}
+                            {entry.fatGrams != null && (
+                              <span className="rounded-full bg-surface px-2 py-0.5 text-mossy-gray">
+                                Fat {fmtMacro(entry.fatGrams)}g
+                              </span>
+                            )}
+                          </div>
+                        )}
                       </div>
                     ))
                   )}
@@ -395,6 +448,7 @@ interface FoodForm {
   caloriesPerUnit: string;
   proteinPerUnit: string;
   carbsPerUnit: string;
+  fatPerUnit: string;
   editingId: string | null;
 }
 
@@ -411,6 +465,7 @@ const EMPTY_FOOD_FORM: FoodForm = {
   caloriesPerUnit: "",
   proteinPerUnit: "",
   carbsPerUnit: "",
+  fatPerUnit: "",
   editingId: null,
 };
 const EMPTY_EXERCISE_FORM: ExerciseForm = { name: "", caloriesBurned: "", editingId: null };
@@ -510,6 +565,7 @@ export function CaloriesClient() {
   const eaten = foodEntries.reduce((s, e) => s + e.totalCalories, 0);
   const protein = foodEntries.reduce((s, e) => s + (e.proteinGrams ?? 0), 0);
   const carbs = foodEntries.reduce((s, e) => s + (e.carbsGrams ?? 0), 0);
+  const fat = foodEntries.reduce((s, e) => s + (e.fatGrams ?? 0), 0);
   const burned = exerciseEntries.reduce((s, e) => s + e.totalCalories, 0);
   const net = eaten - burned;
   const remaining = goal != null ? goal - net : null;
@@ -526,7 +582,7 @@ export function CaloriesClient() {
       .map((i) => ({
         key: i.id,
         label: i.name,
-        sub: `${fmt(i.caloriesPerUnit ?? 0)} kcal/${i.unit === "perPiece" ? "pc" : "100 g"} · P ${fmtMacro(i.proteinPerUnit ?? 0)}g · C ${fmtMacro(i.carbsPerUnit ?? 0)}g`,
+        sub: formatNutritionFacts(i),
         item: i,
       }));
   }, [foodForm.name, foodLibrary]);
@@ -545,8 +601,13 @@ export function CaloriesClient() {
       }));
   }, [exForm.name, exerciseLibrary]);
 
+  const quickAddLimit = 6;
   const quickAdds = React.useMemo(
-    () => foodLibrary.slice(0, 6),
+    () => foodLibrary.slice(0, foodLibrary.length > quickAddLimit ? quickAddLimit - 1 : quickAddLimit),
+    [foodLibrary]
+  );
+  const quickAddOthers = React.useMemo(
+    () => foodLibrary.length > quickAddLimit ? foodLibrary.slice(quickAddLimit - 1) : [],
     [foodLibrary]
   );
 
@@ -570,6 +631,13 @@ export function CaloriesClient() {
     if (!Number.isFinite(q) || !Number.isFinite(c) || q <= 0 || c < 0) return null;
     return foodForm.unit === "per100g" ? (q / 100) * c : q * c;
   }, [foodForm.carbsPerUnit, foodForm.quantity, foodForm.unit]);
+
+  const previewFat = React.useMemo(() => {
+    const q = parseFloat(foodForm.quantity);
+    const f = parseFloat(foodForm.fatPerUnit);
+    if (!Number.isFinite(q) || !Number.isFinite(f) || q <= 0 || f < 0) return null;
+    return foodForm.unit === "per100g" ? (q / 100) * f : q * f;
+  }, [foodForm.fatPerUnit, foodForm.quantity, foodForm.unit]);
 
   // Insights over the last 30 days.
   const insights = React.useMemo(() => {
@@ -645,24 +713,32 @@ export function CaloriesClient() {
       caloriesPerUnit: s.item.caloriesPerUnit != null ? String(s.item.caloriesPerUnit) : f.caloriesPerUnit,
       proteinPerUnit: s.item.proteinPerUnit != null ? String(s.item.proteinPerUnit) : f.proteinPerUnit,
       carbsPerUnit: s.item.carbsPerUnit != null ? String(s.item.carbsPerUnit) : f.carbsPerUnit,
+      fatPerUnit: s.item.fatPerUnit != null ? String(s.item.fatPerUnit) : f.fatPerUnit,
     }));
     setFoodSugOpen(false);
     quantityRef.current?.focus();
   }
 
-  /** Autofill unit + kcal from the library when the typed name matches exactly. */
+  /** Autofill known nutrition from the library when the typed name matches exactly. */
   function autofillFoodFromExactMatch() {
     const key = normalizeName(foodForm.name);
-    if (!key || foodForm.caloriesPerUnit !== "") return;
+    if (
+      !key ||
+      foodForm.caloriesPerUnit !== "" ||
+      foodForm.proteinPerUnit !== "" ||
+      foodForm.carbsPerUnit !== "" ||
+      foodForm.fatPerUnit !== ""
+    ) return;
     const match = foodLibrary.find((i) => i.nameKey === key);
-    if (!match || match.caloriesPerUnit == null) return;
+    if (!match) return;
     setFoodForm((f) => ({
       ...f,
       name: match.name,
       unit: match.unit ?? f.unit,
-      caloriesPerUnit: String(match.caloriesPerUnit),
+      caloriesPerUnit: match.caloriesPerUnit != null ? String(match.caloriesPerUnit) : f.caloriesPerUnit,
       proteinPerUnit: match.proteinPerUnit != null ? String(match.proteinPerUnit) : f.proteinPerUnit,
       carbsPerUnit: match.carbsPerUnit != null ? String(match.carbsPerUnit) : f.carbsPerUnit,
+      fatPerUnit: match.fatPerUnit != null ? String(match.fatPerUnit) : f.fatPerUnit,
     }));
   }
 
@@ -674,6 +750,7 @@ export function CaloriesClient() {
       caloriesPerUnit: item.caloriesPerUnit != null ? String(item.caloriesPerUnit) : "",
       proteinPerUnit: item.proteinPerUnit != null ? String(item.proteinPerUnit) : "",
       carbsPerUnit: item.carbsPerUnit != null ? String(item.carbsPerUnit) : "",
+      fatPerUnit: item.fatPerUnit != null ? String(item.fatPerUnit) : "",
       editingId: null,
     });
     setFoodSugOpen(false);
@@ -688,6 +765,7 @@ export function CaloriesClient() {
       caloriesPerUnit: entry.caloriesPerUnit != null ? String(entry.caloriesPerUnit) : "",
       proteinPerUnit: macroPerUnitFromEntry(entry, "protein"),
       carbsPerUnit: macroPerUnitFromEntry(entry, "carbs"),
+      fatPerUnit: macroPerUnitFromEntry(entry, "fat"),
       editingId: entry.id,
     });
     setFoodSugOpen(false);
@@ -708,23 +786,26 @@ export function CaloriesClient() {
   async function submitFood(e: React.FormEvent) {
     e.preventDefault();
     const quantity = parseFloat(foodForm.quantity);
-    const caloriesPerUnit = parseFloat(foodForm.caloriesPerUnit);
+    const caloriesPerUnit = foodForm.caloriesPerUnit.trim() ? parseFloat(foodForm.caloriesPerUnit) : undefined;
     const proteinPerUnit = foodForm.proteinPerUnit.trim() ? parseFloat(foodForm.proteinPerUnit) : undefined;
     const carbsPerUnit = foodForm.carbsPerUnit.trim() ? parseFloat(foodForm.carbsPerUnit) : undefined;
+    const fatPerUnit = foodForm.fatPerUnit.trim() ? parseFloat(foodForm.fatPerUnit) : undefined;
     const name = foodForm.name.trim();
 
     if (!name) return toast("Enter a dish name.", { variant: "error" });
     if (!Number.isFinite(quantity) || quantity <= 0)
       return toast(`Enter ${foodForm.unit === "per100g" ? "weight in grams" : "number of pieces"}.`, { variant: "error" });
-    if (!Number.isFinite(caloriesPerUnit) || caloriesPerUnit < 0)
-      return toast(`Enter kcal ${foodForm.unit === "per100g" ? "per 100 g" : "per piece"}.`, { variant: "error" });
+    if (caloriesPerUnit != null && (!Number.isFinite(caloriesPerUnit) || caloriesPerUnit < 0))
+      return toast(`Enter product kcal ${foodForm.unit === "per100g" ? "per 100 g" : "per piece"}, or leave it blank.`, { variant: "error" });
     if (proteinPerUnit != null && (!Number.isFinite(proteinPerUnit) || proteinPerUnit < 0))
       return toast(`Enter product protein ${foodForm.unit === "per100g" ? "per 100 g" : "per piece"}, or leave it blank.`, { variant: "error" });
     if (carbsPerUnit != null && (!Number.isFinite(carbsPerUnit) || carbsPerUnit < 0))
       return toast(`Enter product carbs ${foodForm.unit === "per100g" ? "per 100 g" : "per piece"}, or leave it blank.`, { variant: "error" });
+    if (fatPerUnit != null && (!Number.isFinite(fatPerUnit) || fatPerUnit < 0))
+      return toast(`Enter product fat ${foodForm.unit === "per100g" ? "per 100 g" : "per piece"}, or leave it blank.`, { variant: "error" });
 
     setFoodSubmitting(true);
-    const input = { name, unit: foodForm.unit, quantity, caloriesPerUnit, proteinPerUnit, carbsPerUnit };
+    const input = { name, unit: foodForm.unit, quantity, caloriesPerUnit, proteinPerUnit, carbsPerUnit, fatPerUnit };
     const res = foodForm.editingId
       ? await updateFoodEntryAction(foodForm.editingId, input)
       : await addFoodEntryAction({ ...input, dayKey: selectedDay });
@@ -895,12 +976,13 @@ export function CaloriesClient() {
     let rows: (string | number)[][];
 
     if (reportTab === "daily") {
-      header = ["Date", "Eaten (kcal)", "Protein (g)", "Carbs (g)", "Burned (kcal)", "Net (kcal)", "Goal (kcal)", "Delta"];
+      header = ["Date", "Eaten (kcal)", "Protein (g)", "Carbs (g)", "Fat (g)", "Burned (kcal)", "Net (kcal)", "Goal (kcal)", "Delta"];
       rows = [...daily].reverse().map((d) => [
         d.dayKey,
         d.foodCalories,
         d.proteinGrams,
         d.carbsGrams,
+        d.fatGrams,
         d.exerciseCalories,
         d.netCalories,
         goal ?? "",
@@ -1104,10 +1186,11 @@ export function CaloriesClient() {
       </Card>
 
       {/* Day summary */}
-      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-6">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-7">
         <IconStat icon={Utensils} label="Eaten" value={fmt(eaten)} sub="kcal" color="text-state-today" />
         <IconStat icon={Activity} label="Protein" value={fmtMacro(protein)} sub="g" color="text-state-completed" />
         <IconStat icon={Activity} label="Carbs" value={fmtMacro(carbs)} sub="g" color="text-state-upcoming" />
+        <IconStat icon={Activity} label="Fat" value={fmtMacro(fat)} sub="g" color="text-state-stale" />
         <IconStat icon={Flame} label="Burned" value={fmt(burned)} sub="kcal" color="text-state-stale" />
         <IconStat icon={Activity} label="Net" value={fmt(net)} sub="eaten − burned" color="text-state-upcoming" />
         {goal != null && remaining != null ? (
@@ -1205,6 +1288,7 @@ export function CaloriesClient() {
               <span>{fmt(eaten)} kcal</span>
               <span>{fmtMacro(protein)}g protein</span>
               <span>{fmtMacro(carbs)}g carbs</span>
+              <span>{fmtMacro(fat)}g fat</span>
             </div>
           </div>
 
@@ -1251,11 +1335,37 @@ export function CaloriesClient() {
                   type="button"
                   onClick={() => applyQuickAdd(item)}
                   className="rounded-full border border-border bg-canvas px-2.5 py-1 text-[11px] font-medium text-mossy-gray transition-colors hover:border-state-today/30 hover:text-state-today"
-                  title={`${item.name} product facts · ${fmt(item.caloriesPerUnit ?? 0)} kcal/${item.unit === "perPiece" ? "pc" : "100 g"} · P ${fmtMacro(item.proteinPerUnit ?? 0)}g · C ${fmtMacro(item.carbsPerUnit ?? 0)}g`}
+                  title={`${item.name} product facts · ${formatNutritionFacts(item)}`}
                 >
                   + {item.name}
                 </button>
               ))}
+              {quickAddOthers.length > 0 && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      type="button"
+                      className="inline-flex items-center gap-1 rounded-full border border-border bg-canvas px-2.5 py-1 text-[11px] font-medium text-mossy-gray transition-colors hover:border-state-today/30 hover:text-state-today"
+                    >
+                      Others <ChevronDown className="h-3 w-3" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="max-h-72 w-64 overflow-y-auto">
+                    {quickAddOthers.map((item) => (
+                      <DropdownMenuItem
+                        key={item.id}
+                        onClick={() => applyQuickAdd(item)}
+                        className="flex-col items-start gap-0.5"
+                      >
+                        <span className="max-w-full truncate text-sm font-medium">{item.name}</span>
+                        <span className="max-w-full truncate text-[11px] text-mossy-gray">
+                          {formatNutritionFacts(item)}
+                        </span>
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
             </div>
           )}
 
@@ -1350,6 +1460,17 @@ export function CaloriesClient() {
                   className="w-32 flex-1 sm:flex-none"
                   aria-label={foodForm.unit === "per100g" ? "Product carbs per 100 grams" : "Product carbs per piece"}
                 />
+                <Input
+                  type="number"
+                  inputMode="decimal"
+                  step="any"
+                  min={0}
+                  value={foodForm.fatPerUnit}
+                  onChange={(e) => setFoodForm((f) => ({ ...f, fatPerUnit: e.target.value }))}
+                  placeholder={foodForm.unit === "per100g" ? "fat / 100 g" : "fat / piece"}
+                  className="w-32 flex-1 sm:flex-none"
+                  aria-label={foodForm.unit === "per100g" ? "Product fat per 100 grams" : "Product fat per piece"}
+                />
               </div>
             </div>
 
@@ -1387,11 +1508,12 @@ export function CaloriesClient() {
                   <X className="h-3.5 w-3.5" /> Cancel
                 </Button>
               )}
-              {(previewTotal != null || previewProtein != null || previewCarbs != null) && (
+              {(previewTotal != null || previewProtein != null || previewCarbs != null || previewFat != null) && (
                 <span className="ml-auto font-mono text-xs tabular-nums text-mossy-gray">
                   = {previewTotal != null ? `${fmt(previewTotal)} kcal` : "— kcal"}
                   {previewProtein != null && ` · P ${fmtMacro(previewProtein)}g`}
                   {previewCarbs != null && ` · C ${fmtMacro(previewCarbs)}g`}
+                  {previewFat != null && ` · F ${fmtMacro(previewFat)}g`}
                 </span>
               )}
             </div>
@@ -1418,12 +1540,14 @@ export function CaloriesClient() {
                     <div className="truncate text-sm font-medium text-forest-slate">{entry.name}</div>
                     <div className="text-[11px] text-mossy-gray">
                       {entry.unit === "perPiece"
-                        ? `Ate ${entry.quantity} pc · product ${fmt(entry.caloriesPerUnit ?? 0)} kcal/pc`
-                        : `Ate ${entry.quantity} g · product ${fmt(entry.caloriesPerUnit ?? 0)} kcal/100 g`}
-                      {(entry.proteinGrams != null || entry.carbsGrams != null) && (
+                        ? `Ate ${entry.quantity} pc`
+                        : `Ate ${entry.quantity} g`}
+                      {entry.caloriesPerUnit != null &&
+                        ` · product ${fmt(entry.caloriesPerUnit)} kcal/${entry.unit === "perPiece" ? "pc" : "100 g"}`}
+                      {formatEntryMacros(entry) && (
                         <span>
                           {" · "}
-                          eaten P {fmtMacro(entry.proteinGrams ?? 0)}g · C {fmtMacro(entry.carbsGrams ?? 0)}g
+                          eaten {formatEntryMacros(entry)}
                         </span>
                       )}
                     </div>
@@ -1637,6 +1761,7 @@ export function CaloriesClient() {
                 <TableHead className="h-9 px-3 text-right text-xs">Eaten</TableHead>
                 <TableHead className="h-9 px-3 text-right text-xs">Protein</TableHead>
                 <TableHead className="h-9 px-3 text-right text-xs">Carbs</TableHead>
+                <TableHead className="h-9 px-3 text-right text-xs">Fat</TableHead>
                 <TableHead className="h-9 px-3 text-right text-xs">Burned</TableHead>
                 <TableHead className="h-9 px-3 text-right text-xs">Net</TableHead>
                 <TableHead className="h-9 px-3 text-right text-xs">vs Goal</TableHead>
@@ -1669,6 +1794,9 @@ export function CaloriesClient() {
                     </TableCell>
                     <TableCell className="p-2.5 px-3 text-right font-mono text-xs tabular-nums">
                       {logged ? `${fmtMacro(d.carbsGrams)}g` : "—"}
+                    </TableCell>
+                    <TableCell className="p-2.5 px-3 text-right font-mono text-xs tabular-nums">
+                      {logged ? `${fmtMacro(d.fatGrams)}g` : "—"}
                     </TableCell>
                     <TableCell className="p-2.5 px-3 text-right font-mono text-xs tabular-nums">
                       {logged ? fmt(d.exerciseCalories) : "—"}

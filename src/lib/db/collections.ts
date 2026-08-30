@@ -430,8 +430,10 @@ export function serializeCalorieEntry(e: DbCalorieEntry): CalorieEntry {
     caloriesPerUnit: e.caloriesPerUnit,
     proteinPerUnit: e.proteinPerUnit,
     carbsPerUnit: e.carbsPerUnit,
+    fatPerUnit: e.fatPerUnit,
     proteinGrams: e.proteinGrams,
     carbsGrams: e.carbsGrams,
+    fatGrams: e.fatGrams,
     totalCalories: e.totalCalories,
     createdAt: e.createdAt.toISOString(),
   };
@@ -447,6 +449,7 @@ export function serializeCalorieLibraryItem(i: DbCalorieLibraryItem): CalorieLib
     caloriesPerUnit: i.caloriesPerUnit,
     proteinPerUnit: i.proteinPerUnit,
     carbsPerUnit: i.carbsPerUnit,
+    fatPerUnit: i.fatPerUnit,
     lastCaloriesBurned: i.lastCaloriesBurned,
     timesLogged: i.timesLogged,
   };
