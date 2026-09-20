@@ -280,18 +280,18 @@ export function RichTextEditor({
       Table.configure({
         resizable: true,
         HTMLAttributes: {
-          class: "border-collapse table-auto w-full border border-border",
+          class: "lostbae-rich-table table-auto w-full",
         },
       }),
       TableRow,
       TableHeader.configure({
         HTMLAttributes: {
-          class: "bg-surface font-semibold border border-border p-2",
+          class: "font-semibold",
         },
       }),
       TableCell.configure({
         HTMLAttributes: {
-          class: "border border-border p-2",
+          class: "",
         },
       }),
       Placeholder.configure({

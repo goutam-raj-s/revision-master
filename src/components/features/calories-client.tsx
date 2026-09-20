@@ -1757,15 +1757,15 @@ export function CaloriesClient() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="h-9 px-3 text-xs">Date</TableHead>
-                <TableHead className="h-9 px-3 text-right text-xs">Eaten</TableHead>
-                <TableHead className="h-9 px-3 text-right text-xs">Protein</TableHead>
-                <TableHead className="h-9 px-3 text-right text-xs">Carbs</TableHead>
-                <TableHead className="h-9 px-3 text-right text-xs">Fat</TableHead>
-                <TableHead className="h-9 px-3 text-right text-xs">Burned</TableHead>
-                <TableHead className="h-9 px-3 text-right text-xs">Net</TableHead>
-                <TableHead className="h-9 px-3 text-right text-xs">vs Goal</TableHead>
-                <TableHead className="h-9 px-3 text-right text-xs">Status</TableHead>
+                <TableHead>Date</TableHead>
+                <TableHead className="text-right">Eaten</TableHead>
+                <TableHead className="text-right">Protein</TableHead>
+                <TableHead className="text-right">Carbs</TableHead>
+                <TableHead className="text-right">Fat</TableHead>
+                <TableHead className="text-right">Burned</TableHead>
+                <TableHead className="text-right">Net</TableHead>
+                <TableHead className="text-right">vs Goal</TableHead>
+                <TableHead className="text-right">Status</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -1783,36 +1783,36 @@ export function CaloriesClient() {
                     onClick={() => openDayDetails(d.dayKey)}
                     title="View this day's details"
                   >
-                    <TableCell className="whitespace-nowrap p-2.5 px-3 text-xs font-medium text-forest-slate">
+                    <TableCell className="whitespace-nowrap font-medium text-forest-slate">
                       {d.dayKey === todayKey ? "Today" : formatShort(d.dayKey)}
                     </TableCell>
-                    <TableCell className="p-2.5 px-3 text-right font-mono text-xs tabular-nums">
+                    <TableCell className="text-right font-mono text-xs tabular-nums">
                       {logged ? fmt(d.foodCalories) : "—"}
                     </TableCell>
-                    <TableCell className="p-2.5 px-3 text-right font-mono text-xs tabular-nums">
+                    <TableCell className="text-right font-mono text-xs tabular-nums">
                       {logged ? `${fmtMacro(d.proteinGrams)}g` : "—"}
                     </TableCell>
-                    <TableCell className="p-2.5 px-3 text-right font-mono text-xs tabular-nums">
+                    <TableCell className="text-right font-mono text-xs tabular-nums">
                       {logged ? `${fmtMacro(d.carbsGrams)}g` : "—"}
                     </TableCell>
-                    <TableCell className="p-2.5 px-3 text-right font-mono text-xs tabular-nums">
+                    <TableCell className="text-right font-mono text-xs tabular-nums">
                       {logged ? `${fmtMacro(d.fatGrams)}g` : "—"}
                     </TableCell>
-                    <TableCell className="p-2.5 px-3 text-right font-mono text-xs tabular-nums">
+                    <TableCell className="text-right font-mono text-xs tabular-nums">
                       {logged ? fmt(d.exerciseCalories) : "—"}
                     </TableCell>
-                    <TableCell className="p-2.5 px-3 text-right font-mono text-xs font-semibold tabular-nums text-forest-slate">
+                    <TableCell className="text-right font-mono text-xs font-semibold tabular-nums text-forest-slate">
                       {logged ? fmt(d.netCalories) : "—"}
                     </TableCell>
                     <TableCell
                       className={cn(
-                        "p-2.5 px-3 text-right font-mono text-xs tabular-nums",
+                        "text-right font-mono text-xs tabular-nums",
                         delta != null && (delta >= 0 ? "text-state-today" : "text-destructive")
                       )}
                     >
                       {delta != null ? (delta >= 0 ? `${fmt(delta)} under` : `${fmt(-delta)} over`) : "—"}
                     </TableCell>
-                    <TableCell className="p-2.5 px-3 text-right">
+                    <TableCell className="text-right">
                       {!logged ? (
                         <span className="text-xs text-mossy-gray">not logged</span>
                       ) : goal == null ? (
@@ -1840,13 +1840,13 @@ export function CaloriesClient() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="h-9 px-3 text-xs">Week</TableHead>
-                <TableHead className="h-9 px-3 text-right text-xs">Days logged</TableHead>
-                <TableHead className="h-9 px-3 text-right text-xs">Eaten</TableHead>
-                <TableHead className="h-9 px-3 text-right text-xs">Burned</TableHead>
-                <TableHead className="h-9 px-3 text-right text-xs">Net</TableHead>
-                <TableHead className="h-9 px-3 text-right text-xs">Avg net/day</TableHead>
-                <TableHead className="h-9 px-3 text-right text-xs">vs Goal (avg)</TableHead>
+                <TableHead>Week</TableHead>
+                <TableHead className="text-right">Days logged</TableHead>
+                <TableHead className="text-right">Eaten</TableHead>
+                <TableHead className="text-right">Burned</TableHead>
+                <TableHead className="text-right">Net</TableHead>
+                <TableHead className="text-right">Avg net/day</TableHead>
+                <TableHead className="text-right">vs Goal (avg)</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -1855,28 +1855,28 @@ export function CaloriesClient() {
                 const delta = goal != null && logged ? goal - w.avgNetPerLoggedDay : null;
                 return (
                   <TableRow key={w.weekStartKey} className={cn(idx === 0 && "bg-state-today/5", !logged && "opacity-50")}>
-                    <TableCell className="whitespace-nowrap p-2.5 px-3 text-xs font-medium text-forest-slate">
+                    <TableCell className="whitespace-nowrap font-medium text-forest-slate">
                       {formatShort(w.weekStartKey)} – {formatShort(w.weekEndKey)}
                       {idx === 0 && <span className="ml-1.5 text-[10px] text-state-today">(this week)</span>}
                     </TableCell>
-                    <TableCell className="p-2.5 px-3 text-right font-mono text-xs tabular-nums">
+                    <TableCell className="text-right font-mono text-xs tabular-nums">
                       {w.daysLogged}/7
                     </TableCell>
-                    <TableCell className="p-2.5 px-3 text-right font-mono text-xs tabular-nums">
+                    <TableCell className="text-right font-mono text-xs tabular-nums">
                       {logged ? fmt(w.foodCalories) : "—"}
                     </TableCell>
-                    <TableCell className="p-2.5 px-3 text-right font-mono text-xs tabular-nums">
+                    <TableCell className="text-right font-mono text-xs tabular-nums">
                       {logged ? fmt(w.exerciseCalories) : "—"}
                     </TableCell>
-                    <TableCell className="p-2.5 px-3 text-right font-mono text-xs font-semibold tabular-nums text-forest-slate">
+                    <TableCell className="text-right font-mono text-xs font-semibold tabular-nums text-forest-slate">
                       {logged ? fmt(w.netCalories) : "—"}
                     </TableCell>
-                    <TableCell className="p-2.5 px-3 text-right font-mono text-xs tabular-nums">
+                    <TableCell className="text-right font-mono text-xs tabular-nums">
                       {logged ? fmt(w.avgNetPerLoggedDay) : "—"}
                     </TableCell>
                     <TableCell
                       className={cn(
-                        "p-2.5 px-3 text-right font-mono text-xs tabular-nums",
+                        "text-right font-mono text-xs tabular-nums",
                         delta != null && (delta >= 0 ? "text-state-today" : "text-destructive")
                       )}
                     >
@@ -1893,13 +1893,13 @@ export function CaloriesClient() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="h-9 px-3 text-xs">Month</TableHead>
-                <TableHead className="h-9 px-3 text-right text-xs">Days logged</TableHead>
-                <TableHead className="h-9 px-3 text-right text-xs">Eaten</TableHead>
-                <TableHead className="h-9 px-3 text-right text-xs">Burned</TableHead>
-                <TableHead className="h-9 px-3 text-right text-xs">Net</TableHead>
-                <TableHead className="h-9 px-3 text-right text-xs">Avg net/day</TableHead>
-                <TableHead className="h-9 px-3 text-right text-xs">vs Goal (avg)</TableHead>
+                <TableHead>Month</TableHead>
+                <TableHead className="text-right">Days logged</TableHead>
+                <TableHead className="text-right">Eaten</TableHead>
+                <TableHead className="text-right">Burned</TableHead>
+                <TableHead className="text-right">Net</TableHead>
+                <TableHead className="text-right">Avg net/day</TableHead>
+                <TableHead className="text-right">vs Goal (avg)</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -1908,28 +1908,28 @@ export function CaloriesClient() {
                 const delta = goal != null && logged ? goal - m.avgNetPerLoggedDay : null;
                 return (
                   <TableRow key={m.monthKey} className={cn(idx === 0 && "bg-state-today/5", !logged && "opacity-50")}>
-                    <TableCell className="whitespace-nowrap p-2.5 px-3 text-xs font-medium text-forest-slate">
+                    <TableCell className="whitespace-nowrap font-medium text-forest-slate">
                       {formatMonth(m.monthKey)}
                       {idx === 0 && <span className="ml-1.5 text-[10px] text-state-today">(this month)</span>}
                     </TableCell>
-                    <TableCell className="p-2.5 px-3 text-right font-mono text-xs tabular-nums">
+                    <TableCell className="text-right font-mono text-xs tabular-nums">
                       {m.daysLogged}
                     </TableCell>
-                    <TableCell className="p-2.5 px-3 text-right font-mono text-xs tabular-nums">
+                    <TableCell className="text-right font-mono text-xs tabular-nums">
                       {logged ? fmt(m.foodCalories) : "—"}
                     </TableCell>
-                    <TableCell className="p-2.5 px-3 text-right font-mono text-xs tabular-nums">
+                    <TableCell className="text-right font-mono text-xs tabular-nums">
                       {logged ? fmt(m.exerciseCalories) : "—"}
                     </TableCell>
-                    <TableCell className="p-2.5 px-3 text-right font-mono text-xs font-semibold tabular-nums text-forest-slate">
+                    <TableCell className="text-right font-mono text-xs font-semibold tabular-nums text-forest-slate">
                       {logged ? fmt(m.netCalories) : "—"}
                     </TableCell>
-                    <TableCell className="p-2.5 px-3 text-right font-mono text-xs tabular-nums">
+                    <TableCell className="text-right font-mono text-xs tabular-nums">
                       {logged ? fmt(m.avgNetPerLoggedDay) : "—"}
                     </TableCell>
                     <TableCell
                       className={cn(
-                        "p-2.5 px-3 text-right font-mono text-xs tabular-nums",
+                        "text-right font-mono text-xs tabular-nums",
                         delta != null && (delta >= 0 ? "text-state-today" : "text-destructive")
                       )}
                     >

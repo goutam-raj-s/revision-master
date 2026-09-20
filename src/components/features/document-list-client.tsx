@@ -467,10 +467,10 @@ export function DocumentListClient({
             })}
           </div>
 
-          <div className="hidden overflow-hidden rounded-xl border border-border bg-surface sm:block">
+          <div className="hidden sm:block">
             <Table>
               <TableHeader>
-                <TableRow className="bg-canvas/50">
+                <TableRow>
                   {/* Select-all checkbox */}
                   <TableHead className="w-[40px]">
                     <button

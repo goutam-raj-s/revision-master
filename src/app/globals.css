@@ -333,27 +333,35 @@ body {
 }
 
 .tiptap-content table {
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
   table-layout: fixed;
   width: 100%;
   margin: 1.25rem 0;
   overflow: hidden;
   border-radius: 0.75rem;
-  box-shadow: 0 0 0 1px var(--color-border);
+  background-color: var(--color-surface);
+  box-shadow: 0 0 0 1px var(--color-border), var(--shadow-card);
 }
 .tiptap-content table td,
 .tiptap-content table th {
   min-width: 1em;
-  border: 1px solid var(--color-border);
-  padding: 0.65rem 0.75rem;
+  border: 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-forest-slate) 45%, transparent);
+  padding: 0.9rem 1rem;
   vertical-align: top;
   box-sizing: border-box;
   position: relative;
 }
+.tiptap-content table tr:last-child td,
+.tiptap-content table tr:last-child th {
+  border-bottom: 0;
+}
 .tiptap-content table th {
   font-weight: 700;
   text-align: left;
-  background-color: var(--color-canvas);
+  color: var(--color-mossy-gray);
+  background-color: color-mix(in srgb, var(--color-canvas) 65%, transparent);
 }
 .tiptap-content h1 { font-size: 2.125rem; font-weight: 750; margin: 1.5rem 0 0.75rem; line-height: 1.15; }
 .tiptap-content h2 { font-size: 1.625rem; font-weight: 750; margin: 1.35rem 0 0.65rem; line-height: 1.22; }
