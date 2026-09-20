@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, Folder } from "lucide-react";
 import { getCollectionWithDocsAction } from "@/actions/collections";
-import { CollectionDocRow } from "@/components/features/collection-doc-row";
+import { CollectionDocRow, CollectionTaskRow } from "@/components/features/collection-doc-row";
 import { SharePackButton } from "@/components/features/share-pack-button";
 
 interface CollectionPageProps {
@@ -27,23 +27,38 @@ export default async function CollectionDetailPage({ params }: CollectionPagePro
           </div>
           <div>
             <h1 className="text-xl font-bold text-forest-slate sm:text-2xl">{data.name}</h1>
-            <p className="text-xs text-mossy-gray">{data.docs.length} document{data.docs.length !== 1 ? "s" : ""}</p>
+            <p className="text-xs text-mossy-gray">
+              {data.docs.length} document{data.docs.length !== 1 ? "s" : ""} · {data.tasks.length} task{data.tasks.length !== 1 ? "s" : ""}
+            </p>
           </div>
         </div>
         <SharePackButton collectionId={data.id} initialToken={data.publicToken} />
       </div>
 
-      {data.docs.length === 0 ? (
+      {data.docs.length === 0 && data.tasks.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-border bg-surface px-6 py-12 text-center">
           <p className="text-sm text-mossy-gray">
-            No documents yet. Open a document and use <span className="font-medium text-forest-slate">Add to collection</span>.
+            No items yet. Open a document or task and use <span className="font-medium text-forest-slate">Add to collection</span>.
           </p>
         </div>
       ) : (
-        <div className="space-y-2">
-          {data.docs.map((doc) => (
-            <CollectionDocRow key={doc.id} collectionId={data.id} doc={doc} />
-          ))}
+        <div className="space-y-5">
+          {data.docs.length > 0 && (
+            <section className="space-y-2">
+              <h2 className="text-xs font-semibold uppercase tracking-[0.18em] text-mossy-gray">Documents</h2>
+              {data.docs.map((doc) => (
+                <CollectionDocRow key={doc.id} collectionId={data.id} doc={doc} />
+              ))}
+            </section>
+          )}
+          {data.tasks.length > 0 && (
+            <section className="space-y-2">
+              <h2 className="text-xs font-semibold uppercase tracking-[0.18em] text-mossy-gray">Tasks</h2>
+              {data.tasks.map((task) => (
+                <CollectionTaskRow key={task.id} collectionId={data.id} task={task} />
+              ))}
+            </section>
+          )}
         </div>
       )}
     </div>

@@ -22,6 +22,7 @@ import {
   PanelLeftOpen,
   EyeOff,
   Utensils,
+  CheckSquare,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { logoutAction } from "@/actions/auth";
@@ -37,6 +38,7 @@ interface SidebarProps {
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/documents", label: "Documents", icon: BookOpen },
+  { href: "/tasks", label: "Tasks", icon: CheckSquare },
   { href: "/study/youtube", label: "YouTube", icon: CirclePlay },
   { href: "/video", label: "Video", icon: Film },
   { href: "/terminology", label: "Terminology", icon: BookText },

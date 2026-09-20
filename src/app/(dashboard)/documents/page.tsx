@@ -18,20 +18,22 @@ const DOCS_SHORTCUTS = [
 ];
 
 interface DocumentsPageProps {
-  searchParams: Promise<{ tag?: string; search?: string; status?: string }>;
+  searchParams: Promise<{ tag?: string; search?: string; status?: string; showCollections?: string }>;
 }
 
 export const metadata = { title: "Documents — lostbae" };
 
 export default async function DocumentsPage({ searchParams }: DocumentsPageProps) {
   const params = await searchParams;
+  const showCollectionItems = params.showCollections === "1";
   const [docs, allTags] = await Promise.all([
     getUserDocuments({
       tags: params.tag ? [params.tag] : undefined,
       search: params.search,
       status: params.status,
+      includeCollectionItems: showCollectionItems,
     }),
-    getAllUserTags(),
+    getAllUserTags(showCollectionItems),
   ]);
 
   return (
@@ -71,6 +73,7 @@ export default async function DocumentsPage({ searchParams }: DocumentsPageProps
         allTags={allTags}
         initialTagFilter={params.tag}
         initialSearch={params.search}
+        showCollectionItems={showCollectionItems}
       />
     </div>
   );

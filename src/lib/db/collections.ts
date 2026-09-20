@@ -7,6 +7,7 @@ import type {
   DbDocument,
   DbRepetition,
   DbNote,
+  DbTask,
   DbTerm,
   DbPasswordResetToken,
   DbYoutubeSession,
@@ -16,6 +17,7 @@ import type {
   DbGoogleIntegration,
   Document,
   DocumentTreeNode,
+  LightweightTask,
   Note,
   Repetition,
   Term,
@@ -64,6 +66,11 @@ export async function getRepetitionsCollection(): Promise<Collection<DbRepetitio
 export async function getNotesCollection(): Promise<Collection<DbNote>> {
   const db = await getDb();
   return db.collection<DbNote>("notes");
+}
+
+export async function getTasksCollection(): Promise<Collection<DbTask>> {
+  const db = await getDb();
+  return db.collection<DbTask>("tasks");
 }
 
 export async function getTermsCollection(): Promise<Collection<DbTerm>> {
@@ -223,6 +230,13 @@ export async function ensureIndexes(): Promise<void> {
     { key: { docId: 1, createdAt: -1 } },
   ]);
 
+  await db.collection("tasks").createIndexes([
+    { key: { userId: 1, status: 1, dueAt: 1 } },
+    { key: { userId: 1, createdAt: -1 } },
+    { key: { userId: 1, tags: 1 } },
+    { key: { userId: 1, title: "text", tags: "text", "comments.content": "text" } },
+  ]);
+
   await db.collection("review_events").createIndexes([
     { key: { userId: 1, reviewedAt: -1 } },
     { key: { userId: 1, dayKey: 1 } },
@@ -355,6 +369,25 @@ export function serializeNote(n: DbNote): Note {
     nextReviewDate: n.nextReviewDate?.toISOString(),
     createdAt: n.createdAt.toISOString(),
     updatedAt: n.updatedAt.toISOString(),
+  };
+}
+
+export function serializeTask(t: DbTask): LightweightTask {
+  return {
+    id: t._id.toString(),
+    title: t.title,
+    status: t.status,
+    difficulty: t.difficulty,
+    tags: t.tags,
+    comments: (t.comments ?? []).map((comment) => ({
+      id: comment._id.toString(),
+      content: comment.content,
+      createdAt: comment.createdAt.toISOString(),
+    })),
+    dueAt: t.dueAt?.toISOString(),
+    completedAt: t.completedAt?.toISOString(),
+    createdAt: t.createdAt.toISOString(),
+    updatedAt: t.updatedAt.toISOString(),
   };
 }
 

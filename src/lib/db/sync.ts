@@ -9,6 +9,7 @@ const SYNC_COLLECTIONS = [
   "password_reset_tokens",
   "sessions",
   "documents",
+  "tasks",
   "playlists",
   "repetitions",
   "notes",

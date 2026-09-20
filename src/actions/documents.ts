@@ -9,6 +9,7 @@ import {
   getRepetitionsCollection,
   getNotesCollection,
   getTermsCollection,
+  getTopicCollectionsCollection,
   serializeDoc,
   LIST_DOC_PROJECTION,
 } from "@/lib/db/collections";
@@ -23,7 +24,7 @@ import type { ActionResult, DbDocument, Document, SimilarityMatch, MediaType, Di
 import { deleteCloudinaryAsset } from "@/lib/cloudinary";
 import { hiddenRevealed } from "@/lib/hidden";
 
-function topLevelDocumentQuery(userId: ObjectId) {
+function topLevelDocumentQuery(userId: ObjectId): { userId: ObjectId; $and: Record<string, unknown>[] } {
   return {
     userId,
     $and: [
@@ -73,6 +74,15 @@ async function getDescendantDocIds(rootIds: ObjectId[], userId: ObjectId): Promi
   }
 
   return Array.from(result.values());
+}
+
+async function getCollectionDocIds(userId: ObjectId): Promise<ObjectId[]> {
+  const collections = await getTopicCollectionsCollection();
+  const rows = await collections
+    .find({ userId, docIds: { $exists: true, $ne: [] } })
+    .project<{ docIds?: ObjectId[] }>({ docIds: 1 })
+    .toArray();
+  return rows.flatMap((row) => row.docIds ?? []);
 }
 
 const AddDocSchema = z.object({
@@ -637,6 +647,7 @@ export async function getUserDocuments(filter?: {
   tags?: string[];
   search?: string;
   status?: string;
+  includeCollectionItems?: boolean;
 }): Promise<Document[]> {
   const user = await requireAuth();
   const docs = await getDocumentsCollection();
@@ -649,6 +660,12 @@ export async function getUserDocuments(filter?: {
   }
   if (filter?.status) {
     query.status = filter.status;
+  }
+  if (!filter?.includeCollectionItems) {
+    const collectionDocIds = await getCollectionDocIds(new ObjectId(user.id));
+    if (collectionDocIds.length > 0) {
+      query.$and.push({ _id: { $nin: collectionDocIds } });
+    }
   }
   // Hide private documents unless the user has toggled "reveal".
   if (!(await hiddenRevealed())) {
@@ -697,12 +714,18 @@ export async function toggleDocumentHiddenAction(
   return { success: true };
 }
 
-export async function getAllUserTags(): Promise<{ tag: string; count: number }[]> {
+export async function getAllUserTags(includeCollectionItems = false): Promise<{ tag: string; count: number }[]> {
   const user = await requireAuth();
   const docs = await getDocumentsCollection();
+  const userId = new ObjectId(user.id);
+  const match = topLevelDocumentQuery(userId);
+  const collectionDocIds = includeCollectionItems ? [] : await getCollectionDocIds(userId);
+  if (!includeCollectionItems && collectionDocIds.length > 0) {
+    match.$and.push({ _id: { $nin: collectionDocIds } });
+  }
 
   const pipeline = [
-    { $match: topLevelDocumentQuery(new ObjectId(user.id)) },
+    { $match: match },
     { $unwind: "$tags" },
     { $group: { _id: "$tags", count: { $sum: 1 } } },
     { $sort: { count: -1 } },

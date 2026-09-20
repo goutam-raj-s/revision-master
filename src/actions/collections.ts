@@ -7,10 +7,12 @@ import { generateToken } from "@/lib/crypto";
 import {
   getTopicCollectionsCollection,
   getDocumentsCollection,
+  getTasksCollection,
   serializeDoc,
+  serializeTask,
   LIST_DOC_PROJECTION,
 } from "@/lib/db/collections";
-import type { ActionResult, TopicCollection, Document, DbDocument } from "@/types";
+import type { ActionResult, TopicCollection, Document, DbDocument, DbTask, LightweightTask } from "@/types";
 
 export async function getCollectionsAction(): Promise<TopicCollection[]> {
   const user = await requireAuth();
@@ -20,6 +22,7 @@ export async function getCollectionsAction(): Promise<TopicCollection[]> {
     id: c._id.toString(),
     name: c.name,
     docCount: c.docIds?.length ?? 0,
+    taskCount: c.taskIds?.length ?? 0,
     publicToken: c.publicToken,
     createdAt: c.createdAt.toISOString(),
   }));
@@ -75,7 +78,7 @@ export async function getPublicPackByToken(token: string): Promise<PublicPack | 
 
 export async function getCollectionWithDocsAction(
   collectionId: string
-): Promise<{ id: string; name: string; docs: Document[]; publicToken?: string } | null> {
+): Promise<{ id: string; name: string; docs: Document[]; tasks: LightweightTask[]; publicToken?: string } | null> {
   const user = await requireAuth();
   if (!ObjectId.isValid(collectionId)) return null;
   const col = await getTopicCollectionsCollection();
@@ -93,7 +96,17 @@ export async function getCollectionWithDocsAction(
     .filter((d): d is NonNullable<typeof d> => Boolean(d))
     .map(serializeDoc);
 
-  return { id: c._id.toString(), name: c.name, docs: ordered, publicToken: c.publicToken };
+  const tasks = await getTasksCollection();
+  const taskRows = (c.taskIds?.length
+    ? await tasks.find({ _id: { $in: c.taskIds }, userId: new ObjectId(user.id) }).toArray()
+    : []) as DbTask[];
+  const tasksById = new Map(taskRows.map((task) => [task._id.toString(), task]));
+  const orderedTasks = (c.taskIds ?? [])
+    .map((id) => tasksById.get(id.toString()))
+    .filter((task): task is NonNullable<typeof task> => Boolean(task))
+    .map(serializeTask);
+
+  return { id: c._id.toString(), name: c.name, docs: ordered, tasks: orderedTasks, publicToken: c.publicToken };
 }
 
 export async function createCollectionAction(name: string): Promise<ActionResult<{ id: string }>> {
@@ -103,7 +116,7 @@ export async function createCollectionAction(name: string): Promise<ActionResult
   const col = await getTopicCollectionsCollection();
   const now = new Date();
   const id = new ObjectId();
-  await col.insertOne({ _id: id, userId: new ObjectId(user.id), name: trimmed, docIds: [], createdAt: now, updatedAt: now });
+  await col.insertOne({ _id: id, userId: new ObjectId(user.id), name: trimmed, docIds: [], taskIds: [], createdAt: now, updatedAt: now });
   revalidatePath("/collections");
   return { success: true, data: { id: id.toString() } };
 }
@@ -126,6 +139,8 @@ export async function deleteCollectionAction(collectionId: string): Promise<Acti
   const col = await getTopicCollectionsCollection();
   await col.deleteOne({ _id: new ObjectId(collectionId), userId: new ObjectId(user.id) });
   revalidatePath("/collections");
+  revalidatePath("/documents");
+  revalidatePath("/tasks");
   return { success: true };
 }
 
@@ -138,6 +153,7 @@ export async function addDocToCollectionAction(collectionId: string, docId: stri
     { $addToSet: { docIds: new ObjectId(docId) }, $set: { updatedAt: new Date() } }
   );
   revalidatePath("/collections");
+  revalidatePath("/documents");
   return { success: true };
 }
 
@@ -150,5 +166,32 @@ export async function removeDocFromCollectionAction(collectionId: string, docId:
     { $pull: { docIds: new ObjectId(docId) }, $set: { updatedAt: new Date() } }
   );
   revalidatePath("/collections");
+  revalidatePath("/documents");
+  return { success: true };
+}
+
+export async function addTaskToCollectionAction(collectionId: string, taskId: string): Promise<ActionResult> {
+  const user = await requireAuth();
+  if (!ObjectId.isValid(collectionId) || !ObjectId.isValid(taskId)) return { success: false, error: "Invalid." };
+  const col = await getTopicCollectionsCollection();
+  await col.updateOne(
+    { _id: new ObjectId(collectionId), userId: new ObjectId(user.id) },
+    { $addToSet: { taskIds: new ObjectId(taskId) }, $set: { updatedAt: new Date() } }
+  );
+  revalidatePath("/collections");
+  revalidatePath("/tasks");
+  return { success: true };
+}
+
+export async function removeTaskFromCollectionAction(collectionId: string, taskId: string): Promise<ActionResult> {
+  const user = await requireAuth();
+  if (!ObjectId.isValid(collectionId) || !ObjectId.isValid(taskId)) return { success: false, error: "Invalid." };
+  const col = await getTopicCollectionsCollection();
+  await col.updateOne(
+    { _id: new ObjectId(collectionId), userId: new ObjectId(user.id) },
+    { $pull: { taskIds: new ObjectId(taskId) }, $set: { updatedAt: new Date() } }
+  );
+  revalidatePath("/collections");
+  revalidatePath("/tasks");
   return { success: true };
 }

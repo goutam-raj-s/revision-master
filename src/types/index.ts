@@ -1,6 +1,7 @@
 import type { ObjectId } from "mongodb";
 
 export type DocumentStatus = "first_visit" | "revision" | "updated" | "completed";
+export type LightweightTaskStatus = "pending" | "completed";
 export type Difficulty = "easy" | "medium" | "hard";
 export type UserRole = "user" | "admin";
 export type TaskFilter = "today" | "pending" | "upcoming" | "all";
@@ -145,6 +146,26 @@ export interface DbNote {
   updatedAt: Date;
 }
 
+export interface DbTaskComment {
+  _id: ObjectId;
+  content: string;
+  createdAt: Date;
+}
+
+export interface DbTask {
+  _id: ObjectId;
+  userId: ObjectId;
+  title: string;
+  status: LightweightTaskStatus;
+  difficulty: Difficulty;
+  tags: string[];
+  comments: DbTaskComment[];
+  dueAt?: Date;
+  completedAt?: Date;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 export interface DbTerm {
   _id: ObjectId;
   userId: ObjectId;
@@ -246,6 +267,25 @@ export interface Note {
   content: string;
   isDone: boolean;
   nextReviewDate?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TaskComment {
+  id: string;
+  content: string;
+  createdAt: string;
+}
+
+export interface LightweightTask {
+  id: string;
+  title: string;
+  status: LightweightTaskStatus;
+  difficulty: Difficulty;
+  tags: string[];
+  comments: TaskComment[];
+  dueAt?: string;
+  completedAt?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -471,6 +511,7 @@ export interface DbTopicCollection {
   userId: ObjectId;
   name: string;
   docIds: ObjectId[];
+  taskIds?: ObjectId[];
   publicToken?: string;
   createdAt: Date;
   updatedAt: Date;
@@ -480,6 +521,7 @@ export interface TopicCollection {
   id: string;
   name: string;
   docCount: number;
+  taskCount: number;
   publicToken?: string;
   createdAt: string;
 }

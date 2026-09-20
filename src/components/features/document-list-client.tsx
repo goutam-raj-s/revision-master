@@ -4,7 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-  Search, X, BookOpen, Calendar, Trash2, Tag, ChevronRight,
+  Search, X, BookOpen, Trash2, ChevronRight,
   CheckSquare, Square, Minus, Download, Loader2, AlertTriangle,
   EyeOff, Eye,
 } from "lucide-react";
@@ -56,6 +56,7 @@ interface DocumentListClientProps {
   allTags: { tag: string; count: number }[];
   initialTagFilter?: string;
   initialSearch?: string;
+  showCollectionItems?: boolean;
 }
 
 export function DocumentListClient({
@@ -63,12 +64,16 @@ export function DocumentListClient({
   allTags,
   initialTagFilter,
   initialSearch,
+  showCollectionItems = false,
 }: DocumentListClientProps) {
   const router = useRouter();
   const [docs, setDocs] = React.useState(initialDocs);
   const [search, setSearch] = React.useState(initialSearch || "");
   const [tagFilter, setTagFilter] = React.useState<string | null>(initialTagFilter || null);
-  const [mediaFilter, setMediaFilter] = React.useState<string | null>(null);
+  const [mediaFilter, setMediaFilter] = React.useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    return window.localStorage.getItem("lostbae_doc_media") || null;
+  });
   const [deleteId, setDeleteId] = React.useState<string | null>(null);
   const [deleting, setDeleting] = React.useState(false);
   const [currentPage, setCurrentPage] = React.useState(1);
@@ -76,16 +81,13 @@ export function DocumentListClient({
 
   const VALID_SORTS = ["newest", "oldest", "a-z", "z-a", "last-modified"] as const;
   type SortOrder = typeof VALID_SORTS[number];
-  const [sortOrder, setSortOrder] = React.useState<SortOrder>("last-modified");
-
-  // Rehydrate persisted filter prefs from localStorage (client-only)
-  React.useEffect(() => {
-    const storedSort = localStorage.getItem("lostbae_doc_sort") as SortOrder | null;
-    const storedMedia = localStorage.getItem("lostbae_doc_media");
-    if (storedSort && (VALID_SORTS as readonly string[]).includes(storedSort)) setSortOrder(storedSort);
-    if (storedMedia !== null) setMediaFilter(storedMedia || null);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const [sortOrder, setSortOrder] = React.useState<SortOrder>(() => {
+    if (typeof window === "undefined") return "last-modified";
+    const storedSort = window.localStorage.getItem("lostbae_doc_sort");
+    return storedSort && (VALID_SORTS as readonly string[]).includes(storedSort)
+      ? (storedSort as SortOrder)
+      : "last-modified";
+  });
 
   // Persist sort + media changes
   React.useEffect(() => { localStorage.setItem("lostbae_doc_sort", sortOrder); }, [sortOrder]);
@@ -121,11 +123,10 @@ export function DocumentListClient({
     return result;
   }, [docs, search, tagFilter, mediaFilter, sortOrder]);
 
-  // Reset to page 1 when filters change
-  React.useEffect(() => {
+  function resetListPosition() {
     setCurrentPage(1);
     setSelectedIds(new Set());
-  }, [search, tagFilter, mediaFilter]);
+  }
 
   const totalPages = Math.ceil(filtered.length / itemsPerPage);
   const paginatedDocs = filtered.slice(
@@ -239,13 +240,19 @@ export function DocumentListClient({
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-mossy-gray" />
           <Input
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              resetListPosition();
+            }}
             placeholder="Search titles and tags…"
             className="h-9 pl-9 text-sm"
           />
           {search && (
             <button
-              onClick={() => setSearch("")}
+              onClick={() => {
+                setSearch("");
+                resetListPosition();
+              }}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-mossy-gray hover:text-forest-slate"
             >
               <X className="h-4 w-4" />
@@ -254,7 +261,10 @@ export function DocumentListClient({
         </div>
         <select
           value={mediaFilter || ""}
-          onChange={(e) => setMediaFilter(e.target.value || null)}
+          onChange={(e) => {
+            setMediaFilter(e.target.value || null);
+            resetListPosition();
+          }}
           className="h-9 w-full rounded-xl border border-border bg-surface px-3 text-sm text-forest-slate focus:outline-none focus:ring-2 focus:ring-state-today/40 sm:w-auto sm:min-w-[140px]"
           aria-label="Filter Media Type"
         >
@@ -277,13 +287,27 @@ export function DocumentListClient({
           <option value="z-a">Z-A</option>
           <option value="last-modified">Last Modified</option>
         </select>
+        <Link
+          href={showCollectionItems ? "/documents" : "/documents?showCollections=1"}
+          className={cn(
+            "inline-flex h-9 items-center justify-center rounded-xl border px-3 text-sm transition-colors",
+            showCollectionItems
+              ? "border-state-today bg-state-today/10 text-state-today"
+              : "border-border bg-surface text-mossy-gray hover:text-forest-slate"
+          )}
+        >
+          Collection items
+        </Link>
       </div>
 
       {/* Tag chips */}
       {allTags.length > 0 && (
         <div className="flex max-w-full flex-wrap gap-1.5 sm:gap-2">
           <button
-            onClick={() => setTagFilter(null)}
+            onClick={() => {
+              setTagFilter(null);
+              resetListPosition();
+            }}
             className={cn(
               "rounded-full border px-2.5 py-1 text-xs transition-all duration-200 sm:px-3 sm:py-1.5",
               !tagFilter
@@ -296,7 +320,10 @@ export function DocumentListClient({
           {allTags.map(({ tag, count }) => (
             <button
               key={tag}
-              onClick={() => setTagFilter(tagFilter === tag ? null : tag)}
+              onClick={() => {
+                setTagFilter(tagFilter === tag ? null : tag);
+                resetListPosition();
+              }}
               className={cn(
                 "max-w-full truncate rounded-full border px-2.5 py-1 text-xs transition-all duration-200 sm:px-3 sm:py-1.5",
                 tagFilter === tag
@@ -313,6 +340,7 @@ export function DocumentListClient({
       {/* Results count */}
       <p className="text-xs text-mossy-gray">
         Showing {filtered.length} of {docs.length} documents
+        {!showCollectionItems && " outside collections"}
         {selectedIds.size > 0 && (
           <span className="ml-2 text-state-today font-medium">
             · {selectedIds.size} selected
@@ -350,6 +378,7 @@ export function DocumentListClient({
                 setSearch("");
                 setTagFilter(null);
                 setMediaFilter("");
+                resetListPosition();
               }}
             >
               Clear filters
