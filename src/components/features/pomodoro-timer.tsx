@@ -3,6 +3,7 @@
 import * as React from "react";
 import { Timer, Play, Pause, RotateCcw, X, Coffee } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { FloatingFeaturePanel } from "@/components/features/floating-feature-panel";
 
 const FOCUS_MIN = 25;
 const BREAK_MIN = 5;
@@ -21,6 +22,7 @@ export function PomodoroTimer({ variant = "floating", collapsed = false }: Pomod
   const [secondsLeft, setSecondsLeft] = React.useState(FOCUS_MIN * 60);
   const [running, setRunning] = React.useState(false);
   const [cycles, setCycles] = React.useState(0);
+  const triggerRef = React.useRef<HTMLButtonElement | null>(null);
 
   const total = (phase === "focus" ? FOCUS_MIN : BREAK_MIN) * 60;
 
@@ -113,9 +115,12 @@ export function PomodoroTimer({ variant = "floating", collapsed = false }: Pomod
   if (variant === "sidebar") {
     return (
       <div className="relative">
-        {open && <div className="absolute bottom-0 left-full z-[80] ml-2">{panel}</div>}
+        <FloatingFeaturePanel open={open} onOpenChange={setOpen} triggerRef={triggerRef}>
+          {panel}
+        </FloatingFeaturePanel>
         <button
-          onClick={() => setOpen(true)}
+          ref={triggerRef}
+          onClick={() => setOpen((current) => !current)}
           title={collapsed ? "Focus timer" : undefined}
           className={cn(
             "relative flex w-full items-center rounded-xl py-2 text-sm font-medium text-mossy-gray transition-all duration-200 hover:bg-canvas hover:text-forest-slate",

@@ -3,6 +3,7 @@
 import * as React from "react";
 import { usePathname } from "next/navigation";
 import { Music, Play, Pause, X, Volume2 } from "lucide-react";
+import { FloatingFeaturePanel } from "@/components/features/floating-feature-panel";
 
 // Routes where the focus-music launcher is shown. The component is mounted once
 // at the app root and never unmounts, so playback continues across page/tab
@@ -202,6 +203,7 @@ export function FocusMusicPlayer({ variant = "floating", collapsed = false }: Fo
   const [open, setOpen] = React.useState(false);
   const [active, setActive] = React.useState<TrackId | null>(null);
   const [volume, setVolume] = React.useState(0.5);
+  const triggerRef = React.useRef<HTMLButtonElement | null>(null);
 
   const ctxRef = React.useRef<AudioContext | null>(null);
   const masterRef = React.useRef<GainNode | null>(null);
@@ -310,10 +312,13 @@ export function FocusMusicPlayer({ variant = "floating", collapsed = false }: Fo
   if (variant === "sidebar") {
     return (
       <div className="relative">
-        {open && <div className="absolute bottom-0 left-full z-[80] ml-2">{panel}</div>}
+        <FloatingFeaturePanel open={open} onOpenChange={setOpen} triggerRef={triggerRef}>
+          {panel}
+        </FloatingFeaturePanel>
         <button
+          ref={triggerRef}
           type="button"
-          onClick={() => setOpen(true)}
+          onClick={() => setOpen((current) => !current)}
           className={`flex w-full items-center rounded-xl py-2 text-sm font-medium transition-all duration-200 hover:bg-canvas hover:text-forest-slate ${
             collapsed ? "justify-center px-2" : "gap-3 px-3"
           } ${active ? "text-state-today" : "text-mossy-gray"}`}
