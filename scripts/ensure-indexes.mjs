@@ -51,6 +51,15 @@ const INDEXES = {
   google_integrations: [[{ userId: 1, provider: 1 }]],
   password_reset_tokens: [[{ token: 1 }], [{ expiresAt: 1 }]],
   "login-records": [[{ userId: 1, createdAt: -1 }]],
+  calorie_entries: [
+    [{ userId: 1, dayKey: -1 }],
+    [{ userId: 1, kind: 1, nameKey: 1 }],
+  ],
+  calorie_library: [
+    [{ userId: 1, kind: 1, nameKey: 1 }, { unique: true }],
+    [{ userId: 1, kind: 1, timesLogged: -1 }],
+  ],
+  calorie_settings: [[{ userId: 1 }, { unique: true }]],
 };
 
 const c = new MongoClient(URI, { serverSelectionTimeoutMS: 20000 });
