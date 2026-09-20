@@ -2,7 +2,7 @@ import { Plus } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth/session";
-import { getTaskQueue } from "@/actions/queue";
+import { getTaskQueue, getTaskQueueStats } from "@/actions/queue";
 import { getDashboardStats, getReviewTrendAction, getStreakAction } from "@/actions/analytics";
 import { StreakCard } from "@/components/features/streak-card";
 import { DashboardBrief } from "@/components/features/dashboard-brief";
@@ -34,19 +34,19 @@ const DASHBOARD_SHORTCUTS = [
 ];
 
 interface DashboardPageProps {
-  searchParams: Promise<{ filter?: string }>;
+  searchParams: Promise<{ filter?: string; showCollections?: string }>;
 }
 
-function FilterTabs({ active, pendingCount }: { active: TaskFilter; pendingCount: number }) {
+function FilterTabs({ active, pendingCount, showCollectionItems }: { active: TaskFilter; pendingCount: number; showCollectionItems: boolean }) {
   const tabs: { key: TaskFilter; label: string }[] = [
     { key: "today", label: "Today" },
     { key: "pending", label: "Pending" },
     { key: "upcoming", label: "Upcoming" },
-    { key: "all", label: "All Docs" },
+    { key: "all", label: "All Items" },
   ];
 
   return (
-    <div className="w-full overflow-x-auto custom-scrollbar sm:w-fit">
+    <div className="flex w-full flex-col gap-2 overflow-x-auto custom-scrollbar sm:w-fit sm:flex-row">
       <div className="flex min-w-max items-center gap-1 rounded-xl border border-border bg-surface p-1">
         {tabs.map((tab) => {
           const isPendingTab = tab.key === "pending";
@@ -67,10 +67,13 @@ function FilterTabs({ active, pendingCount }: { active: TaskFilter; pendingCount
             }
           }
 
+          const params = new URLSearchParams({ filter: tab.key });
+          if (showCollectionItems) params.set("showCollections", "1");
+
           return (
             <Link
               key={tab.key}
-              href={`/dashboard?filter=${tab.key}`}
+              href={`/dashboard?${params.toString()}`}
               className={className}
               aria-current={active === tab.key ? "page" : undefined}
             >
@@ -79,6 +82,16 @@ function FilterTabs({ active, pendingCount }: { active: TaskFilter; pendingCount
           );
         })}
       </div>
+      <Link
+        href={showCollectionItems ? `/dashboard?filter=${active}` : `/dashboard?filter=${active}&showCollections=1`}
+        className={`inline-flex min-w-max items-center justify-center rounded-xl border px-3 py-1.5 text-xs font-medium transition-all duration-200 sm:text-sm ${
+          showCollectionItems
+            ? "border-state-today bg-state-today/10 text-state-today"
+            : "border-border bg-surface text-mossy-gray hover:bg-canvas hover:text-forest-slate"
+        }`}
+      >
+        Collection items
+      </Link>
     </div>
   );
 }
@@ -92,9 +105,11 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
 
   const params = await searchParams;
   const filter = (params.filter as TaskFilter) || "today";
+  const showCollectionItems = params.showCollections === "1";
 
-  const [tasks, stats, trend, streak, hasTerms] = await Promise.all([
-    getTaskQueue(filter),
+  const [tasks, queueStats, stats, trend, streak, hasTerms] = await Promise.all([
+    getTaskQueue(filter, { includeCollectionItems: showCollectionItems }),
+    getTaskQueueStats({ includeCollectionItems: showCollectionItems }),
     getDashboardStats(),
     getReviewTrendAction(),
     getStreakAction(),
@@ -108,7 +123,9 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   const first = tasks[0];
   const next = first
     ? "source" in first
-      ? { title: first.session.videoTitle, href: `/study/youtube?v=${first.session.videoId}` }
+      ? first.source === "youtube"
+        ? { title: first.session.videoTitle, href: `/study/youtube?v=${first.session.videoId}` }
+        : { title: first.task.title, href: "/tasks" }
       : { title: first.doc.title, href: `/study/${first.doc.id}` }
     : null;
 
@@ -158,7 +175,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
 
       {/* Today's focus + weakest tags */}
       {stats.totalDocs > 0 && (
-        <DashboardBrief next={next} dueCount={stats.pendingRevisions} weakestTags={stats.leastRevisedAreas} />
+        <DashboardBrief next={next} dueCount={queueStats.overdueCount + queueStats.todayCount} weakestTags={stats.leastRevisedAreas} />
       )}
 
       {/* Streak + activity heatmap */}
@@ -168,7 +185,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       <div>
         <div className="mb-3 flex flex-col items-start gap-2 sm:mb-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
           <h2 className="text-sm font-semibold text-forest-slate sm:text-base">Revision Queue</h2>
-          <FilterTabs active={filter} pendingCount={stats.pendingRevisions} />
+          <FilterTabs active={filter} pendingCount={queueStats.overdueCount} showCollectionItems={showCollectionItems} />
         </div>
         <TaskQueue initialTasks={tasks} filter={filter} streak={streak.current} />
       </div>

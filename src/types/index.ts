@@ -410,6 +410,13 @@ export interface YoutubeTaskItem {
   urgency: "today" | "upcoming" | "overdue";
 }
 
+export interface LightweightTaskQueueItem {
+  source: "task";
+  task: LightweightTask;
+  dueAt?: string;
+  urgency: "today" | "upcoming" | "overdue";
+}
+
 // ─── Dashboard Analytics ───────────────────────────────────────────────────────
 
 export interface DashboardStats {

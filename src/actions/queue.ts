@@ -7,22 +7,46 @@ import {
   getDocumentsCollection,
   getRepetitionsCollection,
   getNotesCollection,
+  getTasksCollection,
+  getTopicCollectionsCollection,
   getYoutubeSessionsCollection,
   getYoutubeRepetitionsCollection,
   serializeDoc,
   serializeRepetition,
   serializeNote,
+  serializeTask,
   serializeYoutubeSession,
   LIST_DOC_PROJECTION,
 } from "@/lib/db/collections";
-import type { TaskItem, YoutubeTaskItem, TaskFilter } from "@/types";
+import type { LightweightTaskQueueItem, TaskItem, YoutubeTaskItem, TaskFilter } from "@/types";
 
-export type AnyTaskItem = TaskItem | YoutubeTaskItem;
+export type AnyTaskItem = TaskItem | YoutubeTaskItem | LightweightTaskQueueItem;
 
-export async function getTaskQueue(filter: TaskFilter = "today"): Promise<AnyTaskItem[]> {
+async function getCollectionItemIds(userId: ObjectId): Promise<{ docIds: ObjectId[]; taskIds: ObjectId[] }> {
+  const collections = await getTopicCollectionsCollection();
+  const rows = await collections
+    .find({ userId })
+    .project<{ docIds?: ObjectId[]; taskIds?: ObjectId[] }>({ docIds: 1, taskIds: 1 })
+    .toArray();
+  return {
+    docIds: rows.flatMap((row) => row.docIds ?? []),
+    taskIds: rows.flatMap((row) => row.taskIds ?? []),
+  };
+}
+
+function urgencyForDate(date: Date): "overdue" | "today" | "upcoming" {
+  const todayMidnight = new Date(new Date().setHours(0, 0, 0, 0));
+  const todayEnd = new Date(new Date().setHours(23, 59, 59, 999));
+  if (date < todayMidnight) return "overdue";
+  if (date <= todayEnd) return "today";
+  return "upcoming";
+}
+
+export async function getTaskQueue(filter: TaskFilter = "today", options?: { includeCollectionItems?: boolean }): Promise<AnyTaskItem[]> {
   const user = await requireAuth();
   const userId = new ObjectId(user.id);
   const revealHidden = await hiddenRevealed();
+  const collectionIds = options?.includeCollectionItems ? { docIds: [], taskIds: [] } : await getCollectionItemIds(userId);
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
   const todayEnd = new Date();
@@ -31,6 +55,7 @@ export async function getTaskQueue(filter: TaskFilter = "today"): Promise<AnyTas
   const reps = await getRepetitionsCollection();
   const docs = await getDocumentsCollection();
   const notes = await getNotesCollection();
+  const lightweightTasks = await getTasksCollection();
   const ytReps = await getYoutubeRepetitionsCollection();
   const ytSessions = await getYoutubeSessionsCollection();
 
@@ -49,21 +74,15 @@ export async function getTaskQueue(filter: TaskFilter = "today"): Promise<AnyTas
 
   const repList = await reps.find(repQuery).sort({ nextReviewDate: 1 }).toArray();
 
-  function urgencyFor(nextReviewDate: Date): "overdue" | "today" | "upcoming" {
-    const todayMidnight = new Date(new Date().setHours(0, 0, 0, 0));
-    const todayEnd2 = new Date(new Date().setHours(23, 59, 59, 999));
-    if (nextReviewDate < todayMidnight) return "overdue";
-    if (nextReviewDate <= todayEnd2) return "today";
-    return "upcoming";
-  }
-
   // Batch the doc + notes lookups instead of querying per repetition. With many
   // due reviews the old per-item loop was 2 round-trips × N items, which on
   // Vercel could exceed the serverless function time limit for heavy accounts.
   const docIds = repList.map((r) => r.docId);
+  const docIdFilter: Record<string, ObjectId[]> = { $in: docIds };
+  if (collectionIds.docIds.length > 0) docIdFilter.$nin = collectionIds.docIds;
   const docList = await docs
     .find({
-      _id: { $in: docIds },
+      _id: docIdFilter,
       userId,
       status: { $ne: "completed" },
       ...(revealHidden ? {} : { isHidden: { $ne: true } }),
@@ -94,7 +113,7 @@ export async function getTaskQueue(filter: TaskFilter = "today"): Promise<AnyTas
       doc: serializeDoc(doc as any),
       repetition: serializeRepetition(rep),
       notes: (notesByDoc.get(rep.docId.toString()) ?? []).map(serializeNote),
-      urgency: urgencyFor(rep.nextReviewDate),
+      urgency: urgencyForDate(rep.nextReviewDate),
     });
   }
 
@@ -114,22 +133,41 @@ export async function getTaskQueue(filter: TaskFilter = "today"): Promise<AnyTas
       source: "youtube",
       session: serializeYoutubeSession(session),
       repetition: serializeRepetition(rep),
-      urgency: urgencyFor(rep.nextReviewDate),
+      urgency: urgencyForDate(rep.nextReviewDate),
     });
   }
 
+  const taskQuery: Record<string, unknown> = { userId, status: "pending" };
+  if (filter === "today") {
+    taskQuery.dueAt = { $gte: todayStart, $lte: todayEnd };
+  } else if (filter === "pending") {
+    taskQuery.dueAt = { $lt: todayStart };
+  } else if (filter === "upcoming") {
+    taskQuery.dueAt = { $gt: todayEnd };
+  }
+  if (collectionIds.taskIds.length > 0) {
+    taskQuery._id = { $nin: collectionIds.taskIds };
+  }
+  const lightweightTaskItems: LightweightTaskQueueItem[] = (await lightweightTasks.find(taskQuery).sort({ dueAt: 1 }).toArray())
+    .map((task) => ({
+      source: "task",
+      task: serializeTask(task),
+      dueAt: task.dueAt?.toISOString(),
+      urgency: task.dueAt ? urgencyForDate(task.dueAt) : "upcoming",
+    }));
+
   // Merge and sort by nextReviewDate
-  const allTasks: AnyTaskItem[] = [...tasks, ...youtubeTasks];
+  const allTasks: AnyTaskItem[] = [...tasks, ...youtubeTasks, ...lightweightTaskItems];
   allTasks.sort((a, b) => {
-    const aDate = "source" in a ? a.repetition.nextReviewDate : a.repetition.nextReviewDate;
-    const bDate = "source" in b ? b.repetition.nextReviewDate : b.repetition.nextReviewDate;
+    const aDate = "source" in a && a.source === "task" ? a.dueAt ?? a.task.createdAt : a.repetition.nextReviewDate;
+    const bDate = "source" in b && b.source === "task" ? b.dueAt ?? b.task.createdAt : b.repetition.nextReviewDate;
     return aDate < bDate ? -1 : aDate > bDate ? 1 : 0;
   });
 
   return allTasks;
 }
 
-export async function getTaskQueueStats(): Promise<{
+export async function getTaskQueueStats(options?: { includeCollectionItems?: boolean }): Promise<{
   todayCount: number;
   upcomingCount: number;
   overdueCount: number;
@@ -139,6 +177,8 @@ export async function getTaskQueueStats(): Promise<{
   const reps = await getRepetitionsCollection();
   const ytReps = await getYoutubeRepetitionsCollection();
   const docs = await getDocumentsCollection();
+  const lightweightTasks = await getTasksCollection();
+  const collectionIds = options?.includeCollectionItems ? { docIds: [], taskIds: [] } : await getCollectionItemIds(userId);
   const now = new Date();
   const todayStart = new Date(now);
   todayStart.setHours(0, 0, 0, 0);
@@ -150,6 +190,7 @@ export async function getTaskQueueStats(): Promise<{
       userId,
       status: { $ne: "completed" },
       parentDocId: { $exists: false },
+      ...(collectionIds.docIds.length > 0 ? { _id: { $nin: collectionIds.docIds } } : {}),
     })
     .project({ _id: 1 })
     .toArray()
@@ -168,11 +209,22 @@ export async function getTaskQueueStats(): Promise<{
   const allYtReps = await ytReps.find({ userId, docId: { $in: activeYtSessionIds } }).toArray();
   const allReps = [...allDocReps, ...allYtReps];
 
-  const overdueCount = allReps.filter((r) => r.nextReviewDate < todayStart).length;
+  const lightweightTaskRows = await lightweightTasks
+    .find({
+      userId,
+      status: "pending",
+      dueAt: { $exists: true },
+      ...(collectionIds.taskIds.length > 0 ? { _id: { $nin: collectionIds.taskIds } } : {}),
+    })
+    .project({ dueAt: 1 })
+    .toArray();
+
+  const taskDueDates = lightweightTaskRows.map((task) => task.dueAt as Date).filter(Boolean);
+  const overdueCount = allReps.filter((r) => r.nextReviewDate < todayStart).length + taskDueDates.filter((dueAt) => dueAt < todayStart).length;
   const todayCount = allReps.filter(
     (r) => r.nextReviewDate >= todayStart && r.nextReviewDate <= todayEnd
-  ).length;
-  const upcomingCount = allReps.filter((r) => r.nextReviewDate > todayEnd).length;
+  ).length + taskDueDates.filter((dueAt) => dueAt >= todayStart && dueAt <= todayEnd).length;
+  const upcomingCount = allReps.filter((r) => r.nextReviewDate > todayEnd).length + taskDueDates.filter((dueAt) => dueAt > todayEnd).length;
 
   return { todayCount, upcomingCount, overdueCount };
 }
