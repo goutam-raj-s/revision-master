@@ -5,6 +5,7 @@ import { CommandPalette } from "@/components/features/command-palette";
 import { DashboardHeader } from "@/components/features/dashboard-header";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ShortcutsHelp } from "@/components/features/shortcuts-help";
+import { OfflineSyncBootstrap } from "@/components/features/offline-sync-bootstrap";
 
 
 export default async function DashboardLayout({
@@ -27,6 +28,7 @@ export default async function DashboardLayout({
         </main>
         <CommandPalette />
         <ShortcutsHelp />
+        <OfflineSyncBootstrap />
       </div>
     </TooltipProvider>
   );

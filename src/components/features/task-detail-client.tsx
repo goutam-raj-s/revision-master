@@ -19,6 +19,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/toast";
 import { cn, formatRelativeDate } from "@/lib/utils";
+import { queueOfflineResync } from "@/lib/offline/indexed-db";
 import {
   addTaskCommentAction,
   completeTaskAction,
@@ -54,6 +55,7 @@ export function TaskDetailClient({ task }: { task: LightweightTask }) {
     const res = task.status === "completed" ? await reopenTaskAction(task.id) : await completeTaskAction(task.id);
     if (res.success) {
       toast(task.status === "completed" ? "Task reopened" : "Task completed", { variant: "success" });
+      queueOfflineResync("task:status");
       router.refresh();
     } else {
       toast(res.error ?? "Could not update task", { variant: "error" });
@@ -66,6 +68,7 @@ export function TaskDetailClient({ task }: { task: LightweightTask }) {
     const res = await rescheduleTaskAction(task.id, days);
     if (res.success) {
       toast(`Scheduled +${days} day${days !== 1 ? "s" : ""}`, { variant: "success" });
+      queueOfflineResync("task:schedule");
       router.refresh();
     } else {
       toast(res.error ?? "Could not reschedule", { variant: "error" });
@@ -75,7 +78,10 @@ export function TaskDetailClient({ task }: { task: LightweightTask }) {
 
   async function saveDueAt(value: string) {
     const res = await updateTaskAction(task.id, { dueAt: value });
-    if (res.success) router.refresh();
+    if (res.success) {
+      queueOfflineResync("task:update");
+      router.refresh();
+    }
     else toast(res.error ?? "Could not update date", { variant: "error" });
   }
 
@@ -84,6 +90,7 @@ export function TaskDetailClient({ task }: { task: LightweightTask }) {
     const res = await addTaskCommentAction(task.id, newComment);
     if (res.success) {
       setNewComment("");
+      queueOfflineResync("task:comment");
       router.refresh();
     } else {
       toast(res.error ?? "Could not add comment", { variant: "error" });
@@ -95,6 +102,7 @@ export function TaskDetailClient({ task }: { task: LightweightTask }) {
     const res = await deleteTaskAction(task.id);
     if (res.success) {
       toast("Task deleted", { variant: "success" });
+      queueOfflineResync("task:delete");
       router.push("/tasks");
       router.refresh();
     } else {

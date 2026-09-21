@@ -21,6 +21,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/toast";
 import { cn, formatRelativeDate } from "@/lib/utils";
+import { queueOfflineResync } from "@/lib/offline/indexed-db";
 import {
   completeTaskAction,
   createTaskAction,
@@ -86,6 +87,7 @@ export function TasksClient({
     const res = await createTaskAction({ title, tags, comment, dueAt, difficulty });
     if (res.success) {
       toast("Task created", { variant: "success" });
+      queueOfflineResync("task:create");
       setTitle("");
       setTags("");
       setComment("");
@@ -242,6 +244,7 @@ function TaskCard({ task }: { task: LightweightTask }) {
     const res = task.status === "completed" ? await reopenTaskAction(task.id) : await completeTaskAction(task.id);
     if (res.success) {
       toast(task.status === "completed" ? "Task reopened" : "Task completed", { variant: "success" });
+      queueOfflineResync("task:status");
       router.refresh();
     } else {
       toast(res.error ?? "Could not update task", { variant: "error" });
@@ -254,6 +257,7 @@ function TaskCard({ task }: { task: LightweightTask }) {
     const res = await rescheduleTaskAction(task.id, days);
     if (res.success) {
       toast(`Scheduled +${days} day${days !== 1 ? "s" : ""}`, { variant: "success" });
+      queueOfflineResync("task:schedule");
       router.refresh();
     } else {
       toast(res.error ?? "Could not reschedule", { variant: "error" });
@@ -263,7 +267,10 @@ function TaskCard({ task }: { task: LightweightTask }) {
 
   async function saveDueAt(value: string) {
     const res = await updateTaskAction(task.id, { dueAt: value });
-    if (res.success) router.refresh();
+    if (res.success) {
+      queueOfflineResync("task:update");
+      router.refresh();
+    }
     else toast(res.error ?? "Could not update date", { variant: "error" });
   }
 
@@ -272,6 +279,7 @@ function TaskCard({ task }: { task: LightweightTask }) {
     const res = await deleteTaskAction(task.id);
     if (res.success) {
       toast("Task deleted", { variant: "success" });
+      queueOfflineResync("task:delete");
       router.refresh();
     } else {
       toast(res.error ?? "Could not delete task", { variant: "error" });
@@ -287,6 +295,7 @@ function TaskCard({ task }: { task: LightweightTask }) {
     const res = await addTaskToCollectionAction(collectionId, task.id);
     if (res.success) {
       toast(`Added to "${name}"`, { variant: "success" });
+      queueOfflineResync("collection:add-task");
       router.refresh();
     } else {
       toast(res.error ?? "Could not add to collection", { variant: "error" });

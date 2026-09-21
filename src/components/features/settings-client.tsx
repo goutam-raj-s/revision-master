@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useActionState } from "react";
-import { DatabaseZap, Key, User, Eye, EyeOff, Loader2, Trash2, Check, Download, Bell } from "lucide-react";
+import { DatabaseZap, Key, User, Eye, EyeOff, Loader2, Trash2, Check, Download, Bell, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,6 +12,7 @@ import { updateProfileAction, saveGeminiKeyAction, deleteGeminiKeyAction } from 
 import { manualDatabaseSyncAction } from "@/actions/sync";
 import { deleteAccountAction, exportAccountDataAction, setEmailRemindersAction } from "@/actions/account";
 import { CompletionCharacterPicker } from "@/components/features/completion-character-picker";
+import { getLastOfflineSync, syncOfflineSnapshot } from "@/lib/offline/indexed-db";
 import type { User as UserType, ActionResult } from "@/types";
 
 interface SettingsClientProps {
@@ -28,7 +29,9 @@ export function SettingsClient({ user, maskedGeminiKey: initialMaskedKey, emailR
   const [maskedKey, setMaskedKey] = React.useState(initialMaskedKey);
   const [deletingKey, setDeletingKey] = React.useState(false);
   const [syncingDb, setSyncingDb] = React.useState(false);
+  const [syncingOffline, setSyncingOffline] = React.useState(false);
   const [lastSyncSummary, setLastSyncSummary] = React.useState<string | null>(null);
+  const [lastOfflineSync, setLastOfflineSync] = React.useState<string | null>(null);
   const [exporting, setExporting] = React.useState(false);
   const [confirmingDelete, setConfirmingDelete] = React.useState(false);
   const [deleteEmail, setDeleteEmail] = React.useState("");
@@ -52,6 +55,10 @@ export function SettingsClient({ user, maskedGeminiKey: initialMaskedKey, emailR
     if (geminiState.error) toast(geminiState.error, { variant: "error" });
   }, [geminiState]);
 
+  React.useEffect(() => {
+    getLastOfflineSync().then(setLastOfflineSync).catch(() => {});
+  }, []);
+
   async function handleDeleteKey() {
     setDeletingKey(true);
     await deleteGeminiKeyAction();
@@ -74,6 +81,20 @@ export function SettingsClient({ user, maskedGeminiKey: initialMaskedKey, emailR
     }
 
     setSyncingDb(false);
+  }
+
+  async function handleOfflineSync() {
+    setSyncingOffline(true);
+    try {
+      const snapshot = await syncOfflineSnapshot({ force: true });
+      const syncedAt = snapshot?.syncedAt ?? await getLastOfflineSync();
+      setLastOfflineSync(syncedAt);
+      toast("Offline data synced to this device", { variant: "success" });
+    } catch (error) {
+      toast(error instanceof Error ? error.message : "Offline sync failed", { variant: "error" });
+    } finally {
+      setSyncingOffline(false);
+    }
   }
 
   async function handleExport() {
@@ -177,6 +198,34 @@ export function SettingsClient({ user, maskedGeminiKey: initialMaskedKey, emailR
             >
               {syncingDb ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <DatabaseZap className="h-3.5 w-3.5" />}
               {syncingDb ? "Syncing…" : "Sync Now"}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="shadow-card">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <div className="p-1.5 rounded-lg bg-state-today/10">
+              <RefreshCw className="h-4 w-4 text-state-today" />
+            </div>
+            Offline Data
+          </CardTitle>
+          <CardDescription>
+            Keep a local IndexedDB snapshot of your data so pages can load quickly and future offline reads have a clean source.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="text-sm text-mossy-gray">
+              Last local sync:{" "}
+              <span className="font-medium text-forest-slate">
+                {lastOfflineSync ? new Date(lastOfflineSync).toLocaleString() : "Not synced yet"}
+              </span>
+            </div>
+            <Button onClick={handleOfflineSync} disabled={syncingOffline} variant="outline" size="sm">
+              {syncingOffline ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+              Sync offline data
             </Button>
           </div>
         </CardContent>

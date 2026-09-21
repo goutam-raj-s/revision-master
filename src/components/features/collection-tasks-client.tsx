@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/table";
 import { toast } from "@/components/ui/toast";
 import { removeTaskFromCollectionAction } from "@/actions/collections";
+import { queueOfflineResync } from "@/lib/offline/indexed-db";
 import {
   bulkDeleteTasksAction,
   completeTaskAction,
@@ -68,6 +69,7 @@ export function CollectionTasksClient({
     const res = task.status === "completed" ? await reopenTaskAction(task.id) : await completeTaskAction(task.id);
     if (res.success) {
       toast(task.status === "completed" ? "Task reopened" : "Task completed", { variant: "success" });
+      queueOfflineResync("task:status");
       router.refresh();
     } else {
       toast(res.error ?? "Could not update task", { variant: "error" });
@@ -79,6 +81,7 @@ export function CollectionTasksClient({
     const res = await removeTaskFromCollectionAction(collectionId, taskId);
     if (res.success) {
       toast("Removed from collection");
+      queueOfflineResync("collection:remove-task");
       setSelectedIds((prev) => {
         const next = new Set(prev);
         next.delete(taskId);
@@ -95,6 +98,7 @@ export function CollectionTasksClient({
     const res = await deleteTaskAction(task.id);
     if (res.success) {
       toast("Task deleted", { variant: "success" });
+      queueOfflineResync("task:delete");
       setSelectedIds((prev) => {
         const next = new Set(prev);
         next.delete(task.id);
@@ -114,6 +118,7 @@ export function CollectionTasksClient({
     const res = await bulkDeleteTasksAction(ids);
     if (res.success) {
       toast(`${res.data?.deletedCount ?? ids.length} task${ids.length !== 1 ? "s" : ""} deleted`, { variant: "success" });
+      queueOfflineResync("task:bulk-delete");
       setSelectedIds(new Set());
       router.refresh();
     } else {
