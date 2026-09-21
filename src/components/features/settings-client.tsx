@@ -66,6 +66,7 @@ export function SettingsClient({
   const [lastSyncSummary, setLastSyncSummary] = React.useState<string | null>(null);
   const [lastOfflineSync, setLastOfflineSync] = React.useState<string | null>(null);
   const [offlineStatus, setOfflineStatus] = React.useState<OfflineSyncStatus | null>(null);
+  const [offlineStatusError, setOfflineStatusError] = React.useState<string | null>(null);
   const [showOfflineDetails, setShowOfflineDetails] = React.useState(false);
   const [exporting, setExporting] = React.useState(false);
   const [confirmingDelete, setConfirmingDelete] = React.useState(false);
@@ -83,9 +84,11 @@ export function SettingsClient({
       const status = await getOfflineSyncStatus();
       setOfflineStatus(status);
       setLastOfflineSync(status.syncedAt);
+      setOfflineStatusError(null);
     } catch {
       const syncedAt = await getLastOfflineSync();
       setLastOfflineSync(syncedAt);
+      setOfflineStatusError("IndexedDB status is not available yet.");
     }
   }
 
@@ -144,12 +147,14 @@ export function SettingsClient({
   async function handleOfflineSync() {
     setSyncingOffline(true);
     try {
+      setOfflineStatusError(null);
       const snapshot = await syncOfflineSnapshot({ force: true });
       const syncedAt = snapshot?.syncedAt ?? await getLastOfflineSync();
       setLastOfflineSync(syncedAt);
       await refreshOfflineStatus();
       toast("Offline data synced to this device", { variant: "success" });
     } catch (error) {
+      setOfflineStatusError(error instanceof Error ? error.message : "Offline sync failed");
       toast(error instanceof Error ? error.message : "Offline sync failed", { variant: "error" });
     } finally {
       setSyncingOffline(false);
@@ -290,6 +295,7 @@ export function SettingsClient({
                     {offlineStatus ? `${offlineStatus.totalRows} records across ${offlineStatus.collections.length} stores` : "Status not loaded"}
                   </span>
                 </p>
+                {offlineStatusError && <p className="mt-1 text-xs text-destructive">{offlineStatusError}</p>}
               </div>
               <div className="flex flex-wrap gap-2">
                 <Button onClick={() => setShowOfflineDetails((show) => !show)} variant="ghost" size="sm">

@@ -1,12 +1,14 @@
 "use client";
 
 import {
-  OFFLINE_SYNC_COLLECTIONS,
   getOfflineSyncSnapshotAction,
+} from "@/actions/offline-sync";
+import {
+  OFFLINE_SYNC_COLLECTIONS,
   type OfflineSyncCollection,
   type OfflineSyncRow,
   type OfflineSyncSnapshot,
-} from "@/actions/offline-sync";
+} from "@/lib/offline/schema";
 
 const DB_NAME = "lostbae-offline";
 const DB_VERSION = 1;
