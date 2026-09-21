@@ -30,7 +30,7 @@ export function CollectionsClient({ initial }: { initial: TopicCollection[] }) {
   }
 
   async function remove(id: string) {
-    if (!confirm("Delete this collection? The documents and tasks themselves stay in your library.")) return;
+    if (!confirm("Delete this collection? The tasks themselves stay in your library.")) return;
     const res = await deleteCollectionAction(id);
     if (res.success) {
       toast("Collection deleted");
@@ -59,7 +59,7 @@ export function CollectionsClient({ initial }: { initial: TopicCollection[] }) {
       {initial.length === 0 ? (
         <Card className="p-10 text-center shadow-card">
           <Folder className="mx-auto h-8 w-8 text-mossy-gray/50" />
-          <p className="mt-3 text-sm text-mossy-gray">No collections yet. Group related documents into topics above.</p>
+          <p className="mt-3 text-sm text-mossy-gray">No collections yet. Group related tasks into topics above.</p>
         </Card>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -72,7 +72,7 @@ export function CollectionsClient({ initial }: { initial: TopicCollection[] }) {
                 <div className="min-w-0">
                   <p className="truncate font-medium text-forest-slate">{c.name}</p>
                   <p className="text-xs text-mossy-gray">
-                    {c.docCount} document{c.docCount !== 1 ? "s" : ""} · {c.taskCount} task{c.taskCount !== 1 ? "s" : ""}
+                    {c.taskCount} task{c.taskCount !== 1 ? "s" : ""}
                   </p>
                 </div>
               </Link>

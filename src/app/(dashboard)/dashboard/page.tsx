@@ -1,36 +1,19 @@
-import { Plus } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth/session";
 import { getTaskQueue, getTaskQueueStats } from "@/actions/queue";
-import { getDashboardStats, getReviewTrendAction, getStreakAction } from "@/actions/analytics";
+import { getStreakAction } from "@/actions/analytics";
 import { StreakCard } from "@/components/features/streak-card";
-import { DashboardBrief } from "@/components/features/dashboard-brief";
-import { DailyGoalRing } from "@/components/features/daily-goal-ring";
-import { RecentDocs } from "@/components/features/recent-docs";
-import { OnboardingChecklist } from "@/components/features/onboarding-checklist";
-import { userHasTermsAction } from "@/actions/notes";
 import { TaskQueue } from "@/components/features/task-queue";
-import { StatsCards } from "@/components/features/stats-cards";
-import { AnalyticsInsights } from "@/components/features/analytics-insights";
-import { OnboardingBanner } from "@/components/features/onboarding-banner";
-import { GoogleAutoSync } from "@/components/features/google-auto-sync";
-import { ReviewTrendChartDynamic as ReviewTrendChart } from "@/components/features/review-trend-chart-dynamic";
-import { Button } from "@/components/ui/button";
 import { QuickGuideButton } from "@/components/ui/quick-guide-button";
 import type { TaskFilter } from "@/types";
 
 const DASHBOARD_SHORTCUTS = [
-  { keys: "Cmd+K", label: "Command palette — search docs/terms, run actions" },
+  { keys: "Cmd+K", label: "Command palette — search terms, run actions" },
   { keys: "Cmd+/", label: "Also opens command palette" },
   { keys: "?", label: "Show full keyboard shortcuts sheet" },
-  { keys: "Cmd+Shift+K", label: "Quick clipper widget" },
-  { keys: "E", label: "Complete focused task (row expanded)" },
-  { keys: "Escape", label: "Close review modal / clear focus" },
-  { keys: "Today / Pending", label: "Switch revision queue filter" },
+  { keys: "Today / Pending", label: "Switch task queue filter" },
   { keys: "Theme toggle", label: "Light / Dark / System (sidebar)" },
-  { keys: "Cmd+Shift+V", label: "Clipboard history (last 10 copies)" },
-  { keys: "Cmd+Shift+Alt+R", label: "Reveal / hide private documents (Ctrl on Windows)" },
 ];
 
 interface DashboardPageProps {
@@ -107,27 +90,11 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   const filter = (params.filter as TaskFilter) || "today";
   const showCollectionItems = params.showCollections === "1";
 
-  const [tasks, queueStats, stats, trend, streak, hasTerms] = await Promise.all([
+  const [tasks, queueStats, streak] = await Promise.all([
     getTaskQueue(filter, { includeCollectionItems: showCollectionItems }),
     getTaskQueueStats({ includeCollectionItems: showCollectionItems }),
-    getDashboardStats(),
-    getReviewTrendAction(),
     getStreakAction(),
-    userHasTermsAction(),
   ]);
-
-  // Reviews logged today (last entry in the heatmap is today).
-  const todayReviews = streak.heatmap.at(-1)?.count ?? 0;
-
-  // Derive "today's focus" from the first queue item (doc or youtube).
-  const first = tasks[0];
-  const next = first
-    ? "source" in first
-      ? first.source === "youtube"
-        ? { title: first.session.videoTitle, href: `/study/youtube?v=${first.session.videoId}` }
-        : { title: first.task.title, href: "/tasks" }
-      : { title: first.doc.title, href: `/study/${first.doc.id}` }
-    : null;
 
   return (
     <div className="space-y-4 sm:space-y-6 md:space-y-8">
@@ -136,47 +103,14 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         <div>
           <h1 className="text-xl font-bold text-forest-slate sm:text-2xl">Dashboard</h1>
           <p className="mt-0.5 text-xs text-mossy-gray sm:text-sm">
-            Your learning queue for today
+            Your lightweight task queue for today
             <kbd className="ml-2 hidden rounded bg-border px-1.5 py-0.5 font-mono text-xs text-mossy-gray sm:inline">⌘K</kbd>
           </p>
         </div>
         <div className="flex items-center gap-2">
           <QuickGuideButton shortcuts={DASHBOARD_SHORTCUTS} title="Dashboard" />
-          <Link href="/documents/new" prefetch={true}>
-            <Button className="h-8 gap-1.5 px-3 text-xs bouncy-hover sm:h-9 sm:gap-2 sm:px-4 sm:text-sm" aria-label="Import document">
-              <Plus className="h-4 w-4" />
-              <span className="hidden sm:inline">Import Document</span>
-            </Button>
-          </Link>
         </div>
       </div>
-
-      {/* Hourly background re-sync of imported Google Docs */}
-      <GoogleAutoSync />
-
-      {/* Onboarding — only for new users with 0 docs */}
-      <OnboardingBanner totalDocs={stats.totalDocs} />
-
-      {/* Stats cards — top */}
-      <StatsCards stats={stats} />
-
-      {/* Daily goal — second */}
-      {stats.totalDocs > 0 && <DailyGoalRing done={todayReviews} />}
-
-      {/* Getting-started checklist (hides when complete/dismissed) */}
-      <OnboardingChecklist
-        hasDocs={stats.totalDocs > 0}
-        hasReviewed={streak.totalReviews > 0}
-        hasTerms={hasTerms}
-      />
-
-      {/* Continue where you left off */}
-      <RecentDocs />
-
-      {/* Today's focus + weakest tags */}
-      {stats.totalDocs > 0 && (
-        <DashboardBrief next={next} dueCount={queueStats.overdueCount + queueStats.todayCount} weakestTags={stats.leastRevisedAreas} />
-      )}
 
       {/* Streak + activity heatmap */}
       <StreakCard data={streak} />
@@ -190,15 +124,6 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         <TaskQueue initialTasks={tasks} filter={filter} streak={streak.current} />
       </div>
 
-      {/* Analytics */}
-      <div>
-        <h2 className="mb-3 text-sm font-semibold text-forest-slate sm:mb-4 sm:text-base">Learning Insights</h2>
-        <AnalyticsInsights stats={stats} />
-        <div className="mt-3 rounded-xl border border-border bg-surface p-3 sm:mt-4 sm:p-4">
-          <p className="text-xs font-medium text-mossy-gray mb-2">Reviews this week</p>
-          <ReviewTrendChart data={trend} />
-        </div>
-      </div>
     </div>
   );
 }

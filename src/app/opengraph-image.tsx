@@ -1,7 +1,7 @@
 import { ImageResponse } from "next/og";
 
 export const runtime = "edge";
-export const alt = "lostbae — Spaced Repetition for Your Notes, Docs & Videos";
+export const alt = "lostbae — Lightweight Tasks and Spaced Repetition";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -41,10 +41,10 @@ export default function OgImage() {
           <div style={{ fontSize: 40, fontWeight: 700 }}>lostbae</div>
         </div>
         <div style={{ fontSize: 64, fontWeight: 800, lineHeight: 1.1, maxWidth: 900 }}>
-          Remember everything you read, watch & note.
+          Keep your learning queue lightweight.
         </div>
         <div style={{ fontSize: 30, marginTop: 28, opacity: 0.9, maxWidth: 880 }}>
-          Spaced repetition + active recall for your Google Docs, notes and YouTube lessons.
+          Focused tasks, spaced repetition, and active recall without heavy document workflows.
         </div>
       </div>
     ),

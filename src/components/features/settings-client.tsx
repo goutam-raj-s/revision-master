@@ -7,12 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
 import { toast } from "@/components/ui/toast";
 import { updateProfileAction, saveGeminiKeyAction, deleteGeminiKeyAction } from "@/actions/auth";
 import { manualDatabaseSyncAction } from "@/actions/sync";
 import { deleteAccountAction, exportAccountDataAction, setEmailRemindersAction } from "@/actions/account";
-import { GoogleConnectionCard } from "@/components/features/google-connection-card";
 import { CompletionCharacterPicker } from "@/components/features/completion-character-picker";
 import type { User as UserType, ActionResult } from "@/types";
 
@@ -48,7 +46,7 @@ export function SettingsClient({ user, maskedGeminiKey: initialMaskedKey, emailR
 
   React.useEffect(() => {
     if (geminiState.success && geminiState.data) {
-      setMaskedKey(geminiState.data.maskedKey);
+      queueMicrotask(() => setMaskedKey(geminiState.data!.maskedKey));
       toast("Gemini API key saved securely", { variant: "success" });
     }
     if (geminiState.error) toast(geminiState.error, { variant: "error" });
@@ -279,7 +277,7 @@ export function SettingsClient({ user, maskedGeminiKey: initialMaskedKey, emailR
             Review Reminders
           </CardTitle>
           <CardDescription>
-            Get a daily email digest when documents are due for review, so nothing slips.
+            Get a daily email digest when reviews are due, so nothing slips.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -319,9 +317,6 @@ export function SettingsClient({ user, maskedGeminiKey: initialMaskedKey, emailR
         </CardContent>
       </Card>
 
-      {/* Google Docs connection */}
-      <GoogleConnectionCard />
-
       {/* Export */}
       <Card className="shadow-card">
         <CardHeader>
@@ -332,8 +327,7 @@ export function SettingsClient({ user, maskedGeminiKey: initialMaskedKey, emailR
             Export Your Data
           </CardTitle>
           <CardDescription>
-            Download everything you own — documents, notes, terms, revision history, and YouTube
-            sessions — as a single JSON file.
+            Download everything you own — tasks, notes, terms, and revision history — as a single JSON file.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -354,7 +348,7 @@ export function SettingsClient({ user, maskedGeminiKey: initialMaskedKey, emailR
         </CardHeader>
         <CardContent>
           <p className="text-sm text-mossy-gray mb-4">
-            Deleting your account permanently removes all your documents, notes, terms, and revision
+            Deleting your account permanently removes all your tasks, notes, terms, and revision
             history. This action cannot be undone — export your data first if you want a copy.
           </p>
           {!confirmingDelete ? (

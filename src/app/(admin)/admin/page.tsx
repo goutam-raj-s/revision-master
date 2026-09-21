@@ -1,28 +1,26 @@
 import { Suspense } from "react";
 import { getDb } from "@/lib/db/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Shield, Users, BookOpen, BarChart3, Loader2 } from "lucide-react";
+import { Shield, Users, BarChart3, Loader2 } from "lucide-react";
 
 export const metadata = { title: "Admin — lostbae" };
 
 async function AdminStats() {
   const db = await getDb();
-  const [userCount, docCount, noteCount, termCount] = await Promise.all([
+  const [userCount, noteCount, termCount] = await Promise.all([
     db.collection("users").countDocuments(),
-    db.collection("documents").countDocuments(),
     db.collection("notes").countDocuments(),
     db.collection("terms").countDocuments(),
   ]);
 
   const stats = [
     { label: "Total Users", value: userCount, icon: Users, color: "text-state-upcoming", bg: "bg-state-upcoming/10" },
-    { label: "Total Documents", value: docCount, icon: BookOpen, color: "text-state-today", bg: "bg-state-today/10" },
     { label: "Total Notes", value: noteCount, icon: BarChart3, color: "text-state-stale", bg: "bg-state-stale/10" },
     { label: "Total Terms", value: termCount, icon: BarChart3, color: "text-state-completed", bg: "bg-state-completed/10" },
   ];
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
       {stats.map((stat) => (
         <Card key={stat.label} className="shadow-card">
           <CardContent className="p-5">

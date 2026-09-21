@@ -11,11 +11,8 @@ export default function robots(): MetadataRoute.Robots {
         // Keep private/authenticated and machine routes out of the index.
         disallow: [
           "/dashboard",
-          "/documents",
-          "/study",
           "/settings",
           "/terminology",
-          "/video",
           "/admin",
           "/api/",
           "/shared/",

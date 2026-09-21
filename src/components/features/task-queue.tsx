@@ -2,14 +2,11 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { LightweightTaskRow, TaskRow, YoutubeTaskRow } from "./task-row";
-import { GlassModal } from "./glass-modal";
+import { LightweightTaskRow } from "./task-row";
 import { InboxZero } from "./inbox-zero";
-import { completeReviewAction, deleteDocumentAction, rescheduleDocAction } from "@/actions/documents";
-import { rescheduleYoutubeAction, markYoutubeCompletedAction } from "@/actions/youtube";
 import { completeTaskAction, rescheduleTaskAction } from "@/actions/tasks";
 import { toast } from "@/components/ui/toast";
-import type { TaskItem, TaskFilter } from "@/types";
+import type { TaskFilter } from "@/types";
 import type { AnyTaskItem } from "@/actions/queue";
 
 interface TaskQueueProps {
@@ -19,21 +16,14 @@ interface TaskQueueProps {
 }
 
 function getTaskId(task: AnyTaskItem): string {
-  if ("source" in task && task.source === "youtube") {
-    return `yt-${task.session.id}`;
-  }
-  if ("source" in task && task.source === "task") {
-    return `task-${task.task.id}`;
-  }
-  return (task as TaskItem).doc.id;
+  return `task-${task.task.id}`;
 }
 
 export function TaskQueue({ initialTasks, filter, streak }: TaskQueueProps) {
   const router = useRouter();
   const payloadSignature = initialTasks
     .map((task) => {
-      if ("source" in task && task.source === "task") return `${getTaskId(task)}:${task.dueAt ?? ""}:${task.task.updatedAt}`;
-      return `${getTaskId(task)}:${task.repetition.nextReviewDate}`;
+      return `${getTaskId(task)}:${task.dueAt ?? ""}:${task.task.updatedAt}`;
     })
     .join("|");
   const [optimisticCompletion, setOptimisticCompletion] = React.useState<{ signature: string; ids: Set<string> }>(() => ({
@@ -41,7 +31,6 @@ export function TaskQueue({ initialTasks, filter, streak }: TaskQueueProps) {
     ids: new Set(),
   }));
   const [expandedId, setExpandedId] = React.useState<string | null>(null);
-  const [activeTask, setActiveTask] = React.useState<TaskItem | null>(null);
 
   const VALID_SORTS = ["newest", "oldest", "a-z", "z-a", "last-modified"] as const;
   type SortOrder = typeof VALID_SORTS[number];
@@ -63,12 +52,12 @@ export function TaskQueue({ initialTasks, filter, streak }: TaskQueueProps) {
     const result = initialTasks.filter((task) => !completedIds.has(getTaskId(task)));
 
     result.sort((a, b) => {
-      const aTitle = "source" in a ? (a.source === "youtube" ? a.session.videoTitle : a.task.title) : a.doc.title;
-      const bTitle = "source" in b ? (b.source === "youtube" ? b.session.videoTitle : b.task.title) : b.doc.title;
-      const aCreated = "source" in a ? (a.source === "youtube" ? a.session.createdAt : a.task.createdAt) : a.doc.createdAt;
-      const bCreated = "source" in b ? (b.source === "youtube" ? b.session.createdAt : b.task.createdAt) : b.doc.createdAt;
-      const aUpdated = "source" in a ? (a.source === "youtube" ? a.session.updatedAt : a.task.updatedAt) : a.doc.updatedAt;
-      const bUpdated = "source" in b ? (b.source === "youtube" ? b.session.updatedAt : b.task.updatedAt) : b.doc.updatedAt;
+      const aTitle = a.task.title;
+      const bTitle = b.task.title;
+      const aCreated = a.task.createdAt;
+      const bCreated = b.task.createdAt;
+      const aUpdated = a.task.updatedAt;
+      const bUpdated = b.task.updatedAt;
 
       if (sortOrder === "newest") return new Date(bCreated).getTime() - new Date(aCreated).getTime();
       if (sortOrder === "oldest") return new Date(aCreated).getTime() - new Date(bCreated).getTime();
@@ -89,44 +78,6 @@ export function TaskQueue({ initialTasks, filter, streak }: TaskQueueProps) {
     });
   }, [payloadSignature]);
 
-  async function handleReschedule(docId: string, days: number) {
-    await rescheduleDocAction(docId, days);
-    toast(`Rescheduled +${days} days`, { variant: "success" });
-    router.refresh();
-  }
-
-  const handleComplete = React.useCallback(async (docId: string) => {
-    await completeReviewAction(docId);
-    hideOptimistically(docId);
-    toast("Review complete!", { variant: "success" });
-    router.refresh();
-  }, [hideOptimistically, router]);
-
-  // Keyboard shortcut: press E to complete focused task (doc tasks only)
-  React.useEffect(() => {
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === "e" && expandedId && !activeTask) {
-        const task = sortedTasks.find((item) => !("source" in item) && (item as TaskItem).doc.id === expandedId);
-        if (task && !("source" in task)) void handleComplete((task as TaskItem).doc.id);
-      }
-    };
-    document.addEventListener("keydown", handleKey);
-    return () => document.removeEventListener("keydown", handleKey);
-  }, [expandedId, activeTask, handleComplete, sortedTasks]);
-
-  async function handleYoutubeReschedule(sessionId: string, days: number) {
-    await rescheduleYoutubeAction(sessionId, days);
-    toast(`Rescheduled +${days} days`, { variant: "success" });
-    router.refresh();
-  }
-
-  async function handleYoutubeComplete(sessionId: string) {
-    await markYoutubeCompletedAction(sessionId);
-    hideOptimistically(`yt-${sessionId}`);
-    toast("Video marked complete!", { variant: "success" });
-    router.refresh();
-  }
-
   async function handleLightweightTaskReschedule(taskId: string, days: number) {
     const result = await rescheduleTaskAction(taskId, days);
     if (result.success) {
@@ -145,17 +96,6 @@ export function TaskQueue({ initialTasks, filter, streak }: TaskQueueProps) {
       router.refresh();
     } else {
       toast(result.error || "Could not complete task", { variant: "error" });
-    }
-  }
-
-  async function handleDelete(docId: string) {
-    const result = await deleteDocumentAction(docId);
-    if (result.success) {
-      hideOptimistically(docId);
-      toast("Document deleted", { variant: "success" });
-      router.refresh();
-    } else {
-      toast(result.error || "Could not delete document", { variant: "error" });
     }
   }
 
@@ -193,52 +133,19 @@ export function TaskQueue({ initialTasks, filter, streak }: TaskQueueProps) {
         ) : (
           sortedTasks.map((task) => {
             const id = getTaskId(task);
-            if ("source" in task && task.source === "youtube") {
-              return (
-                <YoutubeTaskRow
-                  key={id}
-                  task={task}
-                  isExpanded={expandedId === id}
-                  onToggleExpand={() => handleToggleExpand(id)}
-                  onReschedule={handleYoutubeReschedule}
-                  onComplete={handleYoutubeComplete}
-                />
-              );
-            }
-            if ("source" in task && task.source === "task") {
-              return (
-                <LightweightTaskRow
-                  key={id}
-                  task={task}
-                  isExpanded={expandedId === id}
-                  onToggleExpand={() => handleToggleExpand(id)}
-                  onReschedule={handleLightweightTaskReschedule}
-                  onComplete={handleLightweightTaskComplete}
-                />
-              );
-            }
-            const docTask = task as TaskItem;
             return (
-              <TaskRow
+              <LightweightTaskRow
                 key={id}
-                task={docTask}
+                task={task}
                 isExpanded={expandedId === id}
                 onToggleExpand={() => handleToggleExpand(id)}
-                onReview={setActiveTask}
-                onReschedule={handleReschedule}
-                onComplete={handleComplete}
-                onDelete={handleDelete}
+                onReschedule={handleLightweightTaskReschedule}
+                onComplete={handleLightweightTaskComplete}
               />
             );
           })
         )}
       </div>
-
-      <GlassModal
-        task={activeTask}
-        onClose={() => setActiveTask(null)}
-        onComplete={handleComplete}
-      />
     </div>
   );
 }

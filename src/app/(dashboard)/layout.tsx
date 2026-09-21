@@ -3,10 +3,8 @@ import { getSession } from "@/lib/auth/session";
 import { Sidebar } from "@/components/features/sidebar";
 import { CommandPalette } from "@/components/features/command-palette";
 import { DashboardHeader } from "@/components/features/dashboard-header";
-import { GlobalClipperWidget } from "@/components/features/global-clipper-widget";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ShortcutsHelp } from "@/components/features/shortcuts-help";
-import { HiddenDocsController } from "@/components/features/hidden-docs-controller";
 
 
 export default async function DashboardLayout({
@@ -28,9 +26,7 @@ export default async function DashboardLayout({
           </div>
         </main>
         <CommandPalette />
-        <HiddenDocsController />
         <ShortcutsHelp />
-        <GlobalClipperWidget />
       </div>
     </TooltipProvider>
   );

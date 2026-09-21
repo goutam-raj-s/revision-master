@@ -1,8 +1,7 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link";
-import { BookText, ChevronDown, ChevronRight, Copy, Download, ExternalLink, GraduationCap, Loader2, Pencil, Plus, Search, Trash2, X } from "lucide-react";
+import { BookText, ChevronDown, ChevronRight, Copy, Download, GraduationCap, Loader2, Pencil, Plus, Search, Trash2, X } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,14 +17,13 @@ import { ImagePreviewThumbnail } from "@/components/features/image-preview-thumb
 import { ImagePickerButton } from "@/components/features/image-picker-button";
 import { TerminologyPractice } from "@/components/features/terminology-practice";
 import { TermDetails } from "@/components/features/term-details";
-import type { Term, Document } from "@/types";
+import type { Term } from "@/types";
 
 interface TerminologyClientProps {
   terms: Term[];
-  docs: Document[];
 }
 
-export function TerminologyClient({ terms: initialTerms, docs }: TerminologyClientProps) {
+export function TerminologyClient({ terms: initialTerms }: TerminologyClientProps) {
   const [terms, setTerms] = React.useState(initialTerms);
   const [search, setSearch] = React.useState("");
   const [showComposer, setShowComposer] = React.useState(false);
@@ -66,12 +64,6 @@ export function TerminologyClient({ terms: initialTerms, docs }: TerminologyClie
   const [editDefinition, setEditDefinition] = React.useState("");
   const [editImageUrl, setEditImageUrl] = React.useState("");
   const [editSaving, setEditSaving] = React.useState(false);
-
-  const docMap = React.useMemo(() => {
-    const m = new Map<string, Document>();
-    docs.forEach((d) => m.set(d.id, d));
-    return m;
-  }, [docs]);
 
   const filtered = React.useMemo(() => {
     if (!search) return terms;
@@ -315,7 +307,7 @@ export function TerminologyClient({ terms: initialTerms, docs }: TerminologyClie
           </div>
           <h2 className="mb-1 text-base font-semibold text-forest-slate">No terms yet</h2>
           <p className="mx-auto max-w-xs text-sm text-mossy-gray">
-            Add one here or save terminology while reviewing documents.
+            Add one here as you build your personal glossary.
           </p>
         </div>
       ) : grouped.length === 0 ? (
@@ -331,7 +323,6 @@ export function TerminologyClient({ terms: initialTerms, docs }: TerminologyClie
             </div>
             <div className="space-y-2">
               {groupTerms.map((term) => {
-                const sourceDoc = term.docId ? docMap.get(term.docId) : undefined;
                 const isExpanded = expandedIds.has(term.id);
                 return (
                   <div key={term.id} className="group rounded-2xl border border-border bg-surface shadow-card task-row-hover">
@@ -354,16 +345,6 @@ export function TerminologyClient({ terms: initialTerms, docs }: TerminologyClie
                           {term.term}
                         </span>
                       </button>
-                      {sourceDoc && (
-                        <Link
-                          href={`/study/${sourceDoc.id}`}
-                          className="hidden max-w-[150px] shrink-0 items-center gap-1.5 truncate text-xs text-state-today hover:underline sm:inline-flex"
-                          title={sourceDoc.title}
-                        >
-                          <ExternalLink className="h-3 w-3 shrink-0" />
-                          <span className="truncate">{sourceDoc.title}</span>
-                        </Link>
-                      )}
                       <button
                         type="button"
                         title="Copy term"
@@ -431,15 +412,6 @@ export function TerminologyClient({ terms: initialTerms, docs }: TerminologyClie
                           <>
                             {term.definition && (
                               <p className="text-sm leading-relaxed text-mossy-gray">{term.definition}</p>
-                            )}
-                            {sourceDoc && (
-                              <Link
-                                href={`/study/${sourceDoc.id}`}
-                                className="mt-2 inline-flex items-center gap-1.5 text-xs text-state-today hover:underline sm:hidden"
-                              >
-                                <ExternalLink className="h-3 w-3" />
-                                {sourceDoc.title}
-                              </Link>
                             )}
                             <TermDetails term={term} />
                           </>

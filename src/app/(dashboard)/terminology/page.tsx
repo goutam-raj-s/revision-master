@@ -1,12 +1,11 @@
 import { getAllTerms } from "@/actions/notes";
-import { getUserDocuments } from "@/actions/documents";
 import { TerminologyClient } from "@/components/features/terminology-client";
 import { AiAssistant } from "@/components/features/ai-assistant";
 
 export const metadata = { title: "Terminology — lostbae" };
 
 export default async function TerminologyPage() {
-  const [terms, docs] = await Promise.all([getAllTerms(), getUserDocuments()]);
+  const terms = await getAllTerms();
 
   return (
     <div className="space-y-6">
@@ -16,7 +15,7 @@ export default async function TerminologyPage() {
           {terms.length} term{terms.length !== 1 ? "s" : ""} in your personal glossary
         </p>
       </div>
-      <TerminologyClient terms={terms} docs={docs} />
+      <TerminologyClient terms={terms} />
       {terms.length > 0 && (
         <AiAssistant kind="glossary" contextId="all" title="Your glossary" enableSummary={false} />
       )}

@@ -10,7 +10,7 @@ export default async function CollectionsPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-xl font-bold text-forest-slate sm:text-2xl">Collections</h1>
-        <p className="mt-0.5 text-xs text-mossy-gray sm:text-sm">Group related documents into topics.</p>
+        <p className="mt-0.5 text-xs text-mossy-gray sm:text-sm">Group related tasks into topics.</p>
       </div>
       <CollectionsClient initial={collections} />
     </div>

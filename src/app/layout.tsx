@@ -3,9 +3,9 @@ import "./globals.css";
 import { Toaster } from "@/components/ui/toast";
 
 const APP_URL = (process.env.NEXT_PUBLIC_APP_URL ?? "https://www.lostbae.com").replace(/\/$/, "");
-const TITLE = "lostbae — Spaced Repetition for Your Notes, Docs & Videos";
+const TITLE = "lostbae — Lightweight Tasks and Spaced Repetition";
 const DESCRIPTION =
-  "Turn scattered Google Docs, notes and YouTube lessons into a structured knowledge base you actually remember — with spaced repetition, active recall, and AI-assisted review.";
+  "Keep your learning workflow lightweight with focused tasks, spaced repetition, active recall, and AI-assisted review.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(APP_URL),
@@ -19,10 +19,7 @@ export const metadata: Metadata = {
     "spaced repetition",
     "active recall",
     "study app",
-    "flashcards",
-    "Google Docs notes",
-    "YouTube notes",
-    "knowledge management",
+    "tasks",
     "revision",
     "learning",
   ],

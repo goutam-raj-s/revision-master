@@ -5,7 +5,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
-  BookOpen,
   BookText,
   Settings,
   LogOut,
@@ -13,21 +12,17 @@ import {
   X,
   Tag,
   ChevronRight,
-  CirclePlay,
-  Film,
   BarChart3,
   FolderOpen,
   Send,
   PanelLeftClose,
   PanelLeftOpen,
-  EyeOff,
   Utensils,
   CheckSquare,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { logoutAction } from "@/actions/auth";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
-import { FocusMusicPlayer } from "@/components/features/focus-music-player";
 import { PomodoroTimer } from "@/components/features/pomodoro-timer";
 import type { User } from "@/types";
 
@@ -37,10 +32,7 @@ interface SidebarProps {
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/documents", label: "Documents", icon: BookOpen },
   { href: "/tasks", label: "Tasks", icon: CheckSquare },
-  { href: "/study/youtube", label: "YouTube", icon: CirclePlay },
-  { href: "/video", label: "Video", icon: Film },
   { href: "/terminology", label: "Terminology", icon: BookText },
   { href: "/collections", label: "Collections", icon: FolderOpen },
   { href: "/posts", label: "Posts", icon: Send },
@@ -127,20 +119,9 @@ function SidebarContent({
       <div className={cn("border-t border-border", collapsed ? "p-2" : "p-3")}>
         <div className="mb-2 space-y-0.5">
           <PomodoroTimer variant="sidebar" collapsed={collapsed} />
-          <FocusMusicPlayer variant="sidebar" collapsed={collapsed} />
         </div>
         <div className={cn("mb-1 flex items-center", collapsed ? "justify-center" : "justify-between px-1")}>
           <ThemeToggle showLabel={!collapsed} />
-          {/* Discreet, unlabeled toggle for private documents. */}
-          <button
-            type="button"
-            onClick={() => window.dispatchEvent(new Event("lostbae:toggle-hidden"))}
-            className={cn("rounded-md p-1.5 text-mossy-gray/30 transition-colors hover:text-mossy-gray", collapsed && "hidden")}
-            aria-label="Toggle private documents"
-            title="Private documents"
-          >
-            <EyeOff className="h-3.5 w-3.5" />
-          </button>
         </div>
         <button
           type="button"

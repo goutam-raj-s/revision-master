@@ -1,19 +1,15 @@
 import { TrendingUp, Flame, Trophy, CalendarCheck } from "lucide-react";
-import { getDashboardStats, getReviewTrendAction, getStreakAction, getRecentActivityAction } from "@/actions/analytics";
+import { getReviewTrendAction, getStreakAction, getRecentActivityAction } from "@/actions/analytics";
 import { ActivityFeed } from "@/components/features/activity-feed";
 import { StreakCard } from "@/components/features/streak-card";
-import { StatsCards } from "@/components/features/stats-cards";
-import { AnalyticsInsights } from "@/components/features/analytics-insights";
 import { ReviewTrendChartDynamic as ReviewTrendChart } from "@/components/features/review-trend-chart-dynamic";
 import { Card } from "@/components/ui/card";
-import { Achievements } from "@/components/features/achievements";
 import { ShareStatsButton } from "@/components/features/share-stats-button";
 
 export const metadata = { title: "Your Stats" };
 
 export default async function StatsPage() {
-  const [stats, trend, streak, activity] = await Promise.all([
-    getDashboardStats(),
+  const [trend, streak, activity] = await Promise.all([
     getReviewTrendAction(),
     getStreakAction(),
     getRecentActivityAction(),
@@ -54,21 +50,9 @@ export default async function StatsPage() {
 
       <StreakCard data={streak} />
 
-      <Achievements
-        totalReviews={streak.totalReviews}
-        bestStreak={streak.best}
-        totalDocs={stats.totalDocs}
-        totalCompleted={stats.totalCompleted}
-      />
-
-      <StatsCards stats={stats} />
-
-      <div className="grid gap-6 lg:grid-cols-2">
-        <div>
-          <h2 className="mb-3 text-sm font-semibold text-forest-slate">Last 7 days</h2>
-          <ReviewTrendChart data={trend} />
-        </div>
-        <AnalyticsInsights stats={stats} />
+      <div>
+        <h2 className="mb-3 text-sm font-semibold text-forest-slate">Last 7 days</h2>
+        <ReviewTrendChart data={trend} />
       </div>
 
       <ActivityFeed items={activity} />
