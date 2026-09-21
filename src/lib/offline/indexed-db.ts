@@ -17,6 +17,13 @@ const DEFAULT_SYNC_INTERVAL_MS = 30 * 60 * 1000;
 
 type MetaRow = { key: string; value: unknown; updatedAt: string };
 type EndpointRow = { key: string; value: unknown; updatedAt: string };
+export interface OfflineSyncStatus {
+  syncedAt: string | null;
+  user?: { id: string; name: string; email: string };
+  totalRows: number;
+  collections: Array<{ name: OfflineSyncCollection; count: number }>;
+  endpointResponses: number;
+}
 
 let openPromise: Promise<IDBDatabase> | null = null;
 let syncPromise: Promise<OfflineSyncSnapshot | null> | null = null;
@@ -114,6 +121,28 @@ export async function getLastOfflineSync(): Promise<string | null> {
   } catch {
     return null;
   }
+}
+
+export async function getOfflineSyncStatus(): Promise<OfflineSyncStatus> {
+  const db = await openOfflineDb();
+  const tx = db.transaction([...OFFLINE_SYNC_COLLECTIONS, META_STORE, ENDPOINT_STORE], "readonly");
+  const metaRow = await req<MetaRow | undefined>(tx.objectStore(META_STORE).get(LAST_SYNC_KEY));
+  const collections = await Promise.all(
+    OFFLINE_SYNC_COLLECTIONS.map(async (name) => ({
+      name,
+      count: await req<number>(tx.objectStore(name).count()),
+    }))
+  );
+  const endpointResponses = await req<number>(tx.objectStore(ENDPOINT_STORE).count());
+  await txDone(tx);
+  const meta = metaRow?.value as { syncedAt?: string; user?: { id: string; name: string; email: string } } | undefined;
+  return {
+    syncedAt: meta?.syncedAt ?? null,
+    user: meta?.user,
+    totalRows: collections.reduce((sum, collection) => sum + collection.count, 0),
+    collections,
+    endpointResponses,
+  };
 }
 
 export async function getOfflineRows<T = OfflineSyncRow>(storeName: OfflineSyncCollection): Promise<T[]> {

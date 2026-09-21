@@ -1,4 +1,5 @@
 import crypto from "crypto";
+import { getAiProviderRuntime } from "@/lib/config/ai-provider-config";
 
 /**
  * Unified AI layer over three OpenAI-compatible providers (OpenRouter, Groq,
@@ -22,26 +23,16 @@ interface ProviderConfig {
   headers?: Record<string, string>;
 }
 
-function usableApiKey(value: string | undefined): value is string {
-  return Boolean(value && value.length > 10 && !value.startsWith("your-"));
-}
-
-function envKeys(baseName: string): string[] {
-  const values = [
-    process.env[baseName],
-    ...(process.env[`${baseName}S`]?.split(",") ?? []),
-    ...Array.from({ length: 10 }, (_, index) => process.env[`${baseName}_${index + 1}`]),
-  ];
-  return Array.from(new Set(values.map((value) => value?.trim()).filter(usableApiKey)));
-}
-
 function providerConfigs(): ProviderConfig[] {
+  const openrouter = getAiProviderRuntime("openrouter", "OPENROUTER_API_KEY", "OPENROUTER_MODEL");
+  const groq = getAiProviderRuntime("groq", "GROQ_API_KEY", "GROQ_MODEL");
+  const gemini = getAiProviderRuntime("gemini", "GEMINI_API_KEY", "GEMINI_MODEL");
   const templates: Array<Omit<ProviderConfig, "apiKey"> & { apiKeys: string[] }> = [
     {
       id: "openrouter",
       baseUrl: "https://openrouter.ai/api/v1",
-      apiKeys: envKeys("OPENROUTER_API_KEY"),
-      model: process.env.OPENROUTER_MODEL || "meta-llama/llama-3.3-70b-instruct:free",
+      apiKeys: openrouter.apiKeys,
+      model: openrouter.model,
       headers: {
         "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL || "https://www.lostbae.com",
         "X-Title": "lostbae",
@@ -50,14 +41,14 @@ function providerConfigs(): ProviderConfig[] {
     {
       id: "groq",
       baseUrl: "https://api.groq.com/openai/v1",
-      apiKeys: envKeys("GROQ_API_KEY"),
-      model: process.env.GROQ_MODEL || "llama-3.3-70b-versatile",
+      apiKeys: groq.apiKeys,
+      model: groq.model,
     },
     {
       id: "gemini",
       baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai",
-      apiKeys: envKeys("GEMINI_API_KEY"),
-      model: process.env.GEMINI_MODEL || "gemini-2.0-flash",
+      apiKeys: gemini.apiKeys,
+      model: gemini.model,
     },
   ];
   return templates.flatMap(({ apiKeys, ...provider }) =>

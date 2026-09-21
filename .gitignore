@@ -11,4 +11,5 @@ node_modules
 .next
 .env
 .env.local
+config.json
 .DS_Store

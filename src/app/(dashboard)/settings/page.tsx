@@ -2,7 +2,7 @@ import { getSession } from "@/lib/auth/session";
 import { getUserById } from "@/lib/db/collections";
 import { SettingsClient } from "@/components/features/settings-client";
 import { redirect } from "next/navigation";
-import { ObjectId } from "mongodb";
+import { canManageAiProviderConfig, getMaskedAiProviderSettings } from "@/lib/config/ai-provider-config";
 
 export const metadata = { title: "Settings — lostbae" };
 
@@ -14,6 +14,7 @@ export default async function SettingsPage() {
   const maskedKey = dbUser?.geminiApiKeyEncrypted
     ? "****" + (dbUser.geminiApiKeyEncrypted.length > 8 ? dbUser.geminiApiKeyEncrypted.slice(-4) : "****")
     : null;
+  const canManageAiProviders = canManageAiProviderConfig(user.email);
 
   return (
     <div className="max-w-2xl mx-auto space-y-8">
@@ -25,6 +26,8 @@ export default async function SettingsPage() {
         user={user}
         maskedGeminiKey={maskedKey}
         emailReminders={dbUser?.emailReminders !== false}
+        canManageAiProviders={canManageAiProviders}
+        aiProviders={canManageAiProviders ? getMaskedAiProviderSettings() : []}
       />
     </div>
   );

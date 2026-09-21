@@ -32,14 +32,12 @@ npm run dev
 | `BETTER_AUTH_SECRET` | Session signing secret (min 32 chars) | `super-secret-local-dev-key-change-in-production-32chars` |
 | `BETTER_AUTH_URL` | App base URL | `http://localhost:3000` |
 | `NEXT_PUBLIC_APP_URL` | Public app URL | `http://localhost:3000` |
-| `GEMINI_API_KEY` | Server-level Gemini key | — |
-| `GEMINI_API_KEYS` | Optional comma-separated Gemini failover keys | — |
-| `OPENROUTER_API_KEY`, `GROQ_API_KEY` | Optional alternate AI provider keys | — |
-
-Multiple AI keys can also be provided with numbered variables such as
-`GEMINI_API_KEY_1`, `GEMINI_API_KEY_2`, `OPENROUTER_API_KEY_1`, or
-`GROQ_API_KEY_1`. The app will try the next configured key/provider when one
-fails or returns an empty response.
+AI provider keys are read from `config.json` at the project root. Copy
+`config.example.json` to `config.json`, or edit the keys from Settings while
+signed in as `gautamkumarpandey@2526.com` or `gautamguddu577@gmail.com`.
+Environment variables such as `GEMINI_API_KEY`, `OPENROUTER_API_KEY`, and
+`GROQ_API_KEY` remain as fallback values only when `config.json` has no keys
+for that provider.
 
 ## First Use
 

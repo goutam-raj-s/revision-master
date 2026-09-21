@@ -5,33 +5,68 @@ import { useActionState } from "react";
 import { DatabaseZap, Key, User, Eye, EyeOff, Loader2, Trash2, Check, Download, Bell, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { toast } from "@/components/ui/toast";
+import { updateAiProviderConfigAction } from "@/actions/ai-config";
 import { updateProfileAction, saveGeminiKeyAction, deleteGeminiKeyAction } from "@/actions/auth";
 import { manualDatabaseSyncAction } from "@/actions/sync";
 import { deleteAccountAction, exportAccountDataAction, setEmailRemindersAction } from "@/actions/account";
 import { CompletionCharacterPicker } from "@/components/features/completion-character-picker";
-import { getLastOfflineSync, syncOfflineSnapshot } from "@/lib/offline/indexed-db";
+import { getLastOfflineSync, getOfflineSyncStatus, syncOfflineSnapshot, type OfflineSyncStatus } from "@/lib/offline/indexed-db";
+import type { MaskedAiProviderSettings } from "@/lib/config/ai-provider-config";
 import type { User as UserType, ActionResult } from "@/types";
 
 interface SettingsClientProps {
   user: UserType;
   maskedGeminiKey: string | null;
   emailReminders?: boolean;
+  canManageAiProviders?: boolean;
+  aiProviders?: MaskedAiProviderSettings[];
 }
 
 const profileInitial: ActionResult<void> = { success: false };
 const geminiInitial: ActionResult<{ maskedKey: string }> = { success: false };
+const aiProviderInitial: ActionResult<{ providers: MaskedAiProviderSettings[] }> = { success: false };
+const offlineCollectionLabels: Record<string, string> = {
+  documents: "Documents",
+  notes: "Notes",
+  terms: "Terminology",
+  repetitions: "Document reviews",
+  tasks: "Tasks",
+  topicCollections: "Collections",
+  postDrafts: "Post drafts",
+  aiChats: "AI chats",
+  reviewEvents: "Review history",
+  youtubeSessions: "YouTube sessions",
+  youtubeBookmarks: "YouTube bookmarks",
+  youtubePlaylists: "YouTube playlists",
+  youtubeRepetitions: "YouTube reviews",
+  documentShares: "Document shares",
+  youtubeShares: "YouTube shares",
+  calorieEntries: "Calorie entries",
+  calorieLibrary: "Calorie library",
+  calorieSettings: "Calorie settings",
+};
 
-export function SettingsClient({ user, maskedGeminiKey: initialMaskedKey, emailReminders: initialReminders = true }: SettingsClientProps) {
+export function SettingsClient({
+  user,
+  maskedGeminiKey: initialMaskedKey,
+  emailReminders: initialReminders = true,
+  canManageAiProviders = false,
+  aiProviders: initialAiProviders = [],
+}: SettingsClientProps) {
   const [showApiKey, setShowApiKey] = React.useState(false);
   const [maskedKey, setMaskedKey] = React.useState(initialMaskedKey);
+  const [aiProviders, setAiProviders] = React.useState(initialAiProviders);
   const [deletingKey, setDeletingKey] = React.useState(false);
   const [syncingDb, setSyncingDb] = React.useState(false);
   const [syncingOffline, setSyncingOffline] = React.useState(false);
   const [lastSyncSummary, setLastSyncSummary] = React.useState<string | null>(null);
   const [lastOfflineSync, setLastOfflineSync] = React.useState<string | null>(null);
+  const [offlineStatus, setOfflineStatus] = React.useState<OfflineSyncStatus | null>(null);
+  const [showOfflineDetails, setShowOfflineDetails] = React.useState(false);
   const [exporting, setExporting] = React.useState(false);
   const [confirmingDelete, setConfirmingDelete] = React.useState(false);
   const [deleteEmail, setDeleteEmail] = React.useState("");
@@ -41,6 +76,18 @@ export function SettingsClient({ user, maskedGeminiKey: initialMaskedKey, emailR
 
   const [profileState, profileAction, profilePending] = useActionState(updateProfileAction, profileInitial);
   const [geminiState, geminiAction, geminiPending] = useActionState(saveGeminiKeyAction, geminiInitial);
+  const [aiProviderState, aiProviderAction, aiProviderPending] = useActionState(updateAiProviderConfigAction, aiProviderInitial);
+
+  async function refreshOfflineStatus() {
+    try {
+      const status = await getOfflineSyncStatus();
+      setOfflineStatus(status);
+      setLastOfflineSync(status.syncedAt);
+    } catch {
+      const syncedAt = await getLastOfflineSync();
+      setLastOfflineSync(syncedAt);
+    }
+  }
 
   React.useEffect(() => {
     if (profileState.success) toast("Profile updated", { variant: "success" });
@@ -56,8 +103,19 @@ export function SettingsClient({ user, maskedGeminiKey: initialMaskedKey, emailR
   }, [geminiState]);
 
   React.useEffect(() => {
-    getLastOfflineSync().then(setLastOfflineSync).catch(() => {});
+    const id = window.setTimeout(() => {
+      refreshOfflineStatus();
+    }, 0);
+    return () => window.clearTimeout(id);
   }, []);
+
+  React.useEffect(() => {
+    if (aiProviderState.success && aiProviderState.data) {
+      queueMicrotask(() => setAiProviders(aiProviderState.data!.providers));
+      toast("AI provider config saved", { variant: "success" });
+    }
+    if (aiProviderState.error) toast(aiProviderState.error, { variant: "error" });
+  }, [aiProviderState]);
 
   async function handleDeleteKey() {
     setDeletingKey(true);
@@ -89,6 +147,7 @@ export function SettingsClient({ user, maskedGeminiKey: initialMaskedKey, emailR
       const snapshot = await syncOfflineSnapshot({ force: true });
       const syncedAt = snapshot?.syncedAt ?? await getLastOfflineSync();
       setLastOfflineSync(syncedAt);
+      await refreshOfflineStatus();
       toast("Offline data synced to this device", { variant: "success" });
     } catch (error) {
       toast(error instanceof Error ? error.message : "Offline sync failed", { variant: "error" });
@@ -216,20 +275,121 @@ export function SettingsClient({ user, maskedGeminiKey: initialMaskedKey, emailR
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="text-sm text-mossy-gray">
-              Last local sync:{" "}
-              <span className="font-medium text-forest-slate">
-                {lastOfflineSync ? new Date(lastOfflineSync).toLocaleString() : "Not synced yet"}
-              </span>
+          <div className="space-y-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="text-sm text-mossy-gray">
+                <p>
+                  Whole user snapshot synced:{" "}
+                  <span className="font-medium text-forest-slate">
+                    {lastOfflineSync ? new Date(lastOfflineSync).toLocaleString() : "Not synced yet"}
+                  </span>
+                </p>
+                <p className="mt-1 text-xs">
+                  Stored locally:{" "}
+                  <span className="font-medium text-forest-slate">
+                    {offlineStatus ? `${offlineStatus.totalRows} records across ${offlineStatus.collections.length} stores` : "Status not loaded"}
+                  </span>
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button onClick={() => setShowOfflineDetails((show) => !show)} variant="ghost" size="sm">
+                  {showOfflineDetails ? "Hide details" : "View synced data"}
+                </Button>
+                <Button onClick={handleOfflineSync} disabled={syncingOffline} variant="outline" size="sm">
+                  {syncingOffline ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+                  Sync offline data
+                </Button>
+              </div>
             </div>
-            <Button onClick={handleOfflineSync} disabled={syncingOffline} variant="outline" size="sm">
-              {syncingOffline ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
-              Sync offline data
-            </Button>
+
+            {showOfflineDetails && (
+              <div className="rounded-xl border border-border bg-canvas p-3">
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {(offlineStatus?.collections ?? []).map((collection) => (
+                    <div key={collection.name} className="flex items-center justify-between gap-3 rounded-lg bg-surface px-3 py-2 text-xs">
+                      <span className="text-mossy-gray">{offlineCollectionLabels[collection.name] ?? collection.name}</span>
+                      <span className="font-mono font-semibold text-forest-slate">{collection.count}</span>
+                    </div>
+                  ))}
+                </div>
+                <p className="mt-3 text-xs text-mossy-gray">
+                  Endpoint response cache entries:{" "}
+                  <span className="font-mono text-forest-slate">{offlineStatus?.endpointResponses ?? 0}</span>
+                </p>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
+
+      {canManageAiProviders && (
+        <Card className="shadow-card">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <div className="p-1.5 rounded-lg bg-state-upcoming/10">
+                <Key className="h-4 w-4 text-state-upcoming" />
+              </div>
+              AI Provider Keys
+            </CardTitle>
+            <CardDescription>
+              Edit global AI failover keys stored in server config.json. Saved keys are masked after update.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {aiProviders.map((provider) => (
+              <form key={provider.id} action={aiProviderAction} className="rounded-xl border border-border bg-canvas p-3">
+                <input type="hidden" name="providerId" value={provider.id} />
+                <div className="flex flex-col gap-3">
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div>
+                      <h3 className="text-sm font-semibold text-forest-slate">{provider.label}</h3>
+                      <p className="text-xs text-mossy-gray">
+                        Source: {provider.source === "config" ? "config.json" : provider.source === "env" ? "environment fallback" : "not configured"}
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap justify-end gap-1.5">
+                      {provider.maskedKeys.length === 0 ? (
+                        <span className="rounded-full border border-border px-2 py-0.5 text-xs text-mossy-gray">No keys</span>
+                      ) : (
+                        provider.maskedKeys.map((key, index) => (
+                          <span key={`${provider.id}-${index}`} className="rounded-full border border-border bg-surface px-2 py-0.5 font-mono text-xs text-mossy-gray">
+                            {key}
+                          </span>
+                        ))
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="grid gap-3 lg:grid-cols-[220px_1fr]">
+                    <div className="space-y-1.5">
+                      <Label htmlFor={`${provider.id}-model`}>Model</Label>
+                      <Input id={`${provider.id}-model`} name="model" defaultValue={provider.model} />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor={`${provider.id}-keys`}>Replacement API keys</Label>
+                      <Textarea
+                        id={`${provider.id}-keys`}
+                        name="apiKeys"
+                        placeholder="Paste one key per line, or comma separated"
+                        className="min-h-24 font-mono text-xs"
+                        required
+                      />
+                      <p className="text-xs text-mossy-gray">Saving replaces this provider&apos;s key list in config.json.</p>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end">
+                    <Button type="submit" size="sm" disabled={aiProviderPending}>
+                      {aiProviderPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Key className="h-3.5 w-3.5" />}
+                      Save {provider.label}
+                    </Button>
+                  </div>
+                </div>
+              </form>
+            ))}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Gemini API Key */}
       <Card className="shadow-card">
