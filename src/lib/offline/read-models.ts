@@ -5,6 +5,7 @@ import type {
   LightweightTask,
   LightweightTaskQueueItem,
   TaskFilter,
+  Term,
   TopicCollection,
 } from "@/types";
 import type { StreakData } from "@/lib/streak";
@@ -114,6 +115,19 @@ export async function getOfflineCollectionsView(): Promise<{
         createdAt: collection.createdAt,
       }))
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
+  };
+}
+
+export async function getOfflineTerminologyView(): Promise<{
+  terms: Term[];
+  hasLocalData: boolean;
+}> {
+  const terms = await getOfflineRows<Term>("terms");
+  return {
+    hasLocalData: terms.length > 0,
+    terms: terms
+      .map((term) => ({ ...term, definition: term.definition ?? "" }))
+      .sort((a, b) => a.term.localeCompare(b.term)),
   };
 }
 

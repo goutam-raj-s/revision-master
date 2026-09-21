@@ -12,19 +12,24 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/toast";
-import { createStandaloneTermAction, deleteTermAction, updateTermAction } from "@/actions/notes";
+import { createStandaloneTermAction, deleteTermAction, getAllTerms, updateTermAction } from "@/actions/notes";
 import { ImagePreviewThumbnail } from "@/components/features/image-preview-thumbnail";
 import { ImagePickerButton } from "@/components/features/image-picker-button";
 import { TerminologyPractice } from "@/components/features/terminology-practice";
 import { TermDetails } from "@/components/features/term-details";
+import { getOfflineTerminologyView } from "@/lib/offline/read-models";
+import { queueOfflineResync } from "@/lib/offline/indexed-db";
 import type { Term } from "@/types";
 
 interface TerminologyClientProps {
   terms: Term[];
+  preferOffline?: boolean;
+  onTermsLoaded?: (count: number, source: "indexeddb" | "server" | "loading") => void;
 }
 
-export function TerminologyClient({ terms: initialTerms }: TerminologyClientProps) {
+export function TerminologyClient({ terms: initialTerms, preferOffline = false, onTermsLoaded }: TerminologyClientProps) {
   const [terms, setTerms] = React.useState(initialTerms);
+  const [source, setSource] = React.useState<"indexeddb" | "server" | "loading">(preferOffline ? "loading" : "server");
   const [search, setSearch] = React.useState("");
   const [showComposer, setShowComposer] = React.useState(false);
   const [practicing, setPracticing] = React.useState(false);
@@ -65,6 +70,40 @@ export function TerminologyClient({ terms: initialTerms }: TerminologyClientProp
   const [editImageUrl, setEditImageUrl] = React.useState("");
   const [editSaving, setEditSaving] = React.useState(false);
 
+  React.useEffect(() => {
+    if (!preferOffline) return;
+
+    let cancelled = false;
+    window.setTimeout(async () => {
+      try {
+        const local = await getOfflineTerminologyView();
+        if (!cancelled && local.hasLocalData) {
+          setTerms(local.terms);
+          setSource("indexeddb");
+          onTermsLoaded?.(local.terms.length, "indexeddb");
+          return;
+        }
+      } catch {
+        // Fall through to backend.
+      }
+
+      const serverTerms = await getAllTerms();
+      if (!cancelled) {
+        setTerms(serverTerms);
+        setSource("server");
+        onTermsLoaded?.(serverTerms.length, "server");
+      }
+    }, 0);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [onTermsLoaded, preferOffline]);
+
+  React.useEffect(() => {
+    if (source === "loading") onTermsLoaded?.(terms.length, "loading");
+  }, [onTermsLoaded, source, terms.length]);
+
   const filtered = React.useMemo(() => {
     if (!search) return terms;
     const q = search.toLowerCase();
@@ -89,6 +128,7 @@ export function TerminologyClient({ terms: initialTerms }: TerminologyClientProp
   async function handleDelete(termId: string) {
     await deleteTermAction(termId);
     setTerms((prev) => prev.filter((t) => t.id !== termId));
+    queueOfflineResync("term:delete");
     setExpandedIds((prev) => {
       const next = new Set(prev);
       next.delete(termId);
@@ -114,6 +154,7 @@ export function TerminologyClient({ terms: initialTerms }: TerminologyClientProp
       setNewDefinition("");
       setNewImageUrl("");
       setShowComposer(false);
+      queueOfflineResync("term:create");
       toast("Term added", { variant: "success" });
     } else {
       toast(result.error || "Could not add term", { variant: "error" });
@@ -151,6 +192,7 @@ export function TerminologyClient({ terms: initialTerms }: TerminologyClientProp
           .sort((a, b) => a.term.localeCompare(b.term))
       );
       cancelEdit();
+      queueOfflineResync("term:update");
       toast("Term updated", { variant: "success" });
     } else {
       toast(result.error || "Could not update term", { variant: "error" });
@@ -172,6 +214,9 @@ export function TerminologyClient({ terms: initialTerms }: TerminologyClientProp
 
   return (
     <div className="space-y-4">
+      <p className="text-xs text-mossy-gray">
+        Source: {source === "indexeddb" ? <span className="text-state-today">IndexedDB</span> : source === "server" ? "backend" : "checking local data..."}
+      </p>
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div className="relative flex-1 sm:max-w-sm">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-mossy-gray" />
