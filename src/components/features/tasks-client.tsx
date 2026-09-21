@@ -22,10 +22,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/toast";
 import { cn, formatRelativeDate } from "@/lib/utils";
 import { queueOfflineResync } from "@/lib/offline/indexed-db";
+import { getOfflineTasksView } from "@/lib/offline/read-models";
 import {
   completeTaskAction,
   createTaskAction,
   deleteTaskAction,
+  getAllTaskTags,
+  getUserTasks,
   reopenTaskAction,
   rescheduleTaskAction,
   updateTaskAction,
@@ -44,6 +47,7 @@ interface TasksClientProps {
   initialSearch?: string;
   initialStatus?: string;
   showCollectionItems?: boolean;
+  preferOffline?: boolean;
 }
 
 const difficultyOptions: Difficulty[] = ["easy", "medium", "hard"];
@@ -64,6 +68,7 @@ export function TasksClient({
   initialSearch,
   initialStatus,
   showCollectionItems = false,
+  preferOffline = false,
 }: TasksClientProps) {
   const router = useRouter();
   const [title, setTitle] = React.useState("");
@@ -75,11 +80,53 @@ export function TasksClient({
   const [search, setSearch] = React.useState(initialSearch ?? "");
   const [tagFilter, setTagFilter] = React.useState(initialTagFilter ?? "");
   const [statusFilter, setStatusFilter] = React.useState(initialStatus ?? "pending");
+  const [tasks, setTasks] = React.useState(initialTasks);
+  const [tagsForFilter, setTagsForFilter] = React.useState(allTags);
+  const [source, setSource] = React.useState<"server" | "indexeddb" | "loading">(preferOffline ? "loading" : "server");
   const [currentPage, setCurrentPage] = React.useState(1);
   const [pageSize, setPageSize] = React.useState(10);
-  const totalPages = Math.max(1, Math.ceil(initialTasks.length / pageSize));
+  const totalPages = Math.max(1, Math.ceil(tasks.length / pageSize));
   const safeCurrentPage = Math.min(currentPage, totalPages);
-  const pagedTasks = initialTasks.slice((safeCurrentPage - 1) * pageSize, safeCurrentPage * pageSize);
+  const pagedTasks = tasks.slice((safeCurrentPage - 1) * pageSize, safeCurrentPage * pageSize);
+
+  React.useEffect(() => {
+    if (!preferOffline) return;
+
+    let cancelled = false;
+    window.setTimeout(async () => {
+      const query = {
+        search: initialSearch,
+        tag: initialTagFilter,
+        status: initialStatus === "all" ? undefined : initialStatus,
+        includeCollectionItems: showCollectionItems,
+      };
+      try {
+        const local = await getOfflineTasksView(query);
+        if (!cancelled && local.hasLocalData) {
+          setTasks(local.tasks);
+          setTagsForFilter(local.allTags);
+          setSource("indexeddb");
+          return;
+        }
+      } catch {
+        // Fall through to backend.
+      }
+
+      const [serverTasks, serverTags] = await Promise.all([
+        getUserTasks(query),
+        getAllTaskTags(showCollectionItems),
+      ]);
+      if (!cancelled) {
+        setTasks(serverTasks);
+        setTagsForFilter(serverTags);
+        setSource("server");
+      }
+    }, 0);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [initialSearch, initialStatus, initialTagFilter, preferOffline, showCollectionItems]);
 
   async function createTask() {
     if (!title.trim()) return;
@@ -161,7 +208,7 @@ export function TasksClient({
         </div>
         <select value={tagFilter} onChange={(event) => setTagFilter(event.target.value)} className="h-9 rounded-xl border border-border bg-surface px-3 text-sm text-forest-slate">
           <option value="">All tags</option>
-          {allTags.map((tag) => (
+          {tagsForFilter.map((tag) => (
             <option key={tag.tag} value={tag.tag}>#{tag.tag} ({tag.count})</option>
           ))}
         </select>
@@ -186,7 +233,9 @@ export function TasksClient({
 
       <div className="flex flex-col gap-2 text-xs text-mossy-gray sm:flex-row sm:items-center sm:justify-between">
         <p>
-          Showing {initialTasks.length} task{initialTasks.length !== 1 ? "s" : ""}{!showCollectionItems && " outside collections"}
+          Showing {tasks.length} task{tasks.length !== 1 ? "s" : ""}{!showCollectionItems && " outside collections"}
+          {source === "indexeddb" && <span className="ml-1 text-state-today">(from IndexedDB)</span>}
+          {source === "loading" && <span className="ml-1">(checking local data...)</span>}
         </p>
         <div className="flex items-center gap-2">
           <span>Per page</span>
@@ -205,7 +254,7 @@ export function TasksClient({
         </div>
       </div>
 
-      {initialTasks.length === 0 ? (
+      {tasks.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-border bg-surface px-6 py-14 text-center">
           <Circle className="mx-auto mb-3 h-9 w-9 text-mossy-gray/40" />
           <p className="text-sm text-mossy-gray">No lightweight tasks match this view.</p>
@@ -218,7 +267,7 @@ export function TasksClient({
         </div>
       )}
 
-      {initialTasks.length > pageSize && (
+      {tasks.length > pageSize && (
         <div className="flex flex-wrap items-center justify-end gap-2">
           <Button variant="outline" size="sm" onClick={() => setCurrentPage((page) => Math.max(1, page - 1))} disabled={currentPage === 1}>
             Previous

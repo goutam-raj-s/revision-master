@@ -1,5 +1,4 @@
 import { CheckSquare } from "lucide-react";
-import { getAllTaskTags, getUserTasks } from "@/actions/tasks";
 import { TasksClient } from "@/components/features/tasks-client";
 
 interface TasksPageProps {
@@ -12,15 +11,6 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
   const params = await searchParams;
   const showCollectionItems = params.showCollections === "1";
   const status = params.status === "all" ? "all" : params.status ?? "pending";
-  const [tasks, allTags] = await Promise.all([
-    getUserTasks({
-      search: params.search,
-      tag: params.tag,
-      status: status === "all" ? undefined : status,
-      includeCollectionItems: showCollectionItems,
-    }),
-    getAllTaskTags(showCollectionItems),
-  ]);
 
   return (
     <div className="min-w-0 space-y-4 sm:space-y-6">
@@ -37,12 +27,13 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
       </div>
 
       <TasksClient
-        initialTasks={tasks}
-        allTags={allTags}
+        initialTasks={[]}
+        allTags={[]}
         initialTagFilter={params.tag}
         initialSearch={params.search}
         initialStatus={status}
         showCollectionItems={showCollectionItems}
+        preferOffline
       />
     </div>
   );

@@ -8,13 +8,45 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { toast } from "@/components/ui/toast";
-import { createCollectionAction, deleteCollectionAction } from "@/actions/collections";
+import { createCollectionAction, deleteCollectionAction, getCollectionsAction } from "@/actions/collections";
+import { getOfflineCollectionsView } from "@/lib/offline/read-models";
+import { queueOfflineResync } from "@/lib/offline/indexed-db";
 import type { TopicCollection } from "@/types";
 
-export function CollectionsClient({ initial }: { initial: TopicCollection[] }) {
+export function CollectionsClient({ initial, preferOffline = false }: { initial: TopicCollection[]; preferOffline?: boolean }) {
   const router = useRouter();
   const [name, setName] = React.useState("");
   const [creating, setCreating] = React.useState(false);
+  const [collections, setCollections] = React.useState(initial);
+  const [source, setSource] = React.useState<"server" | "indexeddb" | "loading">(preferOffline ? "loading" : "server");
+
+  React.useEffect(() => {
+    if (!preferOffline) return;
+
+    let cancelled = false;
+    window.setTimeout(async () => {
+      try {
+        const local = await getOfflineCollectionsView();
+        if (!cancelled && local.hasLocalData) {
+          setCollections(local.collections);
+          setSource("indexeddb");
+          return;
+        }
+      } catch {
+        // Fall through to backend.
+      }
+
+      const serverCollections = await getCollectionsAction();
+      if (!cancelled) {
+        setCollections(serverCollections);
+        setSource("server");
+      }
+    }, 0);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [preferOffline]);
 
   async function create() {
     if (!name.trim()) return;
@@ -23,6 +55,7 @@ export function CollectionsClient({ initial }: { initial: TopicCollection[] }) {
     setCreating(false);
     if (res.success && res.data) {
       setName("");
+      queueOfflineResync("collection:create");
       router.push(`/collections/${res.data.id}`);
     } else {
       toast(res.error ?? "Could not create", { variant: "error" });
@@ -34,6 +67,7 @@ export function CollectionsClient({ initial }: { initial: TopicCollection[] }) {
     const res = await deleteCollectionAction(id);
     if (res.success) {
       toast("Collection deleted");
+      queueOfflineResync("collection:delete");
       router.refresh();
     } else {
       toast(res.error ?? "Could not delete", { variant: "error" });
@@ -56,14 +90,20 @@ export function CollectionsClient({ initial }: { initial: TopicCollection[] }) {
         </Button>
       </div>
 
-      {initial.length === 0 ? (
+      <p className="text-xs text-mossy-gray">
+        Showing {collections.length} collection{collections.length !== 1 ? "s" : ""}
+        {source === "indexeddb" && <span className="ml-1 text-state-today">(from IndexedDB)</span>}
+        {source === "loading" && <span className="ml-1">(checking local data...)</span>}
+      </p>
+
+      {collections.length === 0 ? (
         <Card className="p-10 text-center shadow-card">
           <Folder className="mx-auto h-8 w-8 text-mossy-gray/50" />
           <p className="mt-3 text-sm text-mossy-gray">No collections yet. Group related tasks into topics above.</p>
         </Card>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {initial.map((c) => (
+          {collections.map((c) => (
             <Card key={c.id} className="group flex items-center justify-between gap-3 p-4 shadow-card transition-all hover:-translate-y-0.5 hover:shadow-hover">
               <Link href={`/collections/${c.id}`} className="flex min-w-0 flex-1 items-center gap-3">
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-state-upcoming/10">
