@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, Folder } from "lucide-react";
 import { getCollectionWithDocsAction } from "@/actions/collections";
-import { CollectionTaskRow } from "@/components/features/collection-doc-row";
+import { CollectionTasksClient } from "@/components/features/collection-tasks-client";
 import { SharePackButton } from "@/components/features/share-pack-button";
 
 interface CollectionPageProps {
@@ -42,16 +42,7 @@ export default async function CollectionDetailPage({ params }: CollectionPagePro
           </p>
         </div>
       ) : (
-        <div className="space-y-5">
-          {data.tasks.length > 0 && (
-            <section className="space-y-2">
-              <h2 className="text-xs font-semibold uppercase tracking-[0.18em] text-mossy-gray">Tasks</h2>
-              {data.tasks.map((task) => (
-                <CollectionTaskRow key={task.id} collectionId={data.id} task={task} />
-              ))}
-            </section>
-          )}
-        </div>
+        <CollectionTasksClient collectionId={data.id} tasks={data.tasks} />
       )}
     </div>
   );

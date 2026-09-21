@@ -7,7 +7,7 @@ import {
   Circle,
   FolderPlus,
   Loader2,
-  MessageSquarePlus,
+  MessageSquare,
   Plus,
   RotateCcw,
   Search,
@@ -22,7 +22,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/toast";
 import { cn, formatRelativeDate } from "@/lib/utils";
 import {
-  addTaskCommentAction,
   completeTaskAction,
   createTaskAction,
   deleteTaskAction,
@@ -47,6 +46,7 @@ interface TasksClientProps {
 }
 
 const difficultyOptions: Difficulty[] = ["easy", "medium", "hard"];
+const pageSizeOptions = [5, 10, 20, 50];
 
 function toInputDateTime(value?: string) {
   if (!value) return "";
@@ -54,13 +54,6 @@ function toInputDateTime(value?: string) {
   if (Number.isNaN(date.getTime())) return "";
   const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
   return local.toISOString().slice(0, 16);
-}
-
-function commentDate(value: string) {
-  return new Intl.DateTimeFormat(undefined, {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
 }
 
 export function TasksClient({
@@ -81,6 +74,11 @@ export function TasksClient({
   const [search, setSearch] = React.useState(initialSearch ?? "");
   const [tagFilter, setTagFilter] = React.useState(initialTagFilter ?? "");
   const [statusFilter, setStatusFilter] = React.useState(initialStatus ?? "pending");
+  const [currentPage, setCurrentPage] = React.useState(1);
+  const [pageSize, setPageSize] = React.useState(10);
+  const totalPages = Math.max(1, Math.ceil(initialTasks.length / pageSize));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const pagedTasks = initialTasks.slice((safeCurrentPage - 1) * pageSize, safeCurrentPage * pageSize);
 
   async function createTask() {
     if (!title.trim()) return;
@@ -184,9 +182,26 @@ export function TasksClient({
         <Button variant="outline" onClick={applyFilters}>Apply</Button>
       </div>
 
-      <p className="text-xs text-mossy-gray">
-        Showing {initialTasks.length} task{initialTasks.length !== 1 ? "s" : ""}{!showCollectionItems && " outside collections"}
-      </p>
+      <div className="flex flex-col gap-2 text-xs text-mossy-gray sm:flex-row sm:items-center sm:justify-between">
+        <p>
+          Showing {initialTasks.length} task{initialTasks.length !== 1 ? "s" : ""}{!showCollectionItems && " outside collections"}
+        </p>
+        <div className="flex items-center gap-2">
+          <span>Per page</span>
+          <select
+            value={pageSize}
+            onChange={(event) => {
+              setPageSize(Number(event.target.value));
+              setCurrentPage(1);
+            }}
+            className="h-8 rounded-lg border border-border bg-surface px-2 text-xs text-forest-slate"
+          >
+            {pageSizeOptions.map((option) => (
+              <option key={option} value={option}>{option}</option>
+            ))}
+          </select>
+        </div>
+      </div>
 
       {initialTasks.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-border bg-surface px-6 py-14 text-center">
@@ -195,9 +210,21 @@ export function TasksClient({
         </div>
       ) : (
         <div className="space-y-2">
-          {initialTasks.map((task) => (
+          {pagedTasks.map((task) => (
             <TaskCard key={task.id} task={task} />
           ))}
+        </div>
+      )}
+
+      {initialTasks.length > pageSize && (
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <Button variant="outline" size="sm" onClick={() => setCurrentPage((page) => Math.max(1, page - 1))} disabled={currentPage === 1}>
+            Previous
+          </Button>
+          <span className="text-xs text-mossy-gray">Page {safeCurrentPage} of {totalPages}</span>
+          <Button variant="outline" size="sm" onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))} disabled={safeCurrentPage === totalPages}>
+            Next
+          </Button>
         </div>
       )}
     </div>
@@ -207,7 +234,6 @@ export function TasksClient({
 function TaskCard({ task }: { task: LightweightTask }) {
   const router = useRouter();
   const [busy, setBusy] = React.useState(false);
-  const [newComment, setNewComment] = React.useState("");
   const [collections, setCollections] = React.useState<TopicCollection[]>([]);
   const [newCollectionName, setNewCollectionName] = React.useState("");
 
@@ -239,17 +265,6 @@ function TaskCard({ task }: { task: LightweightTask }) {
     const res = await updateTaskAction(task.id, { dueAt: value });
     if (res.success) router.refresh();
     else toast(res.error ?? "Could not update date", { variant: "error" });
-  }
-
-  async function addComment() {
-    if (!newComment.trim()) return;
-    const res = await addTaskCommentAction(task.id, newComment);
-    if (res.success) {
-      setNewComment("");
-      router.refresh();
-    } else {
-      toast(res.error ?? "Could not add comment", { variant: "error" });
-    }
   }
 
   async function remove() {
@@ -303,7 +318,15 @@ function TaskCard({ task }: { task: LightweightTask }) {
         </button>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <h2 className={cn("text-sm font-semibold text-forest-slate", task.status === "completed" && "line-through opacity-70")}>{task.title}</h2>
+            <Link
+              href={`/tasks/${task.id}`}
+              className={cn(
+                "text-sm font-semibold text-forest-slate transition-colors hover:text-state-today",
+                task.status === "completed" && "line-through opacity-70"
+              )}
+            >
+              {task.title}
+            </Link>
             <Badge variant={task.difficulty}>{task.difficulty}</Badge>
             {task.dueAt && (
               <Badge variant={new Date(task.dueAt) < new Date() && task.status !== "completed" ? "stale" : "upcoming"}>
@@ -354,30 +377,18 @@ function TaskCard({ task }: { task: LightweightTask }) {
               </div>
             </div>
           </details>
+          <Link
+            href={`/tasks/${task.id}`}
+            className="inline-flex h-7 items-center gap-1.5 rounded-full border-2 border-border bg-surface px-3 text-xs font-medium text-forest-slate hover:bg-canvas"
+          >
+            <MessageSquare className="h-3.5 w-3.5" />
+            {task.comments.length}
+          </Link>
           <Button variant="ghost" size="icon-sm" onClick={complete} disabled={busy}>
             {task.status === "completed" ? <RotateCcw className="h-3.5 w-3.5" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
           </Button>
           <Button variant="ghost" size="icon-sm" onClick={remove} className="hover:bg-destructive/10 hover:text-destructive">
             <Trash2 className="h-3.5 w-3.5" />
-          </Button>
-        </div>
-      </div>
-
-      <div className="mt-3 space-y-2 border-t border-border/60 pt-3">
-        {task.comments.length > 0 && (
-          <div className="space-y-1.5">
-            {task.comments.map((item) => (
-              <div key={item.id} className="rounded-xl bg-canvas px-3 py-2">
-                <p className="text-sm text-forest-slate">{item.content}</p>
-                <p className="mt-1 text-[11px] text-mossy-gray">{commentDate(item.createdAt)}</p>
-              </div>
-            ))}
-          </div>
-        )}
-        <div className="flex gap-2">
-          <Input value={newComment} onChange={(event) => setNewComment(event.target.value)} placeholder="Add comment with date/time..." />
-          <Button variant="outline" onClick={addComment} disabled={!newComment.trim()}>
-            <MessageSquarePlus className="h-4 w-4" />
           </Button>
         </div>
       </div>

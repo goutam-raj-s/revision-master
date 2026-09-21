@@ -83,6 +83,15 @@ export async function getUserTasks(filter?: {
   return rows.map((task) => serializeTask(task as DbTask));
 }
 
+export async function getTaskByIdAction(taskId: string): Promise<LightweightTask | null> {
+  const user = await requireAuth();
+  if (!ObjectId.isValid(taskId)) return null;
+
+  const tasks = await getTasksCollection();
+  const row = await tasks.findOne({ _id: new ObjectId(taskId), userId: new ObjectId(user.id) });
+  return row ? serializeTask(row as DbTask) : null;
+}
+
 export async function getAllTaskTags(includeCollectionItems = false): Promise<{ tag: string; count: number }[]> {
   const user = await requireAuth();
   const userId = new ObjectId(user.id);
@@ -179,6 +188,7 @@ export async function updateTaskAction(
   if (result.matchedCount === 0) return { success: false, error: "Task not found." };
 
   revalidatePath("/tasks");
+  revalidatePath(`/tasks/${taskId}`);
   revalidatePath("/collections");
   revalidatePath("/dashboard");
   return { success: true };
@@ -216,6 +226,7 @@ export async function addTaskCommentAction(taskId: string, content: string): Pro
   if (result.matchedCount === 0) return { success: false, error: "Task not found." };
 
   revalidatePath("/tasks");
+  revalidatePath(`/tasks/${taskId}`);
   revalidatePath("/collections");
   return { success: true };
 }
@@ -233,7 +244,29 @@ export async function deleteTaskAction(taskId: string): Promise<ActionResult> {
   await collections.updateMany({ userId }, { $pull: { taskIds: id }, $set: { updatedAt: new Date() } });
 
   revalidatePath("/tasks");
+  revalidatePath(`/tasks/${taskId}`);
   revalidatePath("/collections");
   revalidatePath("/dashboard");
   return { success: true };
+}
+
+export async function bulkDeleteTasksAction(taskIds: string[]): Promise<ActionResult<{ deletedCount: number }>> {
+  const user = await requireAuth();
+  const uniqueIds = Array.from(new Set(taskIds)).filter(ObjectId.isValid).map((id) => new ObjectId(id));
+  if (uniqueIds.length === 0) return { success: false, error: "Select at least one task." };
+
+  const userId = new ObjectId(user.id);
+  const tasks = await getTasksCollection();
+  const result = await tasks.deleteMany({ _id: { $in: uniqueIds }, userId });
+
+  const collections = await getTopicCollectionsCollection();
+  await collections.updateMany(
+    { userId },
+    { $pull: { taskIds: { $in: uniqueIds } as never }, $set: { updatedAt: new Date() } }
+  );
+
+  revalidatePath("/tasks");
+  revalidatePath("/collections");
+  revalidatePath("/dashboard");
+  return { success: true, data: { deletedCount: result.deletedCount } };
 }
