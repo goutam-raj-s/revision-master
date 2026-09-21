@@ -16,18 +16,31 @@ export type ProviderId = "openrouter" | "groq" | "gemini";
 interface ProviderConfig {
   id: ProviderId;
   baseUrl: string;
-  apiKey?: string;
+  apiKey: string;
   model: string;
   /** Extra headers (OpenRouter wants attribution headers). */
   headers?: Record<string, string>;
 }
 
+function usableApiKey(value: string | undefined): value is string {
+  return Boolean(value && value.length > 10 && !value.startsWith("your-"));
+}
+
+function envKeys(baseName: string): string[] {
+  const values = [
+    process.env[baseName],
+    ...(process.env[`${baseName}S`]?.split(",") ?? []),
+    ...Array.from({ length: 10 }, (_, index) => process.env[`${baseName}_${index + 1}`]),
+  ];
+  return Array.from(new Set(values.map((value) => value?.trim()).filter(usableApiKey)));
+}
+
 function providerConfigs(): ProviderConfig[] {
-  const all: ProviderConfig[] = [
+  const templates: Array<Omit<ProviderConfig, "apiKey"> & { apiKeys: string[] }> = [
     {
       id: "openrouter",
       baseUrl: "https://openrouter.ai/api/v1",
-      apiKey: process.env.OPENROUTER_API_KEY,
+      apiKeys: envKeys("OPENROUTER_API_KEY"),
       model: process.env.OPENROUTER_MODEL || "meta-llama/llama-3.3-70b-instruct:free",
       headers: {
         "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL || "https://www.lostbae.com",
@@ -37,19 +50,18 @@ function providerConfigs(): ProviderConfig[] {
     {
       id: "groq",
       baseUrl: "https://api.groq.com/openai/v1",
-      apiKey: process.env.GROQ_API_KEY,
+      apiKeys: envKeys("GROQ_API_KEY"),
       model: process.env.GROQ_MODEL || "llama-3.3-70b-versatile",
     },
     {
       id: "gemini",
       baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai",
-      apiKey: process.env.GEMINI_API_KEY,
+      apiKeys: envKeys("GEMINI_API_KEY"),
       model: process.env.GEMINI_MODEL || "gemini-2.0-flash",
     },
   ];
-  // Only providers with a configured, non-placeholder key are usable.
-  return all.filter(
-    (p) => p.apiKey && p.apiKey.length > 10 && !p.apiKey.startsWith("your-")
+  return templates.flatMap(({ apiKeys, ...provider }) =>
+    apiKeys.map((apiKey) => ({ ...provider, apiKey }))
   );
 }
 
@@ -186,64 +198,85 @@ export async function aiStream(opts: CallOpts): Promise<ReadableStream<Uint8Arra
   const providers = providersForUser(opts.userId);
   if (providers.length === 0) throw new Error("AI is not configured on the server.");
 
-  let upstream: Response | null = null;
-  let lastErr = "";
-  for (const cfg of providers) {
-    try {
-      const res = await callProvider(
-        cfg,
-        opts.messages,
-        opts.temperature ?? 0.4,
-        opts.maxTokens ?? 1500,
-        true
-      );
-      if (res.ok && res.body) {
-        upstream = res;
-        break;
-      }
-      lastErr = `${cfg.id}: ${res.status} ${await res.text()}`;
-    } catch (e) {
-      lastErr = `${cfg.id}: ${e instanceof Error ? e.message : "error"}`;
-    }
-  }
-  if (!upstream || !upstream.body) throw new Error(`All AI providers failed. ${lastErr}`);
-
-  const reader = upstream.body.getReader();
-  const decoder = new TextDecoder();
   const encoder = new TextEncoder();
-  let buffer = "";
 
   return new ReadableStream<Uint8Array>({
-    async pull(controller) {
-      const { done, value } = await reader.read();
-      if (done) {
-        controller.close();
-        return;
-      }
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split("\n");
-      buffer = lines.pop() ?? "";
-      for (const line of lines) {
-        const trimmed = line.trim();
-        if (!trimmed.startsWith("data:")) continue;
-        const data = trimmed.slice(5).trim();
-        if (data === "[DONE]") {
-          controller.close();
-          return;
-        }
+    async start(controller) {
+      let lastErr = "";
+
+      for (const cfg of providers) {
+        let emitted = false;
         try {
-          const json = JSON.parse(data) as {
-            choices?: { delta?: { content?: string } }[];
-          };
-          const delta = json.choices?.[0]?.delta?.content;
-          if (delta) controller.enqueue(encoder.encode(delta));
-        } catch {
-          /* ignore keep-alive / partial frames */
+          const res = await callProvider(
+            cfg,
+            opts.messages,
+            opts.temperature ?? 0.4,
+            opts.maxTokens ?? 1500,
+            true
+          );
+          if (!res.ok || !res.body) {
+            lastErr = `${cfg.id}: ${res.status} ${await res.text()}`;
+            continue;
+          }
+
+          const reader = res.body.getReader();
+          const decoder = new TextDecoder();
+          let buffer = "";
+          let doneByProvider = false;
+
+          while (!doneByProvider) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split("\n");
+            buffer = lines.pop() ?? "";
+
+            for (const line of lines) {
+              const trimmed = line.trim();
+              if (!trimmed.startsWith("data:")) continue;
+              const data = trimmed.slice(5).trim();
+              if (data === "[DONE]") {
+                doneByProvider = true;
+                break;
+              }
+              try {
+                const json = JSON.parse(data) as {
+                  choices?: { delta?: { content?: string } }[];
+                  error?: { message?: string };
+                };
+                if (json.error?.message) {
+                  lastErr = `${cfg.id}: ${json.error.message}`;
+                  doneByProvider = true;
+                  break;
+                }
+                const delta = json.choices?.[0]?.delta?.content;
+                if (delta) {
+                  emitted = true;
+                  controller.enqueue(encoder.encode(delta));
+                }
+              } catch {
+                /* ignore keep-alive / partial frames */
+              }
+            }
+          }
+
+          await reader.cancel().catch(() => {});
+          if (emitted) {
+            controller.close();
+            return;
+          }
+          lastErr = lastErr || `${cfg.id}: empty response`;
+        } catch (e) {
+          if (emitted) {
+            controller.error(e);
+            return;
+          }
+          lastErr = `${cfg.id}: ${e instanceof Error ? e.message : "error"}`;
         }
       }
-    },
-    cancel() {
-      reader.cancel().catch(() => {});
+
+      controller.error(new Error(`All AI providers failed. ${lastErr}`));
     },
   });
 }
