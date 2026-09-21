@@ -6,6 +6,7 @@ export const OFFLINE_SYNC_COLLECTIONS = [
   "tasks",
   "topicCollections",
   "postDrafts",
+  "socialConnections",
   "aiChats",
   "reviewEvents",
   "youtubeSessions",

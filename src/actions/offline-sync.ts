@@ -13,6 +13,7 @@ import {
   getPostDraftsCollection,
   getRepetitionsCollection,
   getReviewEventsCollection,
+  getSocialConnectionsCollection,
   getTasksCollection,
   getTermsCollection,
   getTopicCollectionsCollection,
@@ -22,8 +23,9 @@ import {
   getYoutubeSessionsCollection,
   getYoutubeSharesCollection,
 } from "@/lib/db/collections";
+import { isProviderConfigured, PROVIDERS } from "@/lib/social";
 import type { OfflineSyncRow, OfflineSyncSnapshot } from "@/lib/offline/schema";
-import type { ActionResult } from "@/types";
+import type { ActionResult, SocialProvider } from "@/types";
 
 function cleanValue(value: unknown): unknown {
   if (value instanceof ObjectId) return value.toString();
@@ -58,6 +60,7 @@ export async function getOfflineSyncSnapshotAction(): Promise<ActionResult<Offli
     tasks,
     topicCollections,
     postDrafts,
+    socialConnections,
     aiChats,
     reviewEvents,
     youtubeSessions,
@@ -77,6 +80,7 @@ export async function getOfflineSyncSnapshotAction(): Promise<ActionResult<Offli
     (await getTasksCollection()).find({ userId }).sort({ updatedAt: -1 }).toArray(),
     (await getTopicCollectionsCollection()).find({ userId }).sort({ updatedAt: -1 }).toArray(),
     (await getPostDraftsCollection()).find({ userId }).sort({ updatedAt: -1 }).toArray(),
+    (await getSocialConnectionsCollection()).find({ userId }).sort({ updatedAt: -1 }).toArray(),
     (await getAiChatsCollection()).find({ userId }).sort({ updatedAt: -1 }).toArray(),
     (await getReviewEventsCollection()).find({ userId }).sort({ reviewedAt: -1 }).toArray(),
     (await getYoutubeSessionsCollection()).find({ userId }).sort({ updatedAt: -1 }).toArray(),
@@ -89,6 +93,22 @@ export async function getOfflineSyncSnapshotAction(): Promise<ActionResult<Offli
     (await getCalorieLibraryCollection()).find({ userId }).sort({ updatedAt: -1 }).toArray(),
     (await getCalorieSettingsCollection()).find({ userId }).sort({ updatedAt: -1 }).toArray(),
   ]);
+  const now = Date.now();
+  const safeSocialConnections = socialConnections.map((connection) => ({
+    id: `${connection.provider}`,
+    provider: connection.provider,
+    displayName: connection.displayName,
+    connectedAt: connection.connectedAt.toISOString(),
+    expiresAt: connection.accessTokenExpiresAt?.toISOString(),
+    expired: Boolean(
+      connection.accessTokenExpiresAt &&
+        connection.accessTokenExpiresAt.getTime() < now &&
+        !connection.refreshTokenEncrypted
+    ),
+  }));
+  const configuredProviders = (Object.keys(PROVIDERS) as SocialProvider[]).filter((provider) =>
+    isProviderConfigured(provider)
+  );
 
   return {
     success: true,
@@ -104,6 +124,10 @@ export async function getOfflineSyncSnapshotAction(): Promise<ActionResult<Offli
         tasks: cleanRows(tasks as unknown as Record<string, unknown>[]),
         topicCollections: cleanRows(topicCollections as unknown as Record<string, unknown>[]),
         postDrafts: cleanRows(postDrafts as unknown as Record<string, unknown>[]),
+        socialConnections: cleanRows([
+          ...safeSocialConnections,
+          ...configuredProviders.map((provider) => ({ id: `configured:${provider}`, provider, configured: true })),
+        ]),
         aiChats: cleanRows(aiChats as unknown as Record<string, unknown>[]),
         reviewEvents: cleanRows(reviewEvents as unknown as Record<string, unknown>[]),
         youtubeSessions: cleanRows(youtubeSessions as unknown as Record<string, unknown>[]),

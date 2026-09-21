@@ -63,6 +63,8 @@ import {
   updateExerciseEntryAction,
   updateFoodEntryAction,
 } from "@/actions/calories";
+import { queueOfflineResync } from "@/lib/offline/indexed-db";
+import { getOfflineCalorieEntriesForDay, getOfflineCaloriesOverview } from "@/lib/offline/read-models";
 import type {
   CalorieDaySummary,
   CalorieEntry,
@@ -513,6 +515,20 @@ export function CaloriesClient() {
 
   const loadOverview = React.useCallback(
     async (silent: boolean) => {
+      try {
+        const local = await getOfflineCaloriesOverview(todayKey);
+        if (local.hasLocalData) {
+          setGoal(local.overview.dailyCalorieGoal);
+          setLibrary(local.overview.library);
+          setDaily(local.overview.daily);
+          setWeekly(local.overview.weekly);
+          setMonthly(local.overview.monthly);
+          return local.overview;
+        }
+      } catch {
+        // Fall through to backend.
+      }
+
       const res = await getCaloriesOverviewAction(todayKey);
       if (res.success && res.data) {
         setGoal(res.data.dailyCalorieGoal);
@@ -543,6 +559,18 @@ export function CaloriesClient() {
     setSelectedDay(dayKey);
     setDayLoading(true);
     const req = ++dayReq.current;
+    try {
+      const local = await getOfflineCalorieEntriesForDay(dayKey);
+      if (req !== dayReq.current) return;
+      if (local.hasLocalData) {
+        setEntries(local.entries);
+        setDayLoading(false);
+        return;
+      }
+    } catch {
+      // Fall through to backend.
+    }
+
     const res = await getDayEntriesAction(dayKey);
     if (req !== dayReq.current) return; // stale response, a newer day was selected
     if (res.success && res.data) {
@@ -695,6 +723,7 @@ export function CaloriesClient() {
     if (res.success && res.data) {
       setGoal(res.data.dailyCalorieGoal);
       setEditingGoal(false);
+      queueOfflineResync("calories:goal");
       toast(`Daily goal set to ${fmt(res.data.dailyCalorieGoal)} kcal.`, { variant: "success" });
     } else {
       toast(res.error ?? "Could not save goal.", { variant: "error" });
@@ -827,6 +856,7 @@ export function CaloriesClient() {
       }
       mergeLibraryItem(libraryItem);
       setFoodForm((f) => ({ ...EMPTY_FOOD_FORM, unit: f.unit }));
+      queueOfflineResync(foodForm.editingId ? "calories:food:update" : "calories:food:create");
       refreshSummaries();
       toast(
         foodForm.editingId
@@ -903,6 +933,7 @@ export function CaloriesClient() {
       }
       mergeLibraryItem(libraryItem);
       setExForm(EMPTY_EXERCISE_FORM);
+      queueOfflineResync(exForm.editingId ? "calories:exercise:update" : "calories:exercise:create");
       refreshSummaries();
       toast(
         exForm.editingId
@@ -926,6 +957,7 @@ export function CaloriesClient() {
     if (exForm.editingId === entry.id) cancelExerciseEdit();
     const res = await deleteCalorieEntryAction(entry.id);
     if (res.success) {
+      queueOfflineResync("calories:delete");
       refreshSummaries();
     } else {
       if (wasInSelectedDay) setEntries((prev) => [...prev, entry]); // restore on failure
@@ -959,6 +991,18 @@ export function CaloriesClient() {
     setDetailsLoading(true);
     setDetailsEntries([]);
     const req = ++detailsReq.current;
+    try {
+      const local = await getOfflineCalorieEntriesForDay(dayKey);
+      if (req !== detailsReq.current) return;
+      if (local.hasLocalData) {
+        setDetailsEntries(local.entries);
+        setDetailsLoading(false);
+        return;
+      }
+    } catch {
+      // Fall through to backend.
+    }
+
     const res = await getDayEntriesAction(dayKey);
     if (req !== detailsReq.current) return;
     if (res.success && res.data) {

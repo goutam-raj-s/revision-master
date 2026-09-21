@@ -32,8 +32,9 @@ import { Card } from "@/components/ui/card";
 import { toast } from "@/components/ui/toast";
 import {
   createPostDraftAction,
-  updatePostDraftAction,
   deletePostDraftAction,
+  getPostDraftsAction,
+  updatePostDraftAction,
 } from "@/actions/posts";
 import {
   createLinkedInCommentAction,
@@ -54,6 +55,7 @@ import {
 import type { PostDraft, PostPlatform, SocialConnection, SocialProvider } from "@/types";
 import type { LinkedInReactionType } from "@/lib/social";
 import type { LinkedInPostSummary, TwitterDmEventSummary, TwitterPostSummary } from "@/lib/social";
+import { queueOfflineResync } from "@/lib/offline/indexed-db";
 
 const PLATFORMS: { id: PostPlatform; label: string; icon: typeof Linkedin; max?: number }[] = [
   { id: "linkedin", label: "LinkedIn", icon: Linkedin, max: 3000 },
@@ -137,10 +139,12 @@ export function PostsClient({
   initial,
   connections,
   configured,
+  onDraftsLoaded,
 }: {
   initial: PostDraft[];
   connections: SocialConnection[];
   configured: SocialProvider[];
+  onDraftsLoaded?: (drafts: PostDraft[]) => void;
 }) {
   const router = useRouter();
   const params = useSearchParams();
@@ -166,15 +170,27 @@ export function PostsClient({
   const activeConnection = activeProvider ? connByProvider.get(activeProvider) : undefined;
   const activeDrafts = initial.filter((d) => d.platform === account);
 
+  const refreshDrafts = React.useCallback(async () => {
+    const nextDrafts = await getPostDraftsAction();
+    onDraftsLoaded?.(nextDrafts);
+    queueOfflineResync("post:drafts");
+    return nextDrafts;
+  }, [onDraftsLoaded]);
+
   async function patch(id: string, p: Parameters<typeof updatePostDraftAction>[1]) {
     const res = await updatePostDraftAction(id, p);
-    if (res.success) router.refresh();
+    if (res.success) {
+      await refreshDrafts();
+    }
     else toast(res.error ?? "Could not update", { variant: "error" });
   }
 
   async function remove(id: string) {
     const res = await deletePostDraftAction(id);
-    if (res.success) router.refresh();
+    if (res.success) {
+      onDraftsLoaded?.(initial.filter((draft) => draft.id !== id));
+      queueOfflineResync("post:delete");
+    }
     else toast(res.error ?? "Could not delete", { variant: "error" });
   }
 
@@ -250,7 +266,8 @@ export function PostsClient({
               connected={Boolean(activeConnection && !activeConnection.expired)}
               onPatch={patch}
               onRemove={remove}
-              onPublished={() => router.refresh()}
+              onCreated={() => void refreshDrafts()}
+              onPublished={() => void refreshDrafts()}
             />
           )}
           {linkedinActivity === "comments" && (
@@ -293,7 +310,8 @@ export function PostsClient({
               connected={Boolean(activeConnection && !activeConnection.expired)}
               onPatch={patch}
               onRemove={remove}
-              onPublished={() => router.refresh()}
+              onCreated={() => void refreshDrafts()}
+              onPublished={() => void refreshDrafts()}
             />
           )}
           {twitterActivity === "replies" && (
@@ -316,7 +334,8 @@ export function PostsClient({
           connected={Boolean(activeConnection && !activeConnection.expired)}
           onPatch={patch}
           onRemove={remove}
-          onPublished={() => router.refresh()}
+          onCreated={() => void refreshDrafts()}
+          onPublished={() => void refreshDrafts()}
         />
       )}
     </div>
@@ -329,6 +348,7 @@ function PostsActivity({
   connected,
   onPatch,
   onRemove,
+  onCreated,
   onPublished,
 }: {
   platform: PostPlatform;
@@ -336,9 +356,9 @@ function PostsActivity({
   connected: boolean;
   onPatch: (id: string, p: Parameters<typeof updatePostDraftAction>[1]) => void;
   onRemove: (id: string) => void;
+  onCreated: () => void;
   onPublished: () => void;
 }) {
-  const router = useRouter();
   const [body, setBody] = React.useState("");
   const [images, setImages] = React.useState<{
     imageDataUrl: string;
@@ -359,7 +379,7 @@ function PostsActivity({
       setBody("");
       setImages([]);
       toast("Draft saved", { variant: "success" });
-      router.refresh();
+      onCreated();
     } else {
       toast(res.error ?? "Could not save", { variant: "error" });
     }

@@ -2,7 +2,7 @@ import { CollectionsClient } from "@/components/features/collections-client";
 
 export const metadata = { title: "Collections" };
 
-export default async function CollectionsPage() {
+export default function CollectionsPage() {
   return (
     <div className="space-y-6">
       <div>

@@ -1,9 +1,4 @@
-import Link from "next/link";
-import { notFound } from "next/navigation";
-import { ArrowLeft, Folder } from "lucide-react";
-import { getCollectionWithDocsAction } from "@/actions/collections";
-import { CollectionTasksClient } from "@/components/features/collection-tasks-client";
-import { SharePackButton } from "@/components/features/share-pack-button";
+import { CollectionDetailOfflinePage } from "@/components/features/collection-detail-offline-page";
 
 interface CollectionPageProps {
   params: Promise<{ id: string }>;
@@ -11,39 +6,5 @@ interface CollectionPageProps {
 
 export default async function CollectionDetailPage({ params }: CollectionPageProps) {
   const { id } = await params;
-  const data = await getCollectionWithDocsAction(id);
-  if (!data) notFound();
-
-  return (
-    <div className="space-y-5">
-      <Link href="/collections" className="inline-flex items-center gap-1.5 text-sm text-mossy-gray transition-colors hover:text-forest-slate">
-        <ArrowLeft className="h-3.5 w-3.5" /> Collections
-      </Link>
-
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-state-upcoming/10">
-            <Folder className="h-5 w-5 text-state-upcoming" />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold text-forest-slate sm:text-2xl">{data.name}</h1>
-            <p className="text-xs text-mossy-gray">
-              {data.tasks.length} task{data.tasks.length !== 1 ? "s" : ""}
-            </p>
-          </div>
-        </div>
-        <SharePackButton collectionId={data.id} initialToken={data.publicToken} />
-      </div>
-
-      {data.tasks.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-border bg-surface px-6 py-12 text-center">
-          <p className="text-sm text-mossy-gray">
-            No tasks yet. Open a task and use <span className="font-medium text-forest-slate">Add to collection</span>.
-          </p>
-        </div>
-      ) : (
-        <CollectionTasksClient collectionId={data.id} tasks={data.tasks} />
-      )}
-    </div>
-  );
+  return <CollectionDetailOfflinePage collectionId={id} />;
 }

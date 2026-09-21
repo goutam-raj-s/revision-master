@@ -11,7 +11,7 @@ import {
 } from "@/lib/offline/schema";
 
 const DB_NAME = "lostbae-offline";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const META_STORE = "meta";
 const ENDPOINT_STORE = "endpointResponses";
 const LAST_SYNC_KEY = "lastSync";
