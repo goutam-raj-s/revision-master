@@ -661,7 +661,7 @@ export async function getUserDocuments(filter?: {
   if (filter?.status) {
     query.status = filter.status;
   }
-  if (!filter?.includeCollectionItems) {
+  if (filter?.includeCollectionItems === false) {
     const collectionDocIds = await getCollectionDocIds(new ObjectId(user.id));
     if (collectionDocIds.length > 0) {
       query.$and.push({ _id: { $nin: collectionDocIds } });
@@ -714,7 +714,7 @@ export async function toggleDocumentHiddenAction(
   return { success: true };
 }
 
-export async function getAllUserTags(includeCollectionItems = false): Promise<{ tag: string; count: number }[]> {
+export async function getAllUserTags(includeCollectionItems = true): Promise<{ tag: string; count: number }[]> {
   const user = await requireAuth();
   const docs = await getDocumentsCollection();
   const userId = new ObjectId(user.id);

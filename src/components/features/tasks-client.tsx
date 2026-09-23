@@ -67,7 +67,7 @@ export function TasksClient({
   initialTagFilter,
   initialSearch,
   initialStatus,
-  showCollectionItems = false,
+  showCollectionItems = true,
   preferOffline = false,
 }: TasksClientProps) {
   const router = useRouter();
@@ -152,7 +152,7 @@ export function TasksClient({
     if (search.trim()) params.set("search", search.trim());
     if (tagFilter) params.set("tag", tagFilter);
     params.set("status", statusFilter);
-    if (showCollectionItems) params.set("showCollections", "1");
+    if (!showCollectionItems) params.set("showCollections", "0");
     router.push(`/tasks${params.size ? `?${params.toString()}` : ""}`);
   }
 
@@ -218,15 +218,15 @@ export function TasksClient({
           <option value="all">All</option>
         </select>
         <Link
-          href={showCollectionItems ? "/tasks" : "/tasks?showCollections=1"}
+          href={showCollectionItems ? "/tasks?showCollections=0" : "/tasks"}
           className={cn(
             "inline-flex h-9 items-center justify-center rounded-xl border px-3 text-sm transition-colors",
-            showCollectionItems
+            !showCollectionItems
               ? "border-state-today bg-state-today/10 text-state-today"
               : "border-border bg-surface text-mossy-gray hover:text-forest-slate"
           )}
         >
-          Collection items
+          Hide collection items
         </Link>
         <Button variant="outline" onClick={applyFilters}>Apply</Button>
       </div>

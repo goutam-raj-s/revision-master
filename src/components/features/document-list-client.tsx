@@ -64,7 +64,7 @@ export function DocumentListClient({
   allTags,
   initialTagFilter,
   initialSearch,
-  showCollectionItems = false,
+  showCollectionItems = true,
 }: DocumentListClientProps) {
   const router = useRouter();
   const [docs, setDocs] = React.useState(initialDocs);
@@ -288,15 +288,15 @@ export function DocumentListClient({
           <option value="last-modified">Last Modified</option>
         </select>
         <Link
-          href={showCollectionItems ? "/documents" : "/documents?showCollections=1"}
+          href={showCollectionItems ? "/documents?showCollections=0" : "/documents"}
           className={cn(
             "inline-flex h-9 items-center justify-center rounded-xl border px-3 text-sm transition-colors",
-            showCollectionItems
+            !showCollectionItems
               ? "border-state-today bg-state-today/10 text-state-today"
               : "border-border bg-surface text-mossy-gray hover:text-forest-slate"
           )}
         >
-          Collection items
+          Hide collection items
         </Link>
       </div>
 

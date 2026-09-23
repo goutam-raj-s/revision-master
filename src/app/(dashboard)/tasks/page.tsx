@@ -9,7 +9,7 @@ export const metadata = { title: "Tasks — lostbae" };
 
 export default async function TasksPage({ searchParams }: TasksPageProps) {
   const params = await searchParams;
-  const showCollectionItems = params.showCollections === "1";
+  const showCollectionItems = params.showCollections !== "0";
   const status = params.status === "all" ? "all" : params.status ?? "pending";
 
   return (

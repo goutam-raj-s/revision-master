@@ -73,7 +73,7 @@ export async function getUserTasks(filter?: {
       ],
     });
   }
-  if (!filter?.includeCollectionItems) {
+  if (filter?.includeCollectionItems === false) {
     const collectionTaskIds = await getCollectionTaskIds(userId);
     if (collectionTaskIds.length > 0) and.push({ _id: { $nin: collectionTaskIds } });
   }
@@ -92,7 +92,7 @@ export async function getTaskByIdAction(taskId: string): Promise<LightweightTask
   return row ? serializeTask(row as DbTask) : null;
 }
 
-export async function getAllTaskTags(includeCollectionItems = false): Promise<{ tag: string; count: number }[]> {
+export async function getAllTaskTags(includeCollectionItems = true): Promise<{ tag: string; count: number }[]> {
   const user = await requireAuth();
   const userId = new ObjectId(user.id);
   const match: Record<string, unknown> = { userId };

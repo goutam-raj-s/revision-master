@@ -31,7 +31,7 @@ function urgencyForDate(date: Date): "overdue" | "today" | "upcoming" {
 export async function getTaskQueue(filter: TaskFilter = "today", options?: { includeCollectionItems?: boolean }): Promise<AnyTaskItem[]> {
   const user = await requireAuth();
   const userId = new ObjectId(user.id);
-  const collectionTaskIds = options?.includeCollectionItems ? [] : await getCollectionTaskIds(userId);
+  const collectionTaskIds = options?.includeCollectionItems === false ? await getCollectionTaskIds(userId) : [];
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
   const todayEnd = new Date();
@@ -75,7 +75,7 @@ export async function getTaskQueueStats(options?: { includeCollectionItems?: boo
   const user = await requireAuth();
   const userId = new ObjectId(user.id);
   const lightweightTasks = await getTasksCollection();
-  const collectionTaskIds = options?.includeCollectionItems ? [] : await getCollectionTaskIds(userId);
+  const collectionTaskIds = options?.includeCollectionItems === false ? await getCollectionTaskIds(userId) : [];
   const now = new Date();
   const todayStart = new Date(now);
   todayStart.setHours(0, 0, 0, 0);

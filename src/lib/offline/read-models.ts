@@ -114,9 +114,9 @@ export async function getOfflineTasksView(filter: {
     getOfflineTaskRows(),
     collectionTaskIdSet(),
   ]);
-  const scopedTasks = filter.includeCollectionItems
-    ? allTasks
-    : allTasks.filter((task) => !collectionTaskIds.has(task.id));
+  const scopedTasks = filter.includeCollectionItems === false
+    ? allTasks.filter((task) => !collectionTaskIds.has(task.id))
+    : allTasks;
   const tagCounts = new Map<string, number>();
   for (const task of scopedTasks) {
     for (const tag of task.tags) tagCounts.set(tag, (tagCounts.get(tag) ?? 0) + 1);
@@ -226,7 +226,7 @@ export async function getOfflineDashboardView(filter: TaskFilter, includeCollect
   todayEnd.setHours(23, 59, 59, 999);
 
   const scopedPending = allTasks.filter((task) => (
-    task.status === "pending" && (includeCollectionItems || !collectionTaskIds.has(task.id))
+    task.status === "pending" && (includeCollectionItems !== false || !collectionTaskIds.has(task.id))
   ));
 
   const queueTasks = scopedPending

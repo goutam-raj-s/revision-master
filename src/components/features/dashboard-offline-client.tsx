@@ -65,7 +65,7 @@ function FilterTabs({ active, pendingCount, showCollectionItems }: { active: Tas
           }
 
           const params = new URLSearchParams({ filter: tab.key });
-          if (showCollectionItems) params.set("showCollections", "1");
+          if (!showCollectionItems) params.set("showCollections", "0");
 
           return (
             <Link key={tab.key} href={`/dashboard?${params.toString()}`} className={className} aria-current={active === tab.key ? "page" : undefined}>
@@ -75,14 +75,14 @@ function FilterTabs({ active, pendingCount, showCollectionItems }: { active: Tas
         })}
       </div>
       <Link
-        href={showCollectionItems ? `/dashboard?filter=${active}` : `/dashboard?filter=${active}&showCollections=1`}
+        href={showCollectionItems ? `/dashboard?filter=${active}&showCollections=0` : `/dashboard?filter=${active}`}
         className={`inline-flex min-w-max items-center justify-center rounded-xl border px-3 py-1.5 text-xs font-medium transition-all duration-200 sm:text-sm ${
-          showCollectionItems
+          !showCollectionItems
             ? "border-state-today bg-state-today/10 text-state-today"
             : "border-border bg-surface text-mossy-gray hover:bg-canvas hover:text-forest-slate"
         }`}
       >
-        Collection items
+        Hide collection items
       </Link>
     </div>
   );
@@ -91,7 +91,7 @@ function FilterTabs({ active, pendingCount, showCollectionItems }: { active: Tas
 export function DashboardOfflineClient() {
   const searchParams = useSearchParams();
   const filter = ((searchParams.get("filter") as TaskFilter | null) || "today");
-  const showCollectionItems = searchParams.get("showCollections") === "1";
+  const showCollectionItems = searchParams.get("showCollections") !== "0";
   const [tasks, setTasks] = React.useState<AnyTaskItem[]>([]);
   const [queueStats, setQueueStats] = React.useState({ todayCount: 0, upcomingCount: 0, overdueCount: 0 });
   const [streak, setStreak] = React.useState<StreakData>(() => emptyStreak());
