@@ -13,7 +13,7 @@ const CONFIG_PATH = path.join(process.cwd(), "config.json");
 
 const DEFAULT_MODELS: Record<ProviderId, string> = {
   openrouter: "meta-llama/llama-3.3-70b-instruct:free",
-  groq: "llama-3.3-70b-versatile",
+  groq: "openai/gpt-oss-20b",
   gemini: "gemini-2.0-flash",
 };
 
